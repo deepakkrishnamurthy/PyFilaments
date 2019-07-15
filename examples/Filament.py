@@ -108,7 +108,9 @@ class activeFilament:
         self.dy = self.r[self.Np+1:2*self.Np] - self.r[self.Np:2*self.Np-1]
         self.dz = self.r[2*self.Np+1:3*self.Np] - self.r[2*self.Np:3*self.Np-1]
         
+        
         # length Np-1
+        # Lengths of the separation vectors
         self.dr = (self.dx**2 + self.dy**2 + self.dz**2)**(1/2)
         
         # length Np-1
@@ -118,6 +120,7 @@ class activeFilament:
         
         # rows: dimensions columns : partickes
         # Shape : dim x Np-1
+        # Unit separation vectors 
         self.dr_hat = np.vstack((self.dx_hat, self.dy_hat, self.dz_hat))
         
         print(self.dr_hat)
@@ -152,7 +155,28 @@ class activeFilament:
         
         print(self.cosAngle)
         
+    # Find the local tangent vector of the filament at the position of each particle
+    def getTangentVectors(self):
         
+        # Unit tangent vector at the particle locations
+        self.t_hat = np.zeros((self.dim,self.Np))
+        
+        for ii in range(self.Np):
+            
+            if ii==0:
+                self.t_hat[:,ii] = self.dr_hat[:,ii]
+            elif ii==self.Np-1:
+                self.t_hat[:,-1] = self.dr_hat[:,-1]
+            else:
+                vector = self.dr_hat[:,ii-1] + self.dr_hat[:,ii]
+                self.t_hat[:,ii] = vector/(np.dot(vector, vector)**(1/2))
+                
+        
+        self.t_hat_array = self.reshapeToArray(self.t_hat)
+        
+        # Initialize the particle orientations to be along the local tangent vector
+        self.p = self.t_hat_array
+                
     def findBendingForces(self):
         # For torque-free filament ends
         
@@ -191,8 +215,49 @@ class activeFilament:
                 
             
         # Now reshape the forces array
-        
         return self.reshapeToArray(F_bending)
+    
+    
+    def connectivity(self):
+    
+#        def int Np = self.Np, i, j, xx = 2*Np
+#        def double dx, dy, dz, dr2, dr, idr, fx, fy, fz, fac
+        xx = 2*Np
+        self.F_conn = np.zeros(dim*Np)
+        
+        for i in range(Np):
+            fx = 0.0; fy = 0.0; fz = 0.0;
+            for j in range(i,Np):
+                
+                if((i-j)==1 or (i-j)==-1):
+                    
+                    dx = self.r[i   ] - self.r[j   ]
+                    dy = self.r[i+Np] - self.r[j+Np]
+                    dz = self.r[i+xx] - self.r[j+xx] 
+                    dr2 = dx*dx + dy*dy + dz*dz
+                    dr = dr2**(1/2)
+                    
+    #                    dr_hat = np.array([dx, dy, dz], dtype = 'float')*(1/dr)
+                    
+                    fac = -kappa*(dr - b0)
+                
+                    fx = fac*dx/dr
+                    fy = fac*dy/dr
+                    fz = fac*dz/dr
+                    
+                    print(fx)
+                    
+                    # Force on particle "i"
+                    self.F_conn[i]    += fx 
+                    self.F_conn[i+Np] += fy 
+                    self.F_conn[i+xx] += fz 
+                    
+                    # Force on particle "j"
+                    self.F_conn[j]    -= fx 
+                    self.F_conn[j+Np] -= fy 
+                    self.F_conn[j+xx] -= fz 
+            
+        
                 
                 
             
