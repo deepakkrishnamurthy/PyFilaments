@@ -18,10 +18,12 @@ import pystokes
 import pyforces
 import matplotlib.pyplot as plt 
 import numpy as np
+import odespy
+import os
 
 class activeFilament:
     
-    def __init__(self, dim = 3, Np = 1, radius = 1, b0 = 2, k = 1, kappa = 1):
+    def __init__(self, dim = 3, Np = 1, radius = 1, b0 = 1, k = 1, kappa = 2, S0 = 0,shape ='line'):
         
         self.dim = dim
         self.Np = Np
@@ -34,19 +36,49 @@ class activeFilament:
         # Bending stiffness
         self.kappa = kappa
         
+        # Fluid viscosity
+        self.eta = 1.0/6
+        
+        # Parameters for the near-field Lennard-Jones potential
+        self.ljeps = 0.01
+        self.ljrmin = 2.0*self.radius
+        
+        # Initial shape of the filament
+        self.shape = shape
+        
+        # Stresslet-strength
+        self.S0 = S0
+        
         # Initiate positions, orientations, forces etc of the particles
         self.r = np.zeros(self.Np*self.dim)
         self.p = np.zeros(self.Np*self.dim)
         
+        self.r0 = np.zeros(self.Np*self.dim)
+        self.p0 = np.zeros(self.Np*self.dim)
+        
+        # Velocity of all the particles
+        self.drdt = np.zeros(self.Np*self.dim)
+        
         self.F = np.zeros(self.Np*self.dim)
         self.T = np.zeros(self.Np*self.dim)
-        # Stresslet strength
-        self.S = np.zeros(self.Np*self.dim)
+        # Stresslet 
+        self.S = np.zeros(5*self.Np)
         
         
+        # Instantiate the pystokes class
+        self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.eta)   # instantiate the classes
+        # Instantiate the pyforces class
+        self.ff = pyforces.forceFields.Forces(self.Np)
         
-        self.initializeFilament()
-        self.initializeBendingStiffess();
+        # Variables for storing the simulation results
+        self.R = None 
+        self.Time = None
+        
+        self.xx = 2*self.Np
+        
+        self.initializeAll(filament_shape=self.shape)
+        
+        self.savePath = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
         
     def reshapeToArray(self, Matrix):
         # Takes a matrix of shape (dim, Np) and reshapes to an array (dim*Np, 1) 
@@ -63,16 +95,6 @@ class activeFilament:
         array_len = len(Array)
         ncols = array_len/self.dim
         return np.reshape(Array, (self.dim, ncols), order = 'C')
-        
-    def initializeFilament(self):
-        
-        for ii in range(self.Np):
-            # The filament is initially linear along x-axis with the first particle at origin
-            self.r[ii] = ii*self.b0
-            self.p[ii] = 1
-           
-        # Random fluctuations in y-direction
-        self.r[self.Np:self.Np*2] = np.random.rand(self.Np)
             
     def initializeBendingStiffess(self):
         
@@ -82,23 +104,7 @@ class activeFilament:
         # Torque-free ends of the filament
         self.kappa_array[0] = 0
         self.kappa_array[-1] = 0
-        
-    def plotFilament(self):
-        
-    
-        fig = plt.figure()
-        
-        ax = fig.add_subplot(1,1,1)
-        
-
-        ax.scatter(self.r[:self.Np], self.r[self.Np:2*self.Np], 200, color = 'b', alpha = 1.0, zorder = 2)
-        ax.plot(self.r[:self.Np], self.r[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 1)
-
-        ax.set_xlim([-0.1, self.Np*self.b0])
-        ax.set_ylim([-self.Np*self.b0/2, self.Np*self.b0/2])
-        
-        fig.canvas.draw()
-        
+                
     # calculate the pair-wise separation vector
     def getSeparationVector(self):
         
@@ -123,13 +129,8 @@ class activeFilament:
         # Unit separation vectors 
         self.dr_hat = np.vstack((self.dx_hat, self.dy_hat, self.dz_hat))
         
-        print(self.dr_hat)
+#        print(self.dr_hat)
         
-        
-        
-        
-        
-    
     # Calculate bond-angle vector for the filament
     def getBondAngles(self):
         
@@ -153,7 +154,7 @@ class activeFilament:
                 self.cosAngle[ii] = np.dot(self.dr_hat[:,ii-1], self.dr_hat[:,ii] )
                 
         
-        print(self.cosAngle)
+#        print(self.cosAngle)
         
     # Find the local tangent vector of the filament at the position of each particle
     def getTangentVectors(self):
@@ -177,22 +178,22 @@ class activeFilament:
         # Initialize the particle orientations to be along the local tangent vector
         self.p = self.t_hat_array
                 
-    def findBendingForces(self):
+    def BendingForces(self):
         # For torque-free filament ends
         
         self.getBondAngles()
         
-        F_bending = np.zeros((self.dim,self.Np))
+        self.F_bending = np.zeros((self.dim,self.Np))
         
         for ii in range(self.Np):
             
             if ii==0:
                 # Torque-free ends
-                F_bending[:,ii] = self.kappa_array[ii+1]*(1/self.dr[ii])*(self.dr_hat[:, ii]*self.cosAngle[ii+1] - self.dr_hat[:, ii+1])
+                self.F_bending[:,ii] = self.kappa_array[ii+1]*(1/self.dr[ii])*(self.dr_hat[:, ii]*self.cosAngle[ii+1] - self.dr_hat[:, ii+1])
                 
             elif ii == self.Np-1:
                 # Torque-free ends
-                F_bending[:,ii] = self.kappa_array[ii-1]*(1/self.dr[ii-1])*(self.dr_hat[:, ii-2] - self.cosAngle[ii]*self.dr_hat[:, ii-1])
+                self.F_bending[:,ii] = self.kappa_array[ii-1]*(1/self.dr[ii-1])*(self.dr_hat[:, ii-2] - self.cosAngle[ii - 1]*self.dr_hat[:, ii-1])
                 
             else:
                 
@@ -201,126 +202,251 @@ class activeFilament:
                 else:
                     term_n_minus = 0
                     
-                term_n1 = self.kappa_array[ii]*((1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])*self.dr_hat[:, ii])
-                term_n2 = -self.kappa_array[ii]*((1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])*self.dr_hat[:, ii-1])
+                term_n1 = (1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])*self.dr_hat[:, ii]
+                term_n2 = -(1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])*self.dr_hat[:, ii-1]
                 
-                term_n = term_n1 + term_n2
+                term_n = self.kappa_array[ii]*(term_n1 + term_n2)
                 
                 if(ii!=self.Np-2):
-                    term_n_plus = self.kappa_array[ii+1]*(-self.dr_hat[:, ii+1] + self.dr_hat[ii]*self.cosAngle[ii + 1])*(1/self.dr[:, ii])
+                    term_n_plus = self.kappa_array[ii+1]*(-self.dr_hat[:, ii+1] + self.dr_hat[:, ii]*self.cosAngle[ii + 1])*(1/self.dr[ii])
                 else:
                     term_n_plus = 0
                     
-                F_bending[:,ii] =  term_n_minus + term_n + term_n_plus
+                self.F_bending[:,ii] =  term_n_minus + term_n + term_n_plus
                 
             
         # Now reshape the forces array
-        return self.reshapeToArray(F_bending)
+        self.F_bending_array = self.reshapeToArray(self.F_bending)    
     
-    
-    def connectivity(self):
+    def ConnectionForces(self):
     
 #        def int Np = self.Np, i, j, xx = 2*Np
 #        def double dx, dy, dz, dr2, dr, idr, fx, fy, fz, fac
-        xx = 2*Np
-        self.F_conn = np.zeros(dim*Np)
+        xx = 2*self.Np
+        self.F_conn = np.zeros(self.dim*self.Np)
         
-        for i in range(Np):
+        for i in range(self.Np):
             fx = 0.0; fy = 0.0; fz = 0.0;
-            for j in range(i,Np):
+            for j in range(i,self.Np):
                 
                 if((i-j)==1 or (i-j)==-1):
                     
                     dx = self.r[i   ] - self.r[j   ]
-                    dy = self.r[i+Np] - self.r[j+Np]
+                    dy = self.r[i+self.Np] - self.r[j+self.Np]
                     dz = self.r[i+xx] - self.r[j+xx] 
                     dr2 = dx*dx + dy*dy + dz*dz
                     dr = dr2**(1/2)
                     
     #                    dr_hat = np.array([dx, dy, dz], dtype = 'float')*(1/dr)
                     
-                    fac = -kappa*(dr - b0)
+                    fac = -self.k*(dr - self.b0)
                 
                     fx = fac*dx/dr
                     fy = fac*dy/dr
                     fz = fac*dz/dr
                     
-                    print(fx)
                     
                     # Force on particle "i"
                     self.F_conn[i]    += fx 
-                    self.F_conn[i+Np] += fy 
+                    self.F_conn[i+self.Np] += fy 
                     self.F_conn[i+xx] += fz 
                     
                     # Force on particle "j"
                     self.F_conn[j]    -= fx 
-                    self.F_conn[j+Np] -= fy 
+                    self.F_conn[j+self.Np] -= fy 
                     self.F_conn[j+xx] -= fz 
+                    
+    def setStresslet(self):
+        
+        self.S[:self.Np]            = self.S0*(self.p[:self.Np]*self.p[:self.Np] - 1./3)
+        self.S[self.Np:2*self.Np]   = self.S0*(self.p[self.Np:2*self.Np]*self.p[self.Np:2*self.Np] - 1./3)
+        self.S[2*self.Np:3*self.Np] = self.S0*(self.p[:self.Np]*self.p[self.Np:2*self.Np])
+        self.S[3*self.Np:4*self.Np] = self.S0*(self.p[:self.Np]*self.p[2*self.Np:3*self.Np])
+        self.S[4*self.Np:5*self.Np] = self.S0*(self.p[self.Np:2*self.Np]*self.p[2*self.Np:3*self.Np])
+                 
+    def initializeAll(self, filament_shape = 'arc'):
+        
+        
+        if(filament_shape == 'line'):
+            # Initial particle positions and orientations
+            for ii in range(self.Np):
+                # The filament is initially linear along x-axis with the first particle at origin
+                self.r0[ii] = ii*(self.b0)
+                
+               
+        # Add some Random fluctuations in y-direction
+            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
+        
+        elif(filament_shape == 'arc'):
+            arc_angle = np.pi
+
+            arc_angle_piece = arc_angle/self.Np
+            
+            for ii in range(self.Np):
+                # The filament is initially linear along x-axis with the first particle at origin
+                if(ii==0):
+                    self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
+                else:
+                    self.r0[ii] = self.r0[ii-1] + self.b0*np.cos(ii*arc_angle_piece)
+                    self.r0[ii + self.Np] = self.r0[ii-1 + self.Np] + self.b0*np.sin(ii*arc_angle_piece)
+                    
+                
+            
             
         
-                
-                
-            
         
-            
-            
-#def cross(v1, v2, Np = 1, dim = 3):
-#    v1, v2 = np.array(v1), np.array(v2)
+        self.r = self.r0
+        
+        
+        # Initialize the bending-stiffness array
+        self.initializeBendingStiffess()
+        self.getSeparationVector()
+        self.getBondAngles()
+        
+        self.getTangentVectors()
+        # Orientation vectors of particles depend on local tangent vector
+        self.p0 = self.p
+        
+    def calcForces(self):
+        
+        self.F = self.F*0
+        
+     
+        self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
+        self.ConnectionForces()
+        self.BendingForces()
+        # Add all the intrinsic forces together
+        self.F += self.F_conn + self.F_bending_array
+
+
+        
+        # Add external forces
+#        self.ff.sedimentation(self.F, g = -10)
+        
+        
+        
+    def rhs(self, r, t):
+        
+        self.drdt = self.drdt*0
+        
+        self.r = r
+        
+        
+        self.getSeparationVector()
+        self.getBondAngles()
+        self.getTangentVectors()
+        
+        self.setStresslet()
+        
+        self.calcForces()
+        
+#        print(self.F)
+        
+        # Stokeslet contribution to Rigid-Body-Motion
+        self.rm.stokesletV(self.drdt, self.r, self.F)
+        
+        # Stressslet contribution to Rigid-Body-Motion
+#        self.rm.stressletV(self.drdt, self.r, self.S)
+        
+        self.rm.potDipoleV(self.drdt, self.r, self.p)
+        
+        # Apply the boundary condition (1st particle is fixed in space)
+        self.drdt[0], self.drdt[self.Np], self.drdt[self.xx] = 0,0,0 
+        
+        
+    
+    def simulate(self, Tf, Npts):
+        
+        def rhs0(r, t):
+            # Pass the current time from the ode-solver, 
+            # so as to implement time-varying conditions
+            self.rhs(r, t)
+            print(t)
+            return self.drdt
+        
+        # integrate the resulting equation using odespy
+        T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
+        solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6)
+        solver.set_initial_condition(self.r0)
+        self.R, self.Time = solver.solve(time_points)
+        
+#        savemat('Np=%s_vs=%4.4f_K=%4.4f_s_0=%4.4f.mat'%(self.Np, self.vs, self.k, self.S0), {'X':u, 't':t, 'Np':self.Np,'k':self.k, 'vs':self.vs, 'S0':self.S0,})
+        
+    def plotFilament(self, r = None):
+        
+    
+        fig = plt.figure()
+        
+        ax = fig.add_subplot(1,1,1)
+        
+
+        ax.scatter(r[:self.Np], r[self.Np:2*self.Np], 200, color = 'b', alpha = 1.0, zorder = 2)
+        ax.plot(r[:self.Np], r[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 1)
+
+#        ax.set_xlim([-0.1, self.Np*self.b0])
+#        ax.set_ylim([-self.Np*self.b0/2, self.Np*self.b0/2])
+        
+        fig.canvas.draw()
 #    
-#    V1, V2 = np.zeros((dim, Np)),np.zeros((dim, Np))
-#    
-#    for ii in range(Np):
-#        for jj in range(dim):
-#            V1[jj, ii] = v1[ii + jj]
-#            V2[jj, ii] = v2[ii + jj]
-    
-#-------------------------------------------------------------------------------
-def connectivity(r, kappa = 1,b0 = 1):
-    
-#        def int Np = self.Np, i, j, xx = 2*Np
-#        def double dx, dy, dz, dr2, dr, idr, fx, fy, fz, fac
-    xx = 2*Np
-    F = np.zeros(dim*Np)
-    
-    for i in range(Np):
-        fx = 0.0; fy = 0.0; fz = 0.0;
-        for j in range(i,Np):
-            
-            if((i-j)==1 or (i-j)==-1):
-                
-                dx = r[i   ] - r[j   ]
-                dy = r[i+Np] - r[j+Np]
-                dz = r[i+xx] - r[j+xx] 
-                dr2 = dx*dx + dy*dy + dz*dz
-                dr = dr2**(1/2)
-                
-#                    dr_hat = np.array([dx, dy, dz], dtype = 'float')*(1/dr)
-                
-                fac = -kappa*(dr - b0)
-            
-                fx = fac*dx/dr
-                fy = fac*dy/dr
-                fz = fac*dz/dr
-                
-                print(fx)
-                
-                # Force on particle "i"
-                F[i]    += fx 
-                F[i+Np] += fy 
-                F[i+xx] += fz 
-                
-                # Force on particle "j"
-                F[j]    -= fx 
-                F[j+Np] -= fy 
-                F[j+xx] -= fz 
+    def plotSimResult(self):
         
         
-    return F
+        self.saveFolder = os.path.join(self.savePath, 'SimResults_Np_{}_Shape_{}_S_{}'.format(self.Np, self.shape, self.S0))
+        
+        if(not os.path.exists(self.saveFolder)):
+            
+            os.makedirs(self.saveFolder)
+            
+            
+        fig = plt.figure()
+        
+        ax = fig.add_subplot(1,1,1)
+        
+        if(self.R is not None):
+            
+            TimePts, rest  = np.shape(self.R)
+            
+            self.x_min = np.min(self.R[:,:self.Np])
+            self.x_max = np.max(self.R[:,:self.Np])
+            
+            self.y_min = np.min(self.R[:,self.Np:2*self.Np])
+            self.y_max = np.max(self.R[:,self.Np:2*self.Np])
+            
+            
+            for ii in range(TimePts):
+                
+                R = self.R[ii,:]
+                t = self.Time[ii]
+                
+                ax.clear()
+                
+                ax.scatter(R[:self.Np], R[self.Np:2*self.Np], 200, color = 'b', alpha = 1.0, zorder = 2)
+                ax.plot(R[:self.Np], R[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 1)
+                ax.set_title('Time: {:.2f}'.format(t))
+                
+                ax.axis('equal')
+#                ax.axis([self.x_min - 2*self.radius, self.x_max + 2*self.radius , self.y_min-2*self.radius, self.y_max +2*(self.radius)])
+#                ax.set_xlim([x_min - 2*self.radius, x_max + 2*self.radius])
+#                ax.set_ylim([y_min-2*self.radius, y_max +2*(self.radius)])
+                plt.pause(0.000001)
+                
+#                plt.savefig(os.path.join(self.saveFolder, 'Res_T_{:.2f}_'.format(t)+'.tif'), dpi = 150)
+                
+                fig.canvas.draw()
+
+
+
+        
+        
+        
+        
+        
+        
 
 #-------------------------------------------------------------------------------
 # Simulation Parameters
 #-------------------------------------------------------------------------------
-a,  Np = 1, 2            # radius and number of particles
+radius,  Np = 1, 2            # radius and number of particles
 L, dim = 128,  3                    # size and dimensionality and the box
 v = np.zeros(dim*Np)                # Memory allocation for velocity
 omega = np.zeros(dim*Np)                # Memory allocation for angular velocities
@@ -333,117 +459,23 @@ F_sed = np.zeros(dim*Np)                 # Forces on the particles
 F_conn = np.zeros(dim*Np)                 # Forces on the particles
 #-------------------------------------------------------------------------------
 
-Nb, Nm = 1, 4
 
-# Connective spring stiffness
-kappa = float(5)
-# Equlibrium bond-length
-b0 = float(2*a)
 
-# Initialize the particle positions and orientations
-r[5] = r[5]-4*a
 
-p[2*Np:3*Np] = 1
 
-#p[0] = 1
-#p[1] = -1
+fil = activeFilament(dim = 3, Np = 20, b0 = 4, k = 1, radius = 1, S0= -2, kappa = 10, shape = 'arc')
 
-S0 = 5
-S[:Np]      = S0*(p[:Np]*p[:Np] - 1./3)
-S[Np:2*Np]  = S0*(p[Np:2*Np]*p[Np:2*Np] - 1./3)
-S[2*Np:3*Np]= S0*(p[:Np]*p[Np:2*Np])
-S[3*Np:4*Np]= S0*(p[:Np]*p[2*Np:3*Np])
-S[4*Np:5*Np]= S0*(p[Np:2*Np]*p[2*Np:3*Np])
+fil.plotFilament(r = fil.r0)
 
-#-------------------------------------------------------------------------------
-# Instantiate the pystokes class
-#-------------------------------------------------------------------------------
-rm = pystokes.unbounded.Rbm(a, Np, 1.0/6)   # instantiate the classes
-#-------------------------------------------------------------------------------
-# Instantiate the pyforces class
-#-------------------------------------------------------------------------------
-ff = pyforces.forceFields.Forces(Np)
-#-------------------------------------------------------------------------------
-# Time-integration to solve the Kinematic ODEs
-#-------------------------------------------------------------------------------
-dt = 0.01
-TimeSteps = 100
-r1_array = np.zeros(TimeSteps)
-r2_array = np.zeros(TimeSteps)
+Tf = 200
+Npts = 50
+fil.simulate(Tf, Npts)
 
-fil = activeFilament(dim = 3, Np = 10, b0 = 1)
+finalPos = fil.R[-1,:]
 
-fil.plotFilament()
+fil.plotSimResult()
 
-fil.getBondAngles()
 
-#fig = plt.figure()
-#for tt in range(TimeSteps):
-#    F = F*0
-#    v = v*0
-#    F_sed = F_sed*0
-#    F_conn = F_conn*0
-#    
-#    # Add the Lennard-Jones potential for self-avoidance
-#    ff.sedimentation(F_sed, g = -50)            # call the Sedimentation module of pyforces
-##    ff.connectivity(F_conn, r, kappa, b0)
-#    F_conn = connectivity(r, kappa, b0)
-##    print(F_conn)
-#    F = F_conn + F_sed
-##    print('kappa: {}, b0: {}'.format(kappa, b0))
-#
-##    F[5]=0
-##    ff.lennardJones(F, r, ljeps = 10)
-#    
-#    
-#    
-#    rm.stokesletV(v, r, F)
-#    
-#    
-##    rm.stressletV(v, r, S, Nb, Nm)           # and StokesletV module of pystokes
-##    rm.stressletO(omega, r, S, Nb, Nm)           # and StokesletV module of pystokes
-#    
-#    #    rm.stokesletV(v, r, F, Nb, Nm)
-##    rm.potDipoleV(v, r, 10*p, Nb, Nm)
-##    rm.potDipoleO(omega, r, 10*p, Nb, Nm)
-#    
-##    rm.stokesletO(omega, r, F, Nb, Nm)
-#    
-#    
-#    r = (r + v*dt)%L
-#    
-#    r1_array[tt] = r[4]
-#    r2_array[tt] = r[5]
-#    
-#    # Impose boundary conditions:
-#    r[0], r[0+Np], r[0+2*Np] = L/2, L/2, L/2
-##    p = (p + omega*dt)
-#    
-##    print(r[0])
-##    print(r[1])
-#    plt.cla()
-#    plt.scatter(r[0], r[4], 10, marker = 'o', color ='r', alpha = 0.75)
-#    plt.scatter(r[1], r[5], 10, marker = 'o', color = 'b', alpha = 0.75)
-##    plt.quiver(r[0], r[4], p[0], p[4], color = 'k')
-##    plt.quiver(r[1], r[5], p[1], p[5], color = 'k')
-#
-#    plt.xlim([0, L])
-#    plt.ylim([0, L])
-#    #plt.savefig('Time= %04d.png'%(tt))   # if u want to save the plots instead
-#    print tt
-#    plt.pause(0.001)
-#plt.show()
-#
-#
-#T = np.array(range(TimeSteps))*dt
-## Plot the results
-#
-#plt.figure()
-#
-#plt.plot(T, r1_array-r2_array, 'o',color = 'k')
-#plt.ylabel('Particle separation')
-#plt.xlabel('Time')
-#plt.show()
 
 
 

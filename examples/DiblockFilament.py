@@ -89,9 +89,12 @@ b0 = float(3.5*a)
 
 # Initialize the particle positions and orientations
 r[5] = r[5]-4*a
-#r[1] = r[1] + 4*a
+#r[1] = r[1] + 2.5*a
 
-p[2*Np:3*Np] = 1
+# Potential dipole strength
+D = 10
+p[2*Np:3*Np] = -1
+
 
 #p[0] = 1
 #p[1] = -1
@@ -109,7 +112,7 @@ rm = pystokes.unbounded.Rbm(a, Np, 1.0/6)   # instantiate the classes
 # Instantiate the pyforces class
 ff = pyforces.forceFields.Forces(Np)
 
-TimeSteps = 200
+TimeSteps = 100
 r1_array = np.zeros(TimeSteps)
 r2_array = np.zeros(TimeSteps)
 
@@ -123,17 +126,20 @@ for tt in range(TimeSteps):
     # Add the Lennard-Jones potential for self-avoidance
 #    ff.sedimentation(F_sed, g = -100)            # call the Sedimentation module of pyforces
 #    ff.connectivity(F_conn, r, kappa, b0)
+    
     F_conn = connectivity(r, kappa, b0)
 #    print(F_conn)
     F = F_conn + F_sed
 #    print('kappa: {}, b0: {}'.format(kappa, b0))
 
 #    F[5]=0
-#    ff.lennardJones(F, r, ljeps = 10)
+    ff.lennardJones(F, r, ljeps = 10)
     
     
     
     rm.stokesletV(v, r, F)
+    
+    rm.potDipoleV(v, r, -p*D)
     
     
 #    rm.stressletV(v, r, S, Nb, Nm)           # and StokesletV module of pystokes
