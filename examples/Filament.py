@@ -3,13 +3,13 @@
 """
 Created on Thu Jul 11 19:35:55 2019
 -------------------------------------------------------------------------------
-*Simulate extensile, elastic filaments using active colloid theory.
+*Simulate extensible, elastic filaments using active colloid theory.
 *Filaments are made up of discrete active colloids.
-*Full hydrodynamic interactions to the order necessary to fully solve for rigid body motions is solved 
+*Full hydrodynamic interactions to the order necessary to solve for rigid body motions is solved 
 using the PyStokes library (R Singh et al ...).
 *Non-linear springs provide connectivity.
 *Bending is penalized as an elastic potential.
-*Nearfield reupulsion using a Lennard-Jones-based potential
+*Nearfield repulsion using a Lennard-Jones-based potential
 -------------------------------------------------------------------------------
 @author: deepak
 """
@@ -22,6 +22,7 @@ import odespy
 import os
 import cmocean
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+import pickle
 
 
 class activeFilament:
@@ -34,10 +35,16 @@ class activeFilament:
         self.radius = radius
         # Equlibrium bond-length
         self.b0 = b0
+        
+        # Filament arc-length
+        self.L = self.b0*self.Np
+        
+        
         # Connective spring stiffness
         self.k = k
         # Bending stiffness
         self.kappa = self.k*self.b0
+        
         
         # Fluid viscosity
         self.eta = 1.0/6
@@ -85,6 +92,21 @@ class activeFilament:
         self.S_mag = self.S_mag*self.S0
         
         
+        # Set the colors of the particles based on their activity
+        self.particle_colors = []
+        self.passive_color = np.reshape(np.array(cmocean.cm.curl(0)),(4,1))
+        self.active_color =np.reshape(np.array(cmocean.cm.curl(255)), (4,1))
+        
+        for ii in range(self.Np):
+            
+            if(self.S_mag[ii]!=0 or self.D_mag[ii]!=0):
+                self.particle_colors.append('r')
+            else:
+                self.particle_colors.append('b')
+                
+        print(self.particle_colors)
+
+        
         
         
         # Instantiate the pystokes class
@@ -100,7 +122,18 @@ class activeFilament:
         
         self.initializeAll(filament_shape=self.shape)
         
-        self.savePath = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
+        self.Path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
+        
+        
+        self.Folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0)
+        
+        
+        self.saveFolder = os.path.join(self.Path, self.Folder)
+        
+
+   
+            
+    
         
     def reshapeToArray(self, Matrix):
         # Takes a matrix of shape (dim, Np) and reshapes to an array (dim*Np, 1) 
@@ -317,7 +350,7 @@ class activeFilament:
                 
                
         # Add some Random fluctuations in y-direction
-            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
+#            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
         
         elif(filament_shape == 'arc'):
             arc_angle = np.pi
@@ -329,13 +362,13 @@ class activeFilament:
                 if(ii==0):
                     self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
                 else:
-                    self.r0[ii] = self.r0[ii-1] + self.b0*np.cos(ii*arc_angle_piece)
-                    self.r0[ii + self.Np] = self.r0[ii-1 + self.Np] + self.b0*np.sin(ii*arc_angle_piece)
+                    self.r0[ii] = self.r0[ii-1] + self.b0*np.sin(ii*arc_angle_piece)
+                    self.r0[ii + self.Np] = self.r0[ii-1 + self.Np] + self.b0*np.cos(ii*arc_angle_piece)
                     
                 
         elif(filament_shape == 'sinusoid'):
             nWaves = 2.5
-            Amp=0.01
+            Amp=3
             for ii in range(self.Np):
                 # The filament is initially linear along x-axis with the first particle at origin
                 self.r0[ii] = ii*(self.b0)
@@ -405,7 +438,12 @@ class activeFilament:
         
         
     
-    def simulate(self, Tf, Npts):
+    def simulate(self, Tf, Npts, save = False, overwrite = False):
+        
+        self.saveFile = 'SimResults_Tmax_{}_Np_{}_Shape_{}_S_{}_D_{}.pkl'.format(Tf, self.Np, self.shape, self.S0, self.D0)
+        if(save):
+            if(not os.path.exists(self.saveFolder)):
+                os.makedirs(self.saveFolder)
         
         def rhs0(r, t):
             # Pass the current time from the ode-solver, 
@@ -414,38 +452,66 @@ class activeFilament:
             print(t)
             return self.drdt
         
-        # integrate the resulting equation using odespy
-        T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
-        solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6)
-        solver.set_initial_condition(self.r0)
-        self.R, self.Time = solver.solve(time_points)
+        if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
+            print('Running the filament simulation ....')
+            # integrate the resulting equation using odespy
+            T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
+            solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6)
+            solver.set_initial_condition(self.r0)
+            self.R, self.Time = solver.solve(time_points)
+            
+            if(save):
+                self.saveResults()
+                
+        else:
+            print('Loading Simulation from disk ....')
+            with open(os.path.join(self.saveFolder, self.saveFile), 'rb') as f:
+            
+                self.Np, self.b0, self.k, self.S0, self.D0, self.R, self.Time = pickle.load(f)
+            
+        
         
 #        savemat('Np=%s_vs=%4.4f_K=%4.4f_s_0=%4.4f.mat'%(self.Np, self.vs, self.k, self.S0), {'X':u, 't':t, 'Np':self.Np,'k':self.k, 'vs':self.vs, 'S0':self.S0,})
+        
+    
+    def saveResults(self):
+        
+        if(self.R is not None):
+            
+            
+            with open(os.path.join(self.saveFolder, self.saveFile), 'wb') as f:
+                pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.R, self.Time), f)
+                
+                
+            
+#        
+            
+            
         
     def plotFilament(self, r = None):
         
     
-        fig = plt.figure()
+        ax1 = plt.gca()
         
-        ax = fig.add_subplot(1,1,1)
+#        1ax = fig.add_subplot(1,1,1)
         
 
-        ax.scatter(r[:self.Np], r[self.Np:2*self.Np], 200, color = 'b', alpha = 1.0, zorder = 2)
-        ax.plot(r[:self.Np], r[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 1)
+        ax1.scatter(r[:self.Np], r[self.Np:2*self.Np], 100, c = self.particle_colors, alpha = 0.75, zorder = 20, cmap = cmocean.cm.curl)
+        ax1.plot(r[:self.Np], r[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 10)
 
 #        ax.set_xlim([-0.1, self.Np*self.b0])
 #        ax.set_ylim([-self.Np*self.b0/2, self.Np*self.b0/2])
         
-        fig.canvas.draw()
+#        fig.canvas.draw()
 #    
-    def plotSimResult(self):
+    def plotSimResult(self, save=False):
         
-        
-        self.saveFolder = os.path.join(self.savePath, 'SimResults_Np_{}_Shape_{}_S_{}'.format(self.Np, self.shape, self.S0))
-        
-        if(not os.path.exists(self.saveFolder)):
-            
-            os.makedirs(self.saveFolder)
+        if(save):
+            self.FilImages = os.path.join(self.saveFolder, 'FilamentImages_Np_{}_Shape_{}_S_{}_D_{}'.format(self.Np, self.shape, self.S0, self.D0))      
+#        
+            if(not os.path.exists(self.FilImages)):
+    #            
+                os.makedirs(self.FilImages)
             
             
         fig = plt.figure()
@@ -482,12 +548,11 @@ class activeFilament:
                 
                 ax.clear()
                                    
-                ax.scatter(R[:self.Np], R[self.Np:2*self.Np], 100, color = 'b', alpha = 1.0, zorder = 2)
-                
+                                
                 im = ax.scatter(COM_array[0,:ii], COM_array[1,:ii], 100, c = COM_Speed[:ii], alpha = 1.0, zorder = 2, cmap = 'viridis')
                 
+                self.plot_filament(self.r)                
 #                cbar = fig.colorbar(im, cax = cax1, orientation = 'vertical')
-                ax.plot(R[:self.Np], R[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 1)
                 ax.set_title('Time: {:.2f}'.format(t))
                 
                 ax.set_xlabel('X')
@@ -497,16 +562,159 @@ class activeFilament:
 #                ax.axis([self.x_min - 2*self.radius, self.x_max + 2*self.radius , self.y_min-2*self.radius, self.y_max +2*(self.radius)])
 #                ax.set_xlim([x_min - 2*self.radius, x_max + 2*self.radius])
 #                ax.set_ylim([y_min-2*self.radius, y_max +2*(self.radius)])
-                plt.pause(0.000001)
-#                plt.savefig(os.path.join(self.saveFolder, 'Res_T_{:.2f}_'.format(t)+'.tif'), dpi = 150)
-#                cbar = plt.colorbar(ax)
                 
+                if(save):
+                    plt.savefig(os.path.join(self.FilImages, 'Res_T_{:.2f}_'.format(t)+'.tif'), dpi = 150)
+#                cbar = plt.colorbar(ax)
+                plt.pause(0.000001)
                 fig.canvas.draw()
 
+    def plotFlowFields(self, save = False):
+        # Plots the fluid-flow field around the filament at different times of the simulation
+        
+        Ng = 32
+        Nt = Ng*Ng
+        
+        rt = np.zeros(dim*Nt)                   # Memory Allocation for field points
+        vv = np.zeros(dim*Nt)                   # Memory Allocation for field Velocities
+        
+        if(save):
+            self.flowFolder = os.path.join(self.saveFolder, 'FlowFields_Np_{}_Shape_{}_S_{}_D_{}'.format(self.Np, self.shape, self.S0, self.D0))      
+            if(not os.path.exists(self.flowFolder)):      
+                os.makedirs(self.flowFolder)
+        
+        
+        if(self.R is not None):
+            TimePts, rest  = np.shape(self.R)
+            
+            COM_array = np.zeros((self.dim, TimePts))
+            COM_Speed = np.zeros(TimePts)
+            
+#            self.x_min = np.min(self.R[:,:self.Np]) - 5*self.radius
+#            self.x_max = np.max(self.R[:,:self.Np]) + 5*self.radius
+#            
+#            self.y_min = np.min(self.R[:,self.Np:2*self.Np]) - 5*self.radius
+#            self.y_max = np.max(self.R[:,self.Np:2*self.Np]) + 5*self.radius
+            
+            
+            ii = int(TimePts/2)
+                
+            R = self.R[ii,:]
+            t = self.Time[ii]
+            
+            self.r = R
+            
+            COM_array[0,ii] = np.nanmean(R[:self.Np])
+            COM_array[1,ii] = np.nanmean(R[self.Np:2*self.Np])
+            
+            self.x_min = COM_array[0,ii] - self.L/2 - 20*self.radius
+            self.x_max = COM_array[0,ii] + self.L/2 + 20*self.radius
+            self.y_min = COM_array[1,ii] - self.L/2 - 20*self.radius
+            self.y_max = COM_array[1,ii] + self.L/2 + 20*self.radius
+            
+            
+            
+            
+            # Define a grid for calculating the velocity vectors based on the above limits
+            # creating a meshgrid
+            xx = np.linspace(self.x_min, self.x_max, Ng)
+            yy = np.linspace(self.y_min, self.y_max, Ng)
+            X, Y = np.meshgrid(xx, yy)
+            rt[0:2*Nt] = np.concatenate((X.reshape(Ng*Ng), Y.reshape(Ng*Ng)))
+            
+            ####Instantiate the Flow class
+            uFlow = pystokes.unbounded.Flow(self.radius, self.Np, self.eta, Nt)
+            
+            plt.figure(1)
+            
+            for ii in range(TimePts):
+            
+#            ii = int(TimePts/2)
+                
+                R = self.R[ii,:]
+                t = self.Time[ii]
+                
+                self.r = R
+                
+            
+                COM_array[0,ii] = np.nanmean(R[:self.Np])
+                COM_array[1,ii] = np.nanmean(R[self.Np:2*self.Np])
+                
+                # Uncomment below to plot the flow-fields at a fixed point
+#                self.x_min = COM_array[0,ii] - self.L/2 - 20*self.radius
+#                self.x_max = COM_array[0,ii] + self.L/2 + 20*self.radius
+#                self.y_min = COM_array[1,ii] - self.L/2 - 20*self.radius
+#                self.y_max = COM_array[1,ii] + self.L/2 + 20*self.radius
+                
+                # Define a grid for calculating the velocity vectors based on the above limits
+                # creating a meshgrid
+                xx = np.linspace(self.x_min, self.x_max, Ng)
+                yy = np.linspace(self.y_min, self.y_max, Ng)
+                X, Y = np.meshgrid(xx, yy)
+                rt[0:2*Nt] = np.concatenate((X.reshape(Ng*Ng), Y.reshape(Ng*Ng)))
+                
+                
+                # Calculate the forces on the particles due to intrinsic forces
+                self.getSeparationVector()
+                self.getBondAngles()
+                self.getTangentVectors()
+            
+                self.setStresslet()
+            
+                self.calcForces()
+                
+                
+                
+                uFlow.stokesletV(vv, rt, R, self.F) # computes flow (vv) at the location of rt in vector vv given r and F
+                
+                uFlow.stressletV(vv, rt, R, self.S) # computes flow (vv) at the location of rt in vector vv given r and S
 
+                
+                vx, vy = vv[0:Nt].reshape(Ng, Ng), vv[Nt:2*Nt].reshape(Ng, Ng)
+    
+                U = (vx**2 + vy**2)**(1/2)
+                U = np.log(U/np.nanmax(U))
+                
+                
+            
+                # Plot
+               
+                
+                plt.clf()
+                
+                self.plotFilament(self.r)
+                
+                ax2 = plt.contourf(X, Y, U, 20, cmap = cmocean.cm.amp, alpha=1.0,linewidth=0,linestyle=None, zorder = 0)
+                
+    
+    
+                plt.streamplot(X, Y, vx, vy, color="black", density=1, linewidth =1, arrowsize = 1, zorder = 1)
+                
+    
+                cbar = plt.colorbar(ax2)
+    #
+                cbar.set_label(r'$log(U/U_{max})$', fontsize =16)
+                
+                plt.axis('equal')
+                plt.xlim([self.x_min, self.x_max])
+                plt.ylim([self.y_min, self.y_max])
+                plt.xlabel(r'$x/a$', fontsize=16)
+                plt.ylabel(r'$y/a$', fontsize=16)
+                plt.title('Time = {:.2f}'.format(t))
 
+    #            plt.axes(aspect = 'equal')
+                
+    
+                if(save):
+                    plt.savefig(os.path.join(self.flowFolder, 'FlowField_T_{:.2f}_'.format(t)+'.png'), dpi = 150)
+
+                plt.pause(0.00001)
+                plt.show()
 
         
+
+
+            
         
         
         
@@ -532,19 +740,21 @@ F_conn = np.zeros(dim*Np)                 # Forces on the particles
 
 
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0= 15, shape = 'sinusoid')
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0= 1, D0 = 0, shape = 'line')
 
 fil.plotFilament(r = fil.r0)
 
-Tf = 500
-Npts = 500
-fil.simulate(Tf, Npts)
+Tf = 300
+Npts = 10
+fil.simulate(Tf, Npts, save=False, overwrite=False)
 
 finalPos = fil.R[-1,:]
 
-fil.plotSimResult()
+#fil.plotSimResult()
 
 fil.plotFilament(r = finalPos)
+
+fil.plotFlowFields(save = False)
 
 
 
