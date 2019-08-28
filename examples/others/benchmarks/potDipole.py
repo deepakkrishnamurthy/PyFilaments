@@ -18,4 +18,4 @@ for i in range(6):
     
     t1 = time.time()
     uRbm.potDipoleV(v, r, p)
-    print 'Time take: ', time.time()-t1, "    Np ", Np
+    print 'Time taken (s): ', time.time()-t1, "    Np ", Np

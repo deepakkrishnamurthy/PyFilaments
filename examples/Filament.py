@@ -50,7 +50,7 @@ class activeFilament:
         self.eta = 1.0/6
         
         # Parameters for the near-field Lennard-Jones potential
-        self.ljeps = 0.01
+        self.ljeps = 0.1
         self.ljrmin = 2.0*self.radius
         
         # Initial shape of the filament
@@ -367,8 +367,8 @@ class activeFilament:
                     
                 
         elif(filament_shape == 'sinusoid'):
-            nWaves = 2.5
-            Amp=3
+            nWaves = 2
+            Amp=0.05
             for ii in range(self.Np):
                 # The filament is initially linear along x-axis with the first particle at origin
                 self.r0[ii] = ii*(self.b0)
@@ -641,10 +641,10 @@ class activeFilament:
                 COM_array[1,ii] = np.nanmean(R[self.Np:2*self.Np])
                 
                 # Uncomment below to plot the flow-fields at a fixed point
-#                self.x_min = COM_array[0,ii] - self.L/2 - 20*self.radius
-#                self.x_max = COM_array[0,ii] + self.L/2 + 20*self.radius
-#                self.y_min = COM_array[1,ii] - self.L/2 - 20*self.radius
-#                self.y_max = COM_array[1,ii] + self.L/2 + 20*self.radius
+                self.x_min = COM_array[0,ii] - self.L - 20*self.radius
+                self.x_max = COM_array[0,ii] + self.L + 20*self.radius
+                self.y_min = COM_array[1,ii] - self.L - 20*self.radius
+                self.y_max = COM_array[1,ii] + self.L + 20*self.radius
                 
                 # Define a grid for calculating the velocity vectors based on the above limits
                 # creating a meshgrid
@@ -689,7 +689,9 @@ class activeFilament:
     
     
                 plt.streamplot(X, Y, vx, vy, color="black", density=1, linewidth =1, arrowsize = 1, zorder = 1)
-                
+#                plt.quiver(X, Y, vx, vy, color="black", linewidth =1)
+                im = plt.scatter(COM_array[0,:ii], COM_array[1,:ii], 25, c = COM_Speed[:ii], alpha = 0.75, zorder = 2, cmap = 'viridis')
+
     
                 cbar = plt.colorbar(ax2)
     #
@@ -740,13 +742,13 @@ F_conn = np.zeros(dim*Np)                 # Forces on the particles
 
 
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0= 1, D0 = 0, shape = 'line')
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0= 15, D0 = 0, shape = 'sinusoid')
 
 fil.plotFilament(r = fil.r0)
 
-Tf = 300
-Npts = 10
-fil.simulate(Tf, Npts, save=False, overwrite=False)
+Tf = 10000
+Npts = 500
+fil.simulate(Tf, Npts, save = True, overwrite=False)
 
 finalPos = fil.R[-1,:]
 

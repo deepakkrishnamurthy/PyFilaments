@@ -36,8 +36,10 @@ def check_for_openmp():
     shutil.rmtree(tmpdir)
 
     if exit_code == 0:
+        print('OpenMP found!')
         return True
     else:
+        print('No OpenMP!')
         return False
 
 if check_for_openmp() == True:
