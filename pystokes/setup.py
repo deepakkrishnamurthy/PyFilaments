@@ -19,6 +19,7 @@ def check_for_openmp():
     # Attempt to compile a test script.
     # See http://openmp.org/wp/openmp-compilers/
     filename = r'test.c'
+    # filename = r'openMPtest.c')
     file = open(filename,'w')
     file.write(
         "#include <omp.h>\n"
@@ -27,23 +28,31 @@ def check_for_openmp():
         "#pragma omp parallel\n"
         "printf(\"Hello from thread %d, nthreads %d\\n\", omp_get_thread_num(), omp_get_num_threads());\n"
         "}")
-    with open(os.devnull, 'w') as fnull:
-        exit_code = subprocess.call([compiler, '-fopenmp', filename],
-                                    stdout=fnull, stderr=fnull)
-    # Clean up
+
+    # Fixed major bug. File needs to be closed before compilation can commence.
     file.close()
+    with open(os.devnull, 'w') as fnull:
+        exit_code = subprocess.call([compiler, '-Xpreprocessor', '-fopenmp', '-lomp', filename], stdout=fnull, stderr=fnull)
+
+    # Clean up
     os.chdir(curdir)
     shutil.rmtree(tmpdir)
 
     if exit_code == 0:
+        print(exit_code)
+        print('OpenMP found!')
         return True
     else:
+        print(exit_code)
+        print('No OpenMP!')
         return False
 
 if check_for_openmp() == True:
-    omp_args = ['-fopenmp']
+    omp_args = ['-Xpreprocessor', '-fopenmp', '-lomp']
+    print('OpenMP found!')
 else:
     omp_args = None
+    print('No OpenMP found!')
 
 setup(
     name='pystokes',
