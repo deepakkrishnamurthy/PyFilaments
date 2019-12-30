@@ -76,14 +76,18 @@ class activeFilament:
         self.T = np.zeros(self.Np*self.dim)
         # Stresslet 
         self.S = np.zeros(5*self.Np)
+        # Potential dipole
+        self.D = np.zeros(self.Np*self.dim)
         
         # Masks for specifying different activities on particles
         # Mask for external forces
         self.F_mag = np.zeros(self.Np*self.dim)
         # Stresslets
-        self.S_mag = np.ones(self.Np)
+        self.S_mag = np.zeros(self.Np)
         # Potential dipoles
         self.D_mag = np.zeros(self.Np)
+        # Make the most distal particle active
+        self.D_mag[-1] = self.D0
         
         # The most distal particle is motile
 #        self.D_mag[-1] = self.D0
@@ -320,10 +324,12 @@ class activeFilament:
 ##        Apply a specific activity pattern at time t to the filament
                     
     def setForces(self):
+        # Specifies external forces on the active particles
         self.F = self.F_mag
         
         
     def setStresslet(self):
+        # Specifies the stresslet on each active particle
         
         self.S[:self.Np]            = self.S_mag*(self.p[:self.Np]*self.p[:self.Np] - 1./3)
         self.S[self.Np:2*self.Np]   = self.S_mag*(self.p[self.Np:2*self.Np]*self.p[self.Np:2*self.Np] - 1./3)
@@ -332,6 +338,7 @@ class activeFilament:
         self.S[4*self.Np:5*self.Np] = self.S_mag*(self.p[self.Np:2*self.Np]*self.p[2*self.Np:3*self.Np])
     
     def setPotDipole(self):
+        # Specifies the potential dipole on each active particle
         
         # Potential dipole axis is along the local orientation vector of the particles
         self.D[:self.Np] = self.D_mag*self.p[:self.Np]
@@ -368,7 +375,7 @@ class activeFilament:
                 
         elif(filament_shape == 'sinusoid'):
             nWaves = 2
-            Amp=0.05
+            Amp=0.5
             for ii in range(self.Np):
                 # The filament is initially linear along x-axis with the first particle at origin
                 self.r0[ii] = ii*(self.b0)
@@ -420,21 +427,24 @@ class activeFilament:
         self.getTangentVectors()
         
         self.setStresslet()
+
+        self.setPotDipole()
         
         self.calcForces()
         
 #        print(self.F)
         
         # Stokeslet contribution to Rigid-Body-Motion
+        # This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
         self.rm.stokesletV(self.drdt, self.r, self.F)
         
-        # Stressslet contribution to Rigid-Body-Motion
+        # Stresslet contribution to Rigid-Body-Motion
         self.rm.stressletV(self.drdt, self.r, self.S)
         
-#        self.rm.potDipoleV(self.drdt, self.r, self.p)
+       	self.rm.potDipoleV(self.drdt, self.r, self.D)
         
         # Apply the boundary condition (1st particle is fixed in space)
-#        self.drdt[0], self.drdt[self.Np], self.drdt[self.xx] = 0,0,0 
+       	# self.drdt[0], self.drdt[self.Np], self.drdt[self.xx] = 0,0,0 
         
         
     
@@ -481,13 +491,16 @@ class activeFilament:
             
             with open(os.path.join(self.saveFolder, self.saveFile), 'wb') as f:
                 pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.R, self.Time), f)
+
+    # def plotFilament_arcLength(self, R = None):
+
+    # 	TimePts, *rest = np.shape(R)
+    # 	self.arclength = np.zeros(TimePts)
+    # 	for ii in range(TimePts):
+    # 		self.arclength[ii] = np.sum( [ R[ii, jj+1] - R[]
+
                 
-                
-            
-#        
-            
-            
-        
+                   
     def plotFilament(self, r = None):
         
     
@@ -496,7 +509,7 @@ class activeFilament:
 #        1ax = fig.add_subplot(1,1,1)
         
 
-        ax1.scatter(r[:self.Np], r[self.Np:2*self.Np], 100, c = self.particle_colors, alpha = 0.75, zorder = 20, cmap = cmocean.cm.curl)
+        ax1.scatter(r[:self.Np], r[self.Np:2*self.Np], 20, c = self.particle_colors, alpha = 0.75, zorder = 20, cmap = cmocean.cm.curl)
         ax1.plot(r[:self.Np], r[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 10)
 
 #        ax.set_xlim([-0.1, self.Np*self.b0])
@@ -641,10 +654,10 @@ class activeFilament:
                 COM_array[1,ii] = np.nanmean(R[self.Np:2*self.Np])
                 
                 # Uncomment below to plot the flow-fields at a fixed point
-                self.x_min = COM_array[0,ii] - self.L - 20*self.radius
-                self.x_max = COM_array[0,ii] + self.L + 20*self.radius
-                self.y_min = COM_array[1,ii] - self.L - 20*self.radius
-                self.y_max = COM_array[1,ii] + self.L + 20*self.radius
+                self.x_min = COM_array[0,ii] - self.L - 50*self.radius
+                self.x_max = COM_array[0,ii] + self.L + 50*self.radius
+                self.y_min = COM_array[1,ii] - self.L - 50*self.radius
+                self.y_max = COM_array[1,ii] + self.L + 50*self.radius
                 
                 # Define a grid for calculating the velocity vectors based on the above limits
                 # creating a meshgrid
@@ -711,7 +724,7 @@ class activeFilament:
                     plt.savefig(os.path.join(self.flowFolder, 'FlowField_T_{:.2f}_'.format(t)+'.png'), dpi = 150)
 
                 plt.pause(0.00001)
-                plt.show()
+                plt.show(block = False)
 
         
 
@@ -742,21 +755,23 @@ F_conn = np.zeros(dim*Np)                 # Forces on the particles
 
 
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0= 15, D0 = 0, shape = 'sinusoid')
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 1, shape = 'sinusoid')
 
 fil.plotFilament(r = fil.r0)
 
-Tf = 10000
-Npts = 500
-fil.simulate(Tf, Npts, save = True, overwrite=False)
+Tf = 1000
+Npts = 50
+fil.simulate(Tf, Npts, save = True, overwrite = True)
 
 finalPos = fil.R[-1,:]
 
-#fil.plotSimResult()
+fil.plotSimResult()
 
-fil.plotFilament(r = finalPos)
+# fil.plotFilament(r = finalPos)
 
 fil.plotFlowFields(save = False)
+
+fil.plotFilament(r = finalPos)
 
 
 
