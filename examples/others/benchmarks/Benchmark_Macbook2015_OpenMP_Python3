@@ -1,0 +1,8 @@
+# Python3 with OpenMP
+
+Time taken (s): 0.00047397613525390625 for 0 Np
+Time taken (s): 1.2057478427886963 for 20000 Np
+Time taken (s): 4.787042856216431 for 40000 Np
+Time taken (s): 10.836252927780151 for 60000 Np
+Time taken (s): 26.911487102508545 for 80000 Np
+Time taken (s): 40.44420599937439 for 100000 Np
