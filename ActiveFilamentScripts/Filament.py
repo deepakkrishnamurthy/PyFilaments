@@ -32,7 +32,7 @@ from scipy import interpolate
 
 class activeFilament:
 	
-	def __init__(self, dim = 3, Np = 1, radius = 1, b0 = 1, k = 1, S0 = 0, D0 = 0, shape ='line'):
+	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, S0 = 0, D0 = 0, shape ='line', activity_timescale = 0):
 		
 		self.dim = dim
 		self.Np = Np
@@ -67,6 +67,9 @@ class activeFilament:
 		# Potential-Dipole strength
 		self.D0 = D0
 		
+		# Activity time scale
+		self.activity_timescale = activity_timescale
+
 		# Initiate positions, orientations, forces etc of the particles
 		self.r = np.zeros(self.Np*self.dim)
 		self.p = np.zeros(self.Np*self.dim)
@@ -134,7 +137,7 @@ class activeFilament:
 		self.Path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
 		
 		
-		self.Folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0)
+		self.Folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, int(self.activity_timescale))
 		
 		
 		self.saveFolder = os.path.join(self.Path, self.Folder)
@@ -460,7 +463,8 @@ class activeFilament:
 	
 	def simulate(self, Tf, Npts, activity_profile = None, save = False, overwrite = False):
 		
-		self.saveFile = 'SimResults_Tmax_{}_Np_{}_Shape_{}_S_{}_D_{}.pkl'.format(Tf, self.Np, self.shape, self.S0, self.D0)
+		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}.pkl'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, int(self.activity_timescale))
+
 		if(save):
 			if(not os.path.exists(self.saveFolder)):
 				os.makedirs(self.saveFolder)
@@ -499,7 +503,7 @@ class activeFilament:
 
 		with open(File, 'rb') as f:
 			
-			self.Np, self.b0, self.k, self.S0, self.D0, self.R, self.Time = pickle.load(f)
+			self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
 	
 	def saveResults(self):
 		
@@ -507,7 +511,7 @@ class activeFilament:
 			
 			
 			with open(os.path.join(self.saveFolder, self.saveFile), 'wb') as f:
-				pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.R, self.Time), f)
+				pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time), f)
 
 	# def plotFilament_arcLength(self, R = None):
 
@@ -900,66 +904,11 @@ class activeFilament:
 			
 		
 		
-		
-		
-
-#-------------------------------------------------------------------------------
-# Simulation Parameters
-#-------------------------------------------------------------------------------
-radius,  Np = 1, 2            # radius and number of particles
-L, dim = 128,  3                    # size and dimensionality and the box
-v = np.zeros(dim*Np)                # Memory allocation for velocity
-omega = np.zeros(dim*Np)                # Memory allocation for angular velocities
-
-r = (L/2)*np.ones(dim*Np)                # Position vector of the particles
-p = np.zeros(dim*Np)                # Position vector of the particles
-S = np.zeros(5*Np)                # Forces on the particles
-F = np.zeros(dim*Np)                 # Forces on the particles
-F_sed = np.zeros(dim*Np)                 # Forces on the particles
-F_conn = np.zeros(dim*Np)                 # Forces on the particles
-#-------------------------------------------------------------------------------
 
 
 
 
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = -1, shape = 'sinusoid')
-
-fil.plotFilament(r = fil.r0)
-
-Tf = 5000
-Npts = 500
-
-activityFreq = 1/1500
-
-t_array = np.linspace(0, Tf+10, 500)
-
-activity_profile = signal.square(2*np.pi*activityFreq*t_array)
-
-activity_Function =  interpolate.interp1d(t_array, activity_profile)
-
-plt.figure()
-plt.plot(t_array, activity_profile)
-plt.show()
-
-
-fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False)
-
-# finalPos = fil.R[-1,:]
-
-# fil.plotSimResult()
-
-# fil.plotFilament(r = finalPos)
-
-# fil.plotFlowFields(save = False)
-
-# fil.plotFilament(r = finalPos)
-
-# fil.plotFilamentStrain()
-
-# fil.resultViewer()
-
-fil.animateResult()
 
 
 
