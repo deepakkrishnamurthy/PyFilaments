@@ -5,15 +5,15 @@ from scipy import interpolate
 import matplotlib.pyplot as plt 
 
 # Total simulation time
-Tf = 20000
+Tf = 100
 # No:of time points saved
 Npts = 1000
 
-activityFreq = 1/5000
+activityFreq = 1/2000
 
 t_array = np.linspace(0, Tf+10, 500)
 
-activity_profile = signal.square(2*np.pi*activityFreq*t_array)
+activity_profile = -signal.square(2*np.pi*activityFreq*t_array)
 
 activity_Function =  interpolate.interp1d(t_array, activity_profile)
 
@@ -21,8 +21,9 @@ plt.figure()
 plt.plot(t_array, activity_profile)
 plt.show()
 
+bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = -1, shape = 'sinusoid', activity_timescale = 1/activityFreq)
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 2, shape = 'sinusoid', bc =  activity_timescale = 1/activityFreq, simNotes = 'distActivity')
 
 fil.plotFilament(r = fil.r0)
 

@@ -26,11 +26,11 @@ class plotFilamentWidget(pg.GraphicsLayoutWidget):
 		self.plot.setAspectLocked(True)
 
 
-		self.plot.setRange(xRange=(0, 150), yRange=(-100,100),disableAutoRange=True)
+		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=True)
 
 		self.filament = filament
 
-		self.set_colors()
+		
 
 		self.current_index = 0
 
@@ -52,9 +52,9 @@ class plotFilamentWidget(pg.GraphicsLayoutWidget):
 			self.s1.setData(x = pos[0,:], y = pos[1,:], brush = pg.mkBrush(255, 0, 255, 200))
 
 		else:
-			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 120))
+			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
 
-			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 120))
+			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
 
 
 			x_pos = self.filament.R[self.current_index,:self.filament.Np]
@@ -80,8 +80,12 @@ class plotFilamentWidget(pg.GraphicsLayoutWidget):
 
 		x_pos = self.filament.R[self.current_index,:self.filament.Np]
 		y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
-		self.s1.setData(x = x_pos, y = y_pos, brush = pg.mkBrush(255, 0, 255, 120))
-		# self.s1.setBrush(self.particle_colors)
+		z_pos = self.filament.R[self.current_index, 2*self.filament.Np : 3*self.filament.Np]
+
+		print(z_pos)
+
+		self.s1.setData(x = x_pos, y = y_pos)
+		self.s1.setBrush(self.particle_colors)
 
 		# Display head position
 		# x_pos_head = self.filament.R[:self.current_index,self.filament.Np-1]
@@ -101,9 +105,9 @@ class plotFilamentWidget(pg.GraphicsLayoutWidget):
 		for ii in range(self.filament.Np):
 			
 			if(self.filament.S_mag[ii]!=0 or self.filament.D_mag[ii]!=0):
-				self.particle_colors.append(pg.mkBrush(255, 0, 0, 120))
+				self.particle_colors.append(pg.mkBrush(255, 0, 0, 200))
 			else:
-				self.particle_colors.append(pg.mkBrush(0, 0, 255, 120))
+				self.particle_colors.append(pg.mkBrush(0, 0, 255, 200))
 
 
 
@@ -221,6 +225,8 @@ class CentralWidget(QtWidgets.QWidget):
 
 			self.initialize_parameters()
 
+			self.plotFilamentWidget.set_colors()
+
 		
 
 
@@ -325,13 +331,12 @@ class CentralWidget(QtWidgets.QWidget):
 		if self.real_time:
 			timediff = time.time()-self.current_computer_time
 
-			print(timediff)
 
 			timediff_scaled = self.playback_speed*timediff
 			
 			index = np.argmin(abs(self.Time-(timediff_scaled+self.current_track_time)))
 
-			print(index)
+			
 			if index>self.positionSlider_prevValue:
 				self.current_computer_time += timediff
 				self.current_track_time += timediff_scaled
