@@ -1,5 +1,5 @@
 ## PyFilaments
-[PyFilaments] (https://github.com/deepakkrishnamurthy/pystokes-filament) is a Python library to simulate the dynamics of active filaments. The filaments are built out of spherical particles with Dirichlet (velocity) or Neumann (stress) boundary conditions on their surfaces. The library builds on the [PyStokes](https://gitlab.com/rajeshrinet/pystokes) library and uses it for calculating Rigid body motions of the spheres (documentation below). Connection forces due to non-linear springs and bending potentials are applied to simulate elasto-hydrodynamics of active filaments.  
+[PyFilaments](https://github.com/deepakkrishnamurthy/PyFilaments) is a Python library to simulate the dynamics of active filaments. The filaments are built out of spherical particles with Dirichlet (velocity) or Neumann (stress) boundary conditions on their surfaces. The library builds on the [PyStokes](https://gitlab.com/rajeshrinet/pystokes) library and uses it for calculating Rigid body motions of the spheres (documentation below). Connection forces due to non-linear springs and bending potentials are applied to simulate elasto-hydrodynamics of active filaments.  
 
 
 [![Binder](https://mybinder.org/badge.svg)](https://mybinder.org/v2/gh/rajeshrinet/pystokes/master?filepath=binder)
