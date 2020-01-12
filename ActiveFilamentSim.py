@@ -1,15 +1,16 @@
-from Filament import activeFilament
+from pyfilaments.Filament import activeFilament
 import numpy as np
 from scipy import signal
 from scipy import interpolate
 import matplotlib.pyplot as plt 
 
 # Total simulation time
-Tf = 100
+Tf = 10000
 # No:of time points saved
 Npts = 1000
 
-activityFreq = 1/2000
+activity_timescale = 2000
+activityFreq = 1/activity_timescale
 
 t_array = np.linspace(0, Tf+10, 500)
 
@@ -23,7 +24,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 2, shape = 'sinusoid', bc =  activity_timescale = 1/activityFreq, simNotes = 'distActivity')
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 1, shape = 'sinusoid', bc = bc,  activity_timescale = activity_timescale, simNotes = 'pointActivity')
 
 fil.plotFilament(r = fil.r0)
 
@@ -48,4 +49,4 @@ fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwr
 
 # fil.resultViewer()
 
-fil.animateResult()
+# fil.animateResult()

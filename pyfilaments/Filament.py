@@ -32,8 +32,12 @@ from scipy import interpolate
 # This is the main active Filament class that calls the pyStokes and pyForces libraries for solving hydrodynamic and steric interactions.
 class activeFilament:
 	
-	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, S0 = 0, D0 = 0, shape ='line', activity_timescale = 0, simNotes = 'normal', bc = {0:'clamped', -1:'torque-free'}):
+	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, S0 = 0, D0 = 0, shape ='line', activity_timescale = 0, simNotes = 'normal', bc = {0:'clamped', -1:'free'}, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'):
 		
+	
+		#-----------------------------------------------------------------------------
+		# Filament parameters
+		#-----------------------------------------------------------------------------
 		self.dim = dim
 
 		# IC: Initial Conditions: Initial shape of the filament
@@ -67,8 +71,6 @@ class activeFilament:
 		self.ljeps = 0.1
 		self.ljrmin = 2.0*self.radius
 		
-		
-		
 		# Stresslet strength
 		self.S0 = S0
 		
@@ -77,7 +79,41 @@ class activeFilament:
 		
 		# Activity time scale
 		self.activity_timescale = activity_timescale
+	
+		
+		# Instantiate the pystokes class
+		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.eta)   # instantiate the classes
+		# Instantiate the pyforces class
+		self.ff = pyforces.forceFields.Forces(self.Np)
+		
+		# Initialize arrays for storing particle positions, activity strengths etc.
+		self.allocate_arrays()
 
+		#
+		self.initialize_filament()
+
+		self.setParticleColors()
+
+		
+		
+		
+		#-----------------------------------------------------------------------------
+		# Path and Folder variables
+		#-----------------------------------------------------------------------------
+		self.Path = path
+
+		if(not os.path.exists(self.Path)):
+			os.makedirs(self.Path)
+		
+		
+		self.Folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_{}'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, int(self.activity_timescale), simNotes)
+		
+		
+		self.saveFolder = os.path.join(self.Path, self.Folder)
+
+		
+		
+	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
 		self.r = np.zeros(self.Np*self.dim)
 		self.p = np.zeros(self.Np*self.dim)
@@ -102,17 +138,26 @@ class activeFilament:
 		self.S_mag = np.zeros(self.Np)
 		# Potential dipoles
 		self.D_mag = np.zeros(self.Np)
-		# Make the most distal particle active
-		self.D_mag[-1] = self.D0
-		
-		# The most distal particle is motile
-#        self.D_mag[-1] = self.D0
-		
-		# Mask for stresslet strengths
-		self.S_mag = self.S_mag*self.S0
-		
-		
-		# Set the colors of the particles based on their activity
+
+		# Variables for storing the simulation results
+		self.R = None 
+		self.Time = None
+   
+	def setParticleNumber(self, Np = 3):
+		# Sets the number of simulated particles based on BC. 
+		# For clamped BC the number of particles is one extra for each clamped BC to implement the BC using a dummy particle.
+		count = 0
+		for key in self.bc:
+			if(self.bc[key] == 'clamped'):
+				count += 1
+
+		self.Np = Np + count
+
+		self.xx = 2*self.Np
+
+
+	# Set the colors of the particles based on their activity
+	def setParticleColors(self):
 		self.particle_colors = []
 		self.passive_color = np.reshape(np.array(cmocean.cm.curl(0)),(4,1))
 		self.active_color =np.reshape(np.array(cmocean.cm.curl(255)), (4,1))
@@ -125,42 +170,6 @@ class activeFilament:
 				self.particle_colors.append('b')
 				
 		print(self.particle_colors)
-
-		
-		
-		
-		# Instantiate the pystokes class
-		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.eta)   # instantiate the classes
-		# Instantiate the pyforces class
-		self.ff = pyforces.forceFields.Forces(self.Np)
-		
-		# Variables for storing the simulation results
-		self.R = None 
-		self.Time = None
-		
-		self.xx = 2*self.Np
-		
-		self.initializeAll(filament_shape=self.shape, bc = self.bc)
-		
-		self.Path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
-		
-		
-		self.Folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_{}'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, int(self.activity_timescale), simNotes)
-		
-		
-		self.saveFolder = os.path.join(self.Path, self.Folder)
-		
-
-   
-	def setParticleNumber(self, Np = 3):
-		# Sets the number of simulated particles based on BC. 
-		# For clamped BC the number of particles is one extra for each clamped BC to implement the BC using a dummy particle.
-		count = 0
-		for key in self.bc:
-			if(self.bc[key] == 'clamped'):
-				count += 1
-
-		self.Np = Np + count
 	
 		
 	def reshapeToArray(self, Matrix):
@@ -245,7 +254,7 @@ class activeFilament:
 			elif ii==self.Np-1:
 				self.t_hat[:,-1] = self.dr_hat[:,-1]
 			else:
-				# FOr 
+				# For particles that have a neighbhor on each side, the tangent vector is the average of the two bonds. 
 				vector = self.dr_hat[:,ii-1] + self.dr_hat[:,ii]
 				self.t_hat[:,ii] = vector/(np.dot(vector, vector)**(1/2))
 				
@@ -259,8 +268,8 @@ class activeFilament:
 
 
 	def BendingForces(self):
-		# For torque-free filament ends
-		
+		# See notes for derivation of these expressions for bending potentials.
+
 		self.getBondAngles()
 		
 		self.F_bending = np.zeros((self.dim,self.Np))
@@ -367,7 +376,7 @@ class activeFilament:
 		self.D[self.Np:2*self.Np] = self.D_mag*self.p[self.Np:2*self.Np]
 		self.D[2*self.Np:3*self.Np] = self.D_mag*self.p[2*self.Np:3*self.Np]
 
-	def ApplyBC(self, r0 = np.zeros(self.Np)):
+	def ApplyBC_position(self):
 
 
 		# Apply the kinematic boundary conditions:
@@ -376,35 +385,40 @@ class activeFilament:
 			bc_value = self.bc[key]
 
 			# Proximal end
-			if(key==0):
-				# Index correspond to end particle and next nearest particle (proximal end)
+			if(key == 0):
+				# Index corresponding to end particle and next nearest particle (proximal end)
 				end = 0
 				end_1 = 1
 				pos_end = (0,0,0)
 				pos_end_1 = (self.b0,0,0)
 				
 			# Distal end
-			elif(key == -1):
+			elif(key == -1 or key == self.Np-1):
 				# Index correspond to end particle and next nearest particle (distal end)
+				end = self.Np - 1
+				end_1 = self.Np - 2
+
 				pos_end_1 = ((self.Np - 2)*self.b0,0,0)
 				pos_end = ((self.Np - 1)*self.b0,0,0)
-				end = -1
-				end_1 = -2
+				
 
 			if(bc_value == 'fixed'):
-				r0[end] = pos_end
+				
+				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
+
 			elif(bc_value == 'clamped'):
 
-				r0[end] = pos_end
-				r0[end_1] = pos_end_1
+				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
+
+				self.r0[end_1], self.r0[end_1 + self.Np], self.r0[end_1 + self.xx] = pos_end_1
 
 
-		return r0
 
-	def ApplyBC_velocity(self, drdt = np.zeros(self.Np*self.dim)):
+	def ApplyBC_velocity(self):
 
 
-		# Apply the kinematic boundary conditions:
+		# Apply the kinematic boundary conditions as a velocity condition:
+		# This is 
 		for key in self.bc:
 
 			bc_value = self.bc[key]
@@ -414,26 +428,31 @@ class activeFilament:
 				# Index correspond to end particle and next nearest particle (proximal end)
 				end = 0
 				end_1 = 1
+
 				vel_end = (0,0,0)
 				vel_end_1 = (0,0,0)
 				
 			# Distal end
-			elif(key == -1):
+			elif(key == -1 or key == self.Np-1):
 				# Index correspond to end particle and next nearest particle (distal end)
+				end = self.Np - 1
+				end_1 = self.Np - 2
+
 				vel_end_1 = (0,0,0)
 				vel_end = (0,0,0)
-				end = -1
-				end_1 = -2
+				
 
 			if(bc_value == 'fixed'):
-				drdt[end], drdt[end + self.Np], drdt[end + self.xx]  = vel_end
+				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
 			elif(bc_value == 'clamped'):
 
-				r0[end] = pos_end
-				r0[end_1] = pos_end_1
+				# Apply velocity bc to the farthermost particle
+				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
 
+				# Apply velocity bc to the next to the farthermost particle
 
-		return r0
+				self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
+
 
 
 
@@ -480,7 +499,7 @@ class activeFilament:
 		
 		# Apply the kinematic boundary conditions to the filament ends
 
-		self.r0 = self.ApplyBC(r0 = self.r0)
+		self.ApplyBC_position()
 
 		self.r = self.r0
 
@@ -495,14 +514,13 @@ class activeFilament:
 
 			if value=='free' or value == 'fixed':
 				# The bending stiffness is set to zero only for 'free' or 'fixed' boundary conditions
-
 				print('Assigning {} BC to filament end {}'.format(value, key))
 				self.kappa_array[key] = 0 
 
 		print(self.kappa_array)
 
 			  
-	def initializeAll(self):
+	def initialize_filament(self):
 		
 		
 		self.initialize_filamentShape()
@@ -538,20 +556,21 @@ class activeFilament:
 		
 		
 		
-	def rhs(self, r, t, activity_profile = None):
+	def rhs(self, r, t):
 		
 		
 		# Implement time-based variations in activity
 		# Changing activity of the tip only.
-		self.D_mag[-1] = -activity_profile(t)
+		self.D_mag[-1] = self.activity_profile(t)
 
 		# Changing activity along the filament length
-		# if(activity_profile(t)==1):
-		# 	self.D_mag[:self.Np-1] = 0
+		# if(self.activity_profile(t)==1):
+		# 	# self.D_mag[:self.Np-1] = 0
+		# 	self.D_mag[:self.Np-1] = self.D0/((self.Np-1)/4)
 		# 	self.D_mag[-1] = self.D0
 
-		# elif(activity_profile(t)==-1):
-		# 	self.D_mag[:self.Np-1] = -self.D0/5
+		# elif(self.activity_profile(t)==-1):
+		# 	self.D_mag[:self.Np-1] = -self.D0/((self.Np-1)/4)
 		# 	self.D_mag[-1] = 0
 
 		print(self.D_mag)
@@ -578,18 +597,23 @@ class activeFilament:
 		self.rm.stokesletV(self.drdt, self.r, self.F)
 		
 		# Stresslet contribution to Rigid-Body-Motion
-		# @@@ (TO DO) For efficiency calculate this if any element of the Stresselt strength is non-zero
+		# @@@ (TO DO) For efficiency calculate this Only if any element of the Stresselt strength is non-zero
 		self.rm.stressletV(self.drdt, self.r, self.S)
 		
 		self.rm.potDipoleV(self.drdt, self.r, self.D)
 		
-		# Apply the kinematic boundary conditions
-		self.drdt[0], self.drdt[self.Np], self.drdt[self.xx] = 0,0,0 
+		# Apply the kinematic boundary conditions as a velocity condition
+		self.ApplyBC_velocity()
+
+		# self.drdt[0], self.drdt[self.Np], self.drdt[self.xx] = 0,0,0 
 		
 		
 	
-	def simulate(self, Tf, Npts, activity_profile = None, save = False, overwrite = False):
+	def simulate(self, Tf = 100, Npts = 10, activity_profile = None, save = False, overwrite = False):
 		
+		# Set the activity profile
+		self.activity_profile = activity_profile
+
 		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}.pkl'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, int(self.activity_timescale))
 
 
@@ -600,7 +624,7 @@ class activeFilament:
 		def rhs0(r, t):
 			# Pass the current time from the ode-solver, 
 			# so as to implement time-varying conditions
-			self.rhs(r, t, activity_profile = activity_profile)
+			self.rhs(r, t)
 			print(t)
 			return self.drdt
 		
