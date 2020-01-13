@@ -7,7 +7,9 @@ import time as time
 import os
 import sys
 import cmocean
-from Filament import activeFilament
+import context
+from pyfilaments.Filament import activeFilament
+
 
 # fileName = ''
 
@@ -15,7 +17,7 @@ from Filament import activeFilament
 
 # filament.loadData(fileName)
 
-class plotFilamentWidget(pg.GraphicsLayoutWidget):
+class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 
 	def __init__(self, filament = None, parent=None):
 		
@@ -139,7 +141,7 @@ class CentralWidget(QtWidgets.QWidget):
 		self.newData = False
 
 		# Widget for displaying the filament as a scatter plot
-		self.plotFilamentWidget = plotFilamentWidget(filament = self.filament)
+		self.plotFilamentWidget = AnimatePlotWidget(filament = self.filament)
 
 
 		# Playback indices
@@ -242,7 +244,7 @@ class CentralWidget(QtWidgets.QWidget):
 		self.positionSlider_prevValue=value
 		
 	def positionSlider_setValue(self,value):
-		pass
+		
 		newvalue, hasToChange=self.find_slider_index(value)
 	   
 		self.current_track_index = newvalue
