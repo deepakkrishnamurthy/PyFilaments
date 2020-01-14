@@ -29,12 +29,14 @@ from matplotlib.animation import FuncAnimation
 from scipy import signal
 from scipy import interpolate
 
-# This is the main active Filament class that calls the pyStokes and pyForces libraries for solving hydrodynamic and steric interactions.
 class activeFilament:
-	
-	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, S0 = 0, D0 = 0, shape ='line', activity_timescale = 0, simNotes = 'normal', bc = {0:'clamped', -1:'free'}, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'):
+	'''
+		This is the main active Filament class that calls the pyStokes and pyForces libraries 
+		for solving hydrodynamic and steric interactions.
+	'''
+	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, F0 = 0, S0 = 0, D0 = 0, 
+					shape ='line', activity_timescale = 0, scale_factor = None, bc = {0:'clamped', -1:'free'}):
 		
-	
 		#-----------------------------------------------------------------------------
 		# Filament parameters
 		#-----------------------------------------------------------------------------
@@ -71,6 +73,10 @@ class activeFilament:
 		self.ljeps = 0.1
 		self.ljrmin = 2.0*self.radius
 		
+
+		# Body-force strength
+		self.F0 = F0
+
 		# Stresslet strength
 		self.S0 = S0
 		
@@ -97,19 +103,7 @@ class activeFilament:
 		
 		
 		
-		#-----------------------------------------------------------------------------
-		# Path and Folder variables
-		#-----------------------------------------------------------------------------
-		self.Path = path
-
-		if(not os.path.exists(self.Path)):
-			os.makedirs(self.Path)
 		
-		
-		self.Folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_{}'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, int(self.activity_timescale), simNotes)
-		
-		
-		self.saveFolder = os.path.join(self.Path, self.Folder)
 
 		
 		
@@ -345,14 +339,7 @@ class activeFilament:
 					self.F_conn[j]    -= fx 
 					self.F_conn[j+self.Np] -= fy 
 					self.F_conn[j+xx] -= fz 
-					
-#    def initializeActivity(self, F_mask, S_mask, D_mask):
-#        # Set the initial activity patter
-#        
-#        
-#          
-#    def setActivity(self, t):
-##        Apply a specific activity pattern at time t to the filament
+
 					
 	def setForces(self):
 		# Specifies external forces on the active particles
@@ -376,86 +363,7 @@ class activeFilament:
 		self.D[self.Np:2*self.Np] = self.D_mag*self.p[self.Np:2*self.Np]
 		self.D[2*self.Np:3*self.Np] = self.D_mag*self.p[2*self.Np:3*self.Np]
 
-	def ApplyBC_position(self):
-
-
-		# Apply the kinematic boundary conditions:
-		for key in self.bc:
-
-			bc_value = self.bc[key]
-
-			# Proximal end
-			if(key == 0):
-				# Index corresponding to end particle and next nearest particle (proximal end)
-				end = 0
-				end_1 = 1
-				pos_end = (0,0,0)
-				pos_end_1 = (self.b0,0,0)
-				
-			# Distal end
-			elif(key == -1 or key == self.Np-1):
-				# Index correspond to end particle and next nearest particle (distal end)
-				end = self.Np - 1
-				end_1 = self.Np - 2
-
-				pos_end_1 = ((self.Np - 2)*self.b0,0,0)
-				pos_end = ((self.Np - 1)*self.b0,0,0)
-				
-
-			if(bc_value == 'fixed'):
-				
-				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
-
-			elif(bc_value == 'clamped'):
-
-				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
-
-				self.r0[end_1], self.r0[end_1 + self.Np], self.r0[end_1 + self.xx] = pos_end_1
-
-
-
-	def ApplyBC_velocity(self):
-
-
-		# Apply the kinematic boundary conditions as a velocity condition:
-		# This is 
-		for key in self.bc:
-
-			bc_value = self.bc[key]
-
-			# Proximal end
-			if(key==0):
-				# Index correspond to end particle and next nearest particle (proximal end)
-				end = 0
-				end_1 = 1
-
-				vel_end = (0,0,0)
-				vel_end_1 = (0,0,0)
-				
-			# Distal end
-			elif(key == -1 or key == self.Np-1):
-				# Index correspond to end particle and next nearest particle (distal end)
-				end = self.Np - 1
-				end_1 = self.Np - 2
-
-				vel_end_1 = (0,0,0)
-				vel_end = (0,0,0)
-				
-
-			if(bc_value == 'fixed'):
-				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
-			elif(bc_value == 'clamped'):
-
-				# Apply velocity bc to the farthermost particle
-				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
-
-				# Apply velocity bc to the next to the farthermost particle
-
-				self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
-
-
-
-
+	
 	def initialize_filamentShape(self):
 
 
@@ -554,27 +462,124 @@ class activeFilament:
 		# Add external forces
 #        self.ff.sedimentation(self.F, g = -10)
 		
+	def ApplyBC_position(self):
+		'''
+		Apply the kinematic boundary conditions:
+		'''
+		for key in self.bc:
+
+			bc_value = self.bc[key]
+
+			# Proximal end
+			if(key == 0):
+				# Index corresponding to end particle and next nearest particle (proximal end)
+				end = 0
+				end_1 = 1
+				pos_end = (0,0,0)
+				pos_end_1 = (self.b0,0,0)
+				
+			# Distal end
+			elif(key == -1 or key == self.Np-1):
+				# Index correspond to end particle and next nearest particle (distal end)
+				end = self.Np - 1
+				end_1 = self.Np - 2
+
+				pos_end_1 = ((self.Np - 2)*self.b0,0,0)
+				pos_end = ((self.Np - 1)*self.b0,0,0)
+				
+
+			if(bc_value == 'fixed'):
+				
+				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
+
+			elif(bc_value == 'clamped'):
+
+				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
+
+				self.r0[end_1], self.r0[end_1 + self.Np], self.r0[end_1 + self.xx] = pos_end_1
+
+
+
+	def ApplyBC_velocity(self):
+		'''
+		Apply the kinematic boundary conditions as a velocity condition:
+		'''
 		
+		for key in self.bc:
+
+			bc_value = self.bc[key]
+
+			# Proximal end
+			if(key==0):
+				# Index correspond to end particle and next nearest particle (proximal end)
+				end = 0
+				end_1 = 1
+
+				vel_end = (0,0,0)
+				vel_end_1 = (0,0,0)
+				
+			# Distal end
+			elif(key == -1 or key == self.Np-1):
+				# Index correspond to end particle and next nearest particle (distal end)
+				end = self.Np - 1
+				end_1 = self.Np - 2
+
+				vel_end_1 = (0,0,0)
+				vel_end = (0,0,0)
+				
+
+			if(bc_value == 'fixed'):
+				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
+			elif(bc_value == 'clamped'):
+
+				# Apply velocity bc to the farthermost particle
+				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
+
+				# Apply velocity bc to the next to the farthermost particle
+
+				self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
+
+	def setActivityForces(self, t):
+
+		if(self.sim_type == 'point'):
+			'''Simulates active filament where only the distal particle has time-dependent activity.
+			'''
+			self.D_mag[-1] = self.activity_profile(t)
+
+		elif(self.sim_type == 'dist'):
+			'''
+			Simulates active filament where the activity pattern models that in Lacrymaria olor.
+			Distal particle: 
+				1. Active during extension.
+				2. Stalled during reversal.
+			All other particles: 
+				1. Inactive during extension.
+				2. Active during reversal. 
+
+			Scale factor: 
+				Quantifies the relative strengths of the Distal particle vs Other particles activity.
+			'''
+
+			if(self.activity_profile(t)==1):
+		
+				# self.D_mag[:self.Np-1] = self.D0/self.scale_factor
+				self.D_mag[-1] = self.D0
+
+			elif(self.activity_profile(t)==-1):
+				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
+				self.D_mag[-1] = 0
+
+		elif(self.sim_type == 'sedimentation'):
+
+			self.F_mag[:] = self.F0
+			self.S_mag[:] = 0
+			self.D_mag[:] = 0
+
 		
 	def rhs(self, r, t):
 		
-		
-		# Implement time-based variations in activity
-		# Changing activity of the tip only.
-		self.D_mag[-1] = self.activity_profile(t)
-
-		# Changing activity along the filament length
-		# if(self.activity_profile(t)==1):
-		# 	# self.D_mag[:self.Np-1] = 0
-		# 	self.D_mag[:self.Np-1] = self.D0/((self.Np-1)/4)
-		# 	self.D_mag[-1] = self.D0
-
-		# elif(self.activity_profile(t)==-1):
-		# 	self.D_mag[:self.Np-1] = -self.D0/((self.Np-1)/4)
-		# 	self.D_mag[-1] = 0
-
-		print(self.D_mag)
-
+		self.setActivityForces(t = t)
+	
 		self.drdt = self.drdt*0
 		
 		self.r = r
@@ -589,9 +594,7 @@ class activeFilament:
 		self.setPotDipole()
 		
 		self.calcForces()
-		
-#        print(self.F)
-		
+				
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
 		self.rm.stokesletV(self.drdt, self.r, self.F)
@@ -604,23 +607,50 @@ class activeFilament:
 		
 		# Apply the kinematic boundary conditions as a velocity condition
 		self.ApplyBC_velocity()
-
-		# self.drdt[0], self.drdt[self.Np], self.drdt[self.xx] = 0,0,0 
 		
 		
 	
-	def simulate(self, Tf = 100, Npts = 10, activity_profile = None, save = False, overwrite = False):
+	def simulate(self, Tf = 100, Npts = 10, sim_type = 'point', activity_profile = None, scale_factor = self.Np, 
+					save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
 		
-		# Set the activity profile
-		self.activity_profile = activity_profile
+		# Set the simulation type
+		self.sim_type = sim_type
 
-		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}.pkl'.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, int(self.activity_timescale))
+		# Set the scale-factor
+		self.scale_factor = scale_factor
+		#---------------------------------------------------------------------------------
+		#Allocate a Path and folder to save the results
 
+
+		
+		self.path = path
+
+		if(not os.path.exists(self.path)):
+			os.makedirs(self.path)
+
+		self.folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scalefactor_{}_{}'
+							.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
+							int(self.activity_timescale), self.scale_factor, sim_type)
+
+		self.saveFolder = os.path.join(self.path, self.folder)
+
+
+		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.pkl'
+							.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
+								int(self.activity_timescale), self.scale_factor, sim_type)
 
 		if(save):
 			if(not os.path.exists(self.saveFolder)):
 				os.makedirs(self.saveFolder)
-		
+		#---------------------------------------------------------------------------------
+
+		# Set the activity profile
+		self.activity_profile = activity_profile
+
+
+
+		#---------------------------------------------------------------------------------
+
 		def rhs0(r, t):
 			# Pass the current time from the ode-solver, 
 			# so as to implement time-varying conditions
@@ -638,19 +668,12 @@ class activeFilament:
 			
 			if(save):
 				print('Saving results...')
-				self.saveResults()
+				self.saveData()
 				
 		else:
 			self.loadData(os.path.join(self.saveFolder, self.saveFile))
-			# print('Loading Simulation from disk ....')
-			# with open(, 'rb') as f:
-			
-			# 	self.Np, self.b0, self.k, self.S0, self.D0, self.R, self.Time = pickle.load(f)
-			
-		
-		
-#        savemat('Np=%s_vs=%4.4f_K=%4.4f_s_0=%4.4f.mat'%(self.Np, self.vs, self.k, self.S0), {'X':u, 't':t, 'Np':self.Np,'k':self.k, 'vs':self.vs, 'S0':self.S0,})
-	
+
+						
 	def loadData(self, File):
 		print('Loading Simulation from disk ....')
 
@@ -658,7 +681,7 @@ class activeFilament:
 			
 			self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
 	
-	def saveResults(self):
+	def saveData(self):
 		
 		if(self.R is not None):
 			
@@ -666,14 +689,6 @@ class activeFilament:
 			with open(os.path.join(self.saveFolder, self.saveFile), 'wb') as f:
 				pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time), f)
 
-	# def plotFilament_arcLength(self, R = None):
-
-	# 	TimePts, *rest = np.shape(R)
-	# 	self.arclength = np.zeros(TimePts)
-	# 	for ii in range(TimePts):
-	# 		self.arclength[ii] = np.sum( [ R[ii, jj+1] - R[]
-
-				
 				   
 	def plotFilament(self, r = None):
 		
@@ -934,125 +949,7 @@ class activeFilament:
 			plt.ylabel('Strain')
 			plt.show()
 
-	def animateResult(self):
-
-
-		if(self.R is not None):
-
-			# Initialize to filament position at T=0
-			r = self.R[0,:]
-
-			fig, ax = plt.subplots()
-
-			line, = plt.plot(r[:self.Np], r[self.Np:2*self.Np])
-
-			def init():
-
-				ax.set_xlim([0,200])
-				ax.set_ylim([-50,50])
-				ax.set_aspect('equal')
-				return line,
-
-			def update(frame):
-
-				# curr_Slider_value = frame
-				Index = frame
-
-				# Index = find_slider_index(curr_Slider_value)
-
-				print(Index)
-
-				x_data = self.R[Index, :self.Np]
-				y_data = self.R[Index, self.Np:2*self.Np]
-
-				line.set_data(x_data, y_data)
-				# update curve
-				# l.set_ydata(self.R[Index, self.Np:2*self.Np])
-				# l.set_xdata(self.R[Index, :self.Np])
-				# scat.set_offsets(np.transpose([self.R[Index, :self.Np], self.R[Index, self.Np:2*self.Np]]))
-				# ax.set_xlim([min(self.R[Index, :self.Np])-1, max(self.R[Index, :self.Np]) + 1])
-				# ax.set_ylim([min(self.R[Index, self.Np:2*self.Np])-1, max(self.R[Index, self.Np:2*self.Np]) + 1])
-				ax.set_xlim([0,200])
-				ax.set_ylim([-50,50])
-				
-				# redraw canvas while idle
-				# fig.canvas.draw_idle()
-
-			
-				return line,
-
-			def find_slider_index(value):
-		#
-				index=0
-				
-				index = next((i for i,x in enumerate(self.Time) if x >= value), None)
-
-				return index
-
-			ani = FuncAnimation(fig, update, frames = range(len(self.Time)),
-                    init_func=init, blit=True)
-			plt.show()
-
-
-
-
-	def resultViewer(self):
-
-		if(self.R is not None):
-
-			# Initialize to filament position at T=0
-			r = self.R[0,:]
-
-			fig, ax = plt.subplots()
-
-		
-			scat = plt.scatter(r[:self.Np], r[self.Np:2*self.Np], c = self.particle_colors, alpha = 0.75, cmap = cmocean.cm.curl)
-
-
-			axamp = plt.axes([0.25, .03, 0.50, 0.02])
-			# Slider
-			samp = Slider(axamp, 'Time', min(self.Time), max(self.Time), valinit = min(self.Time))
-
-			prev_Slider_value = min(self.Time)
-			curr_Slider_value = min(self.Time)
-
-			def update(val):
-			
-
-				curr_Slider_value = samp.val
-
-				Index = find_slider_index(curr_Slider_value)
-
-				print(Index)
-				# update curve
-				# l.set_ydata(self.R[Index, self.Np:2*self.Np])
-				# l.set_xdata(self.R[Index, :self.Np])
-				scat.set_offsets(np.transpose([self.R[Index, :self.Np], self.R[Index, self.Np:2*self.Np]]))
-				# ax.set_xlim([min(self.R[Index, :self.Np])-1, max(self.R[Index, :self.Np]) + 1])
-				# ax.set_ylim([min(self.R[Index, self.Np:2*self.Np])-1, max(self.R[Index, self.Np:2*self.Np]) + 1])
-				ax.set_xlim([0,200])
-				ax.set_ylim([-50,50])
-				ax.set_aspect('equal')
-				# redraw canvas while idle
-				fig.canvas.draw_idle()
-
-			def find_slider_index(value):
-		#
-				index=0
-				
-				index = next((i for i,x in enumerate(self.Time) if x >= value), None)
-
-				return index
-
-			# call update function on slider value change
-			samp.on_changed(update)
-
-			plt.show()
-
-
-
-		
-
+	
 
 			
 		
