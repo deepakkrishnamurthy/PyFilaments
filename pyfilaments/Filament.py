@@ -610,7 +610,7 @@ class activeFilament:
 		
 		
 	
-	def simulate(self, Tf = 100, Npts = 10, sim_type = 'point', activity_profile = None, scale_factor = self.Np, 
+	def simulate(self, Tf = 100, Npts = 10, sim_type = 'point', activity_profile = None, scale_factor = 1, 
 					save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
 		
 		# Set the simulation type
@@ -628,16 +628,16 @@ class activeFilament:
 		if(not os.path.exists(self.path)):
 			os.makedirs(self.path)
 
-		self.folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scalefactor_{}_{}'
-							.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
+		self.folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scalefactor_{}_{}'.format\
+							(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
 							int(self.activity_timescale), self.scale_factor, sim_type)
 
 		self.saveFolder = os.path.join(self.path, self.folder)
 
 
-		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.pkl'
-							.format(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
-								int(self.activity_timescale), self.scale_factor, sim_type)
+		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.pkl'.format\
+							(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
+							int(self.activity_timescale), self.scale_factor, sim_type)
 
 		if(save):
 			if(not os.path.exists(self.saveFolder)):
