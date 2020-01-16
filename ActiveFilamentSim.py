@@ -1,4 +1,4 @@
-from pyfilaments.Filament import activeFilament
+from pyfilaments.activeFilaments import activeFilament
 import numpy as np
 from scipy import signal
 from scipy import interpolate

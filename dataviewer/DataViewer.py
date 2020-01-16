@@ -8,7 +8,7 @@ import os
 import sys
 import cmocean
 import context
-from pyfilaments.Filament import activeFilament
+from pyfilaments.activeFilaments import activeFilament
 
 
 # fileName = ''
