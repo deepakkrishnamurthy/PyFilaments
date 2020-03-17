@@ -1,5 +1,9 @@
 # Python3 with OpenMP
 
+MacBook Pro (Retina, 15-inch, Mid 2015)
+2.2 GHz Intel Core i7
+16 GB 1600 MHz DDR3
+
 Time taken (s): 0.00047397613525390625 for 0 Np
 Time taken (s): 1.2057478427886963 for 20000 Np
 Time taken (s): 4.787042856216431 for 40000 Np

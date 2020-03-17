@@ -5,7 +5,7 @@ from scipy import interpolate
 import matplotlib.pyplot as plt 
 
 # Total simulation time
-Tf = 10000
+Tf = 1000
 # No:of time points saved
 Npts = 1000
 
@@ -24,7 +24,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 1, shape = 'sinusoid', bc = bc,  activity_timescale = activity_timescale)
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 0, shape = 'sinusoid', bc = bc,  activity_timescale = activity_timescale)
 
 fil.plotFilament(r = fil.r0)
 

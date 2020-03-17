@@ -21,6 +21,7 @@ import odespy
 import os
 import cmocean
 import pickle
+import matplotlib.pyplot as plt 
 
 from scipy import signal
 from scipy import interpolate
@@ -193,7 +194,7 @@ class activeFilament:
 		self.dy_hat = self.dy/self.dr
 		self.dz_hat = self.dz/self.dr
 		
-		# rows: dimensions columns : particles
+		# rows: dimensions, columns : particles
 		# Shape : dim x Np-1
 		# Unit separation vectors 
 		self.dr_hat = np.vstack((self.dx_hat, self.dy_hat, self.dz_hat))
@@ -534,7 +535,7 @@ class activeFilament:
 		if(self.sim_type == 'point'):
 			'''Simulates active filament where only the distal particle has time-dependent activity.
 			'''
-			self.D_mag[-1] = self.activity_profile(t)
+			self.D_mag[-1] = self.D0*self.activity_profile(t)
 
 		elif(self.sim_type == 'dist'):
 			'''
@@ -680,7 +681,21 @@ class activeFilament:
 				pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time), f)
 
 				   
+	def plotFilament(self, r = None):
+		
 	
+		ax1 = plt.gca()
+		
+#        1ax = fig.add_subplot(1,1,1)
+		
+
+		ax1.scatter(r[:self.Np], r[self.Np:2*self.Np], 20, c = self.particle_colors, alpha = 0.75, zorder = 20, cmap = cmocean.cm.curl)
+		ax1.plot(r[:self.Np], r[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 10)
+
+#        ax.set_xlim([-0.1, self.Np*self.b0])
+#        ax.set_ylim([-self.Np*self.b0/2, self.Np*self.b0/2])
+		
+#        fig.canvas.draw()
 
 			
 		
