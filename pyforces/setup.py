@@ -1,5 +1,6 @@
 import numpy
 import os, sys, os.path, tempfile, subprocess, shutil
+from sys import platform
 from distutils.core import setup
 from Cython.Build import cythonize
 from distutils.extension import Extension
@@ -31,8 +32,24 @@ def check_for_openmp():
 
     # Fixed major bug. File needs to be closed before compilation can commence.
     file.close()
-    with open(os.devnull, 'w') as fnull:
-        exit_code = subprocess.call([compiler, '-Xpreprocessor', '-fopenmp', '-lomp', filename], stdout=fnull, stderr=fnull)
+
+    # Check which platform to define the OpenMP flags
+    if platform == "linux" or platform == "linux2":
+        print("linux system")
+        with open(os.devnull, 'w') as fnull:
+            exit_code = subprocess.call([compiler, '-fopenmp', filename], stdout=fnull, stderr=fnull)
+        
+
+    elif platform == 'darwin':
+        print("OSX system")
+        with open(os.devnull, 'w') as fnull:
+            exit_code = subprocess.call([compiler, '-Xpreprocessor', '-fopenmp', '-lomp', filename], stdout=fnull, stderr=fnull)
+        
+
+    elif platform == "win32":
+        print("Windows")
+        with open(os.devnull, 'w') as fnull:
+            exit_code = subprocess.call([compiler, '-Xpreprocessor', '-fopenmp', '-lomp', filename], stdout=fnull, stderr=fnull)
 
     # Clean up
     os.chdir(curdir)
@@ -48,7 +65,15 @@ def check_for_openmp():
         return False
 
 if check_for_openmp() == True:
-    omp_args = ['-Xpreprocessor', '-fopenmp', '-lomp']
+    if platform == "linux" or platform == "linux2":
+        print("linux system")
+        omp_args = ['-fopenmp']
+    elif platform == 'darwin':
+        print("OSX system")
+        omp_args = ['-Xpreprocessor', '-fopenmp', '-lomp']
+    elif platform == "win32":
+        print("Windows")
+        omp_args = ['-Xpreprocessor', '-fopenmp', '-lomp']
     print('OpenMP found!')
 else:
     omp_args = None
