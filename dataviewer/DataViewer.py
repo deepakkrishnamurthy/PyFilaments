@@ -216,7 +216,7 @@ class CentralWidget(QtWidgets.QWidget):
 
 		self.fileName = fileName
 		
-		self.filament.loadData(self.fileName)
+		self.filament.load_data(self.fileName)
 
 
 
@@ -409,7 +409,10 @@ class MainWindow(QtWidgets.QMainWindow):
 		# if(self.dataFile is None):
 			# self.directory = QtGui.QFileDialog.getExistingDirectory(self)
 
-		self.dataFile, *rest = QtGui.QFileDialog.getOpenFileName(self, 'Open file',self.directory,"pkl files (*.pkl)")
+		# file_type = "pkl files (*.pkl)"
+		
+
+		self.dataFile, *rest = QtGui.QFileDialog.getOpenFileName(self, 'Open file',self.directory,"data files (*.pkl *.hdf5)")
 
 		self.central_widget.openDataset(self.dataFile)
 

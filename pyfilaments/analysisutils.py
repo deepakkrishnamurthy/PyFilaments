@@ -23,7 +23,7 @@ class analysisTools(activeFilament):
 
 		# If a saved file is supplied, then load it into memory.
 		elif(file is not None):
-			self.loadData(file)
+			self.load_data(file)
 
 		self.findTimePoints()
 

@@ -3,13 +3,14 @@
 """
 Created on Thu Jul 11 19:35:55 2019
 -------------------------------------------------------------------------------
-*Simulate extensible, elastic filaments using active colloid theory.
-*Filaments are made up of discrete active colloids.
-*Full hydrodynamic interactions to the order necessary to solve for rigid body motions is solved 
+> Simulate extensible, elastic filaments using active colloid theory.
+> Filaments are made up of discrete active colloids.
+> Full hydrodynamic interactions to the order necessary to solve for rigid body motions is solved 
 using the PyStokes library (R Singh et al ...).
-*Non-linear springs provide connectivity.
-*Bending is penalized as an elastic potential.
-*Nearfield repulsion using a Lennard-Jones-based potential
+> Non-linear springs provide connectivity.
+> Bending is penalized as an elastic potential.
+> Nearfield repulsion using a Lennard-Jones-based potential
+> Dynamic time-based activity profiles. 
 -------------------------------------------------------------------------------
 @author: deepak
 """
@@ -25,6 +26,9 @@ import matplotlib.pyplot as plt
 
 from scipy import signal
 from scipy import interpolate
+
+import h5py
+
 
 class activeFilament:
 	'''
@@ -626,7 +630,7 @@ class activeFilament:
 		self.saveFolder = os.path.join(self.path, self.folder)
 
 
-		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.pkl'.format\
+		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.hdf5'.format\
 							(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
 							int(self.activity_timescale), self.scale_factor, sim_type)
 
@@ -659,26 +663,93 @@ class activeFilament:
 			
 			if(save):
 				print('Saving results...')
-				self.saveData()
+				self.save_data()
 				
 		else:
-			self.loadData(os.path.join(self.saveFolder, self.saveFile))
+			self.load_data(os.path.join(self.saveFolder, "simresults.hdf5"))
 
 						
-	def loadData(self, File):
-		print('Loading Simulation from disk ....')
+	# def loadData(self, File):
+	# 	print('Loading Simulation from disk ....')
 
-		with open(File, 'rb') as f:
+	# 	with open(File, 'rb') as f:
 			
-			self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
+	# 		self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
 	
-	def saveData(self):
+	# def saveData(self):
 		
-		if(self.R is not None):
+	# 	if(self.R is not None):
 			
 			
-			with open(os.path.join(self.saveFolder, self.saveFile), 'wb') as f:
-				pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time), f)
+	# 		with open(os.path.join(self.saveFolder, self.saveFile), 'wb') as f:
+	# 			pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time), f)
+
+	def load_data(self, file = None):
+
+		print('Loading Simulation data from disk ...')
+
+		if(file is not None):
+
+			if(file[-4:] == 'hdf5'):
+
+				with h5py.File(file, "r") as f:
+
+					# Load the simulation data
+					self.Time = f["Time"][:]
+					dset = f["Position"]
+					self.R = dset[:]
+
+
+					# Load the metadata:
+					self.Np = dset.attrs['N particles']
+					self.b0 = dset.attrs['bond length']
+					self.k = dset.attrs['spring constant'] 
+					self.S0 = dset.attrs['Stresslet strength'] 
+					self.D0 = dset.attrs['PotDipole strength']
+
+					self.F_mag = f["Particle forces"][:]
+					
+					self.S_mag = f["Particle stresslets"][:]
+
+					self.D_mag = f["Particle potDipoles"][:]
+
+			else:
+				with open(file, 'rb') as f:
+			
+					self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
+
+
+
+
+
+
+
+	# Implement a save module based on HDF5 format:
+	def save_data(self):
+
+
+		with h5py.File(os.path.join(self.saveFolder, self.saveFile), "w") as f:
+
+			f.create_dataset("Time", data = self.Time)
+
+			# Position contains the 3D positions of the Np particles over time. 
+			dset = f.create_dataset("Position", data = self.R)
+
+			dset.attrs['N particles'] = self.Np
+			dset.attrs['bond length'] = self.b0
+			dset.attrs['spring constant'] = self.k
+			dset.attrs['Stresslet strength'] = self.S0
+			dset.attrs['PotDipole strength'] = self.D0
+
+			f.create_dataset("Particle forces", data = self.F_mag)
+			f.create_dataset("Particle stresslets", data = self.S_mag)
+			f.create_dataset("Particle potDipoles", data = self.D_mag)
+
+
+
+
+
+
 
 				   
 	def plotFilament(self, r = None):

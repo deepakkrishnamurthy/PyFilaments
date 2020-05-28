@@ -5,9 +5,9 @@ from scipy import interpolate
 import matplotlib.pyplot as plt 
 
 # Total simulation time
-Tf = 10000
+Tf = 500
 # No:of time points saved
-Npts = 1000
+Npts = 500
 
 activity_timescale = 2000
 activityFreq = 1/activity_timescale
@@ -24,7 +24,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 2, shape = 'sinusoid', bc = bc,  activity_timescale = activity_timescale)
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 1.5, shape = 'sinusoid', bc = bc,  activity_timescale = activity_timescale)
 
 fil.plotFilament(r = fil.r0)
 
@@ -33,7 +33,7 @@ fil.plotFilament(r = fil.r0)
 
 
 
-fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = True, path = '/home/deepak/ActiveFilamentsResults')
+fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = True, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults')
 
 # finalPos = fil.R[-1,:]
 
