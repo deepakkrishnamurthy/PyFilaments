@@ -125,6 +125,44 @@ class analysisTools(activeFilament):
 		return alignmentParameter
 
 
+	def arclength(self):
+
+		self.arc_length = np.zeros((self.Nt))
+
+		for ii in range(self.Nt):
+
+			# Particle positions at time ii
+			self.r = self.R[ii,:]
+
+			self.getSeparationVector()
+
+			self.arc_length[ii] = np.sum(self.dr)
+
+
+	def euclideanDistance(self, r1, r2):
+		'''
+			Calculate the Euclidean distance between two filament shapes
+			Use this metric to conclude if the simulation has reached steady state.
+		'''
+		# Reshape the dims*Np x 1 to dims x Np
+
+		r1_matrix = self.reshapeToMatrix(r1)	
+		r2_matrix = self.reshapeToMatrix(r2)
+
+		distance = np.sum((r1_matrix - r2_matrix)**2)**(1/2)
+
+		return distance
+
+
+
+
+
+
+
+
+
+
+
 
 
 

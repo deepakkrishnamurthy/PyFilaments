@@ -24,7 +24,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 1.5, shape = 'sinusoid', bc = bc,  activity_timescale = activity_timescale)
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 1, radius = 1, S0 = 0, D0 = 1.5, shape = 'sinusoid', bc = bc)
 
 fil.plotFilament(r = fil.r0)
 
@@ -33,7 +33,8 @@ fil.plotFilament(r = fil.r0)
 
 
 
-fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = True, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults')
+fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = True, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
+			activity_timescale = activity_timescale)
 
 # finalPos = fil.R[-1,:]
 

@@ -35,8 +35,8 @@ class activeFilament:
 		This is the main active Filament class that calls the pyStokes and pyForces libraries 
 		for solving hydrodynamic and steric interactions.
 	'''
-	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, F0 = 0, S0 = 0, D0 = 0, 
-					shape ='line', activity_timescale = 0, scale_factor = None, bc = {0:'clamped', -1:'free'}):
+	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
+					shape ='line', scale_factor = None, bc = {0:'clamped', -1:'free'}):
 		
 		#-----------------------------------------------------------------------------
 		# Filament parameters
@@ -63,12 +63,15 @@ class activeFilament:
 		
 		# Connective spring stiffness
 		self.k = k
-		# Bending stiffness
-		self.kappa = self.k*self.b0
 		
+		# Bending stiffness
+		# self.kappa_hat = self.k*self.b0
+		
+		# 30 May 2020: Important change. The bending stiffness and axial stiffness now are for a homogeneous elastic rod.
+		self.kappa_hat = ((self.radius**2)/4)*self.k
 		
 		# Fluid viscosity
-		self.eta = 1.0/6
+		self.mu = mu
 		
 		# Parameters for the near-field Lennard-Jones potential
 		self.ljeps = 0.1
@@ -83,20 +86,19 @@ class activeFilament:
 		
 		# Potential-Dipole strength
 		self.D0 = D0
-		
-		# Activity time scale
-		self.activity_timescale = activity_timescale
-	
+
+		# Simulation type
+		self.sim_type = None
+			
 		
 		# Instantiate the pystokes class
-		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.eta)   # instantiate the classes
+		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.mu)   # instantiate the classes
 		# Instantiate the pyforces class
 		self.ff = pyforces.forceFields.Forces(self.Np)
 		
 		# Initialize arrays for storing particle positions, activity strengths etc.
 		self.allocate_arrays()
 
-		#
 		self.initialize_filament()
 
 		self.setParticleColors()
@@ -114,6 +116,8 @@ class activeFilament:
 		self.drdt = np.zeros(self.Np*self.dim)
 		
 		self.F = np.zeros(self.Np*self.dim)
+
+
 		self.T = np.zeros(self.Np*self.dim)
 		# Stresslet 
 		self.S = np.zeros(5*self.Np)
@@ -335,10 +339,6 @@ class activeFilament:
 					self.F_conn[j+self.Np] -= fy 
 					self.F_conn[j+xx] -= fz 
 
-					
-	def setForces(self):
-		# Specifies external forces on the active particles
-		self.F = self.F_mag
 		
 		
 	def setStresslet(self):
@@ -410,7 +410,7 @@ class activeFilament:
 	def initializeBendingStiffess(self):
 		# bc: dictionary that holds the boundary-conditions at the two ends of the filaments 
 		# Constant-bending stiffness case
-		self.kappa_array = self.kappa*np.ones(self.Np)
+		self.kappa_array = self.kappa_hat*np.ones(self.Np)
 		
 		for key in self.bc:
 			value = self.bc[key]
@@ -437,7 +437,7 @@ class activeFilament:
 		# Orientation vectors of particles depend on local tangent vector
 		self.p0 = self.p
 		
-	def calcForces(self):
+	def internal_forces(self):
 		
 		self.F = self.F*0
 		
@@ -456,7 +456,11 @@ class activeFilament:
 		
 		# Add external forces
 #        self.ff.sedimentation(self.F, g = -10)
-		
+
+	def external_forces(self):
+
+		self.F += self.F_mag
+
 	def ApplyBC_position(self):
 		'''
 		Apply the kinematic boundary conditions:
@@ -564,11 +568,7 @@ class activeFilament:
 				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
 				self.D_mag[-1] = 0
 
-		elif(self.sim_type == 'sedimentation'):
-
-			self.F_mag[:] = self.F0
-			self.S_mag[:] = 0
-			self.D_mag[:] = 0
+		
 
 		
 	def rhs(self, r, t):
@@ -583,12 +583,15 @@ class activeFilament:
 		self.getSeparationVector()
 		self.getBondAngles()
 		self.getTangentVectors()
+
 		
 		self.setStresslet()
 
 		self.setPotDipole()
 		
-		self.calcForces()
+		self.internal_forces()
+
+		self.external_forces()
 				
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
@@ -596,9 +599,12 @@ class activeFilament:
 		
 		# Stresslet contribution to Rigid-Body-Motion
 		# @@@ (TO DO) For efficiency calculate this Only if any element of the Stresselt strength is non-zero
-		self.rm.stressletV(self.drdt, self.r, self.S)
 		
-		self.rm.potDipoleV(self.drdt, self.r, self.D)
+		if(self.sim_type != 'sedimentation'):
+			# For sedimentation the stresslet and potDipole contribution is zero.
+			self.rm.stressletV(self.drdt, self.r, self.S)
+			
+			self.rm.potDipoleV(self.drdt, self.r, self.D)
 		
 		# Apply the kinematic boundary conditions as a velocity condition
 		self.ApplyBC_velocity()
@@ -606,10 +612,12 @@ class activeFilament:
 		
 	
 	def simulate(self, Tf = 100, Npts = 10, sim_type = 'point', activity_profile = None, scale_factor = 1, 
-					save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
+				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
 		
 		# Set the simulation type
 		self.sim_type = sim_type
+
+		self.activity_timescale = activity_timescale
 
 		# Set the scale-factor
 		self.scale_factor = scale_factor
@@ -623,15 +631,15 @@ class activeFilament:
 		if(not os.path.exists(self.path)):
 			os.makedirs(self.path)
 
-		self.folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scalefactor_{}_{}'.format\
-							(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
+		self.folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_scalefactor_{}_{}'.format\
+							(self.Np, self.shape, self.k, self.b0, self.F0, self.S0, self.D0, 
 							int(self.activity_timescale), self.scale_factor, sim_type)
 
 		self.saveFolder = os.path.join(self.path, self.folder)
 
 
-		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.hdf5'.format\
-							(self.Np, self.shape, self.k, self.b0, self.S0, self.D0, 
+		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.hdf5'.format\
+							(self.Np, self.shape, self.k, self.b0, self.F0, self.S0, self.D0, 
 							int(self.activity_timescale), self.scale_factor, sim_type)
 
 		if(save):
@@ -642,6 +650,21 @@ class activeFilament:
 		# Set the activity profile
 		self.activity_profile = activity_profile
 
+		# if simulating constant external forces
+		if(self.sim_type == 'sedimentation'):
+			''' Simulates a filament where there is a net body force on each particle making up the filament.
+			'''
+
+			Np = self.Np
+			xx = 2*Np 
+
+			for ii in range(Np):
+					# F[i   ] +=  0
+					self.F_mag[ii+Np] += self.F0
+				# F[i+xx] +=  g
+
+			self.S_mag[:] = 0
+			self.D_mag[:] = 0
 
 
 		#---------------------------------------------------------------------------------
@@ -702,16 +725,30 @@ class activeFilament:
 
 					# Load the metadata:
 					self.Np = dset.attrs['N particles']
+					self.radius = dset.attrs['radius']
 					self.b0 = dset.attrs['bond length']
 					self.k = dset.attrs['spring constant'] 
-					self.S0 = dset.attrs['Stresslet strength'] 
-					self.D0 = dset.attrs['PotDipole strength']
 
-					self.F_mag = f["Particle forces"][:]
+					self.kappa_hat = dset.attrs['kappa_hat']
+
+					self.F0 = dset.attrs['force strength']
+
+					self.S0 = dset.attrs['stresslet strength'] 
+					self.D0 = dset.attrs['potDipole strength']
+
+					self.activity_timescale = dset.attrs['activity time scale']
+
+					self.sim_type = dset.attrs['simulation type']
+
+					self.F_mag = f["particle forces"][:]
 					
-					self.S_mag = f["Particle stresslets"][:]
+					self.S_mag = f["particle stresslets"][:]
 
-					self.D_mag = f["Particle potDipoles"][:]
+					self.D_mag = f["particle potDipoles"][:]
+
+					self.activity_profile = f["activity profile"][:]
+
+					
 
 			else:
 				with open(file, 'rb') as f:
@@ -736,14 +773,24 @@ class activeFilament:
 			dset = f.create_dataset("Position", data = self.R)
 
 			dset.attrs['N particles'] = self.Np
+			dset.attrs['radius'] = self.radius
 			dset.attrs['bond length'] = self.b0
 			dset.attrs['spring constant'] = self.k
-			dset.attrs['Stresslet strength'] = self.S0
-			dset.attrs['PotDipole strength'] = self.D0
+			dset.attrs['kappa_hat'] = self.kappa_hat
+			dset.attrs['force strength'] = self.F0
+			dset.attrs['stresslet strength'] = self.S0
+			dset.attrs['potDipole strength'] = self.D0
+			dset.attrs['simulation type'] = self.sim_type
+			dset.attrs['activity time scale'] = self.activity_timescale
 
-			f.create_dataset("Particle forces", data = self.F_mag)
-			f.create_dataset("Particle stresslets", data = self.S_mag)
-			f.create_dataset("Particle potDipoles", data = self.D_mag)
+
+			
+			f.create_dataset("particle forces", data = self.F_mag)
+			f.create_dataset("particle stresslets", data = self.S_mag)
+			f.create_dataset("particle potDipoles", data = self.D_mag)
+
+			if(self.activity_profile is not None):
+				f.create_dataset("activity profile", data = self.activity_profile)
 
 
 

@@ -1,6 +1,6 @@
 # Script to playback and interact with PyFilaments Data
 import numpy as np
-from pyqtgraph.Qt import QtWidgets,QtCore, QtGui
+# from pyqtgraph.Qt import QtWidgets,QtCore, QtGui
 import pyqtgraph as pg
 pg.setConfigOptions(antialias=True)
 import time as time
@@ -11,11 +11,14 @@ import context
 from pyfilaments.activeFilaments import activeFilament
 
 
-# fileName = ''
+os.environ["QT_API"] = "pyqt5"
+import qtpy
 
-# filament = activeFilament()
+# qt libraries
+from qtpy.QtCore import *
+from qtpy.QtWidgets import *
+from qtpy.QtGui import *
 
-# filament.loadData(fileName)
 
 class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 
@@ -28,7 +31,7 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		self.plot.setAspectLocked(True)
 
 
-		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=True)
+		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=False)
 
 		self.filament = filament
 
@@ -84,7 +87,7 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
 		z_pos = self.filament.R[self.current_index, 2*self.filament.Np : 3*self.filament.Np]
 
-		print(z_pos)
+		
 
 		self.s1.setData(x = x_pos, y = y_pos)
 		self.s1.setBrush(self.particle_colors)
@@ -94,9 +97,6 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		# y_pos_head = self.filament.R[:self.current_index,2*self.filament.Np-1]
 
 		# self.s2.setData(x = x_pos_head, y = y_pos_head, brush = pg.mkBrush(255, 0, 0, 120))
-
-
-
 
 
 	def set_colors(self):
@@ -112,40 +112,23 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 				self.particle_colors.append(pg.mkBrush(0, 0, 255, 200))
 
 
+class VideoPlayer(QWidget):
+	'''
+	A general class for displaying sequential data such as plots, images etc.
 
+	'''
 
-
-
+	def __init__(self, filament = None, plotFilamentWidget = None, parent=None):
 		
+		super().__init__(parent)
 
+		# Data used for displaying the sequence of plots. 
+		self.filament = filament
 
-
-
-
-'''
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-#                            Central Widget
-#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-'''
-class CentralWidget(QtWidgets.QWidget):
-	update_plot=QtCore.pyqtSignal(float)
-
-	index = QtCore.pyqtSignal(int)
-   
-	def __init__(self):
-		super().__init__()
-
-		
-		self.filament = activeFilament()
-
-		self.newData = False
-
-		# Widget for displaying the filament as a scatter plot
-		self.plotFilamentWidget = AnimatePlotWidget(filament = self.filament)
-
+		self.plotFilamentWidget = plotFilamentWidget
 
 		# Playback indices
-		self.timer = QtCore.QTimer()
+		self.timer = QTimer()
 		self.timer.setInterval(0) #in ms
 		self.timer.timeout.connect(self.play_refresh)
 		self.current_track_time=0
@@ -162,86 +145,51 @@ class CentralWidget(QtWidgets.QWidget):
 		self.playback_speed = 200
 		#Gui Component
 
+		self.add_components()
+
+
+		
+
+	def add_components(self):
 
 		# Play Button
-		self.playButton = QtGui.QPushButton()
+		self.playButton = QPushButton()
 		self.playButton.setEnabled(False)
 		self.playButton.setCheckable(True)
-		self.playButton.setIcon(self.style().standardIcon(QtWidgets.QStyle.SP_MediaPlay))
-		self.playButton.clicked.connect(self.play)
+		self.playButton.setIcon(self.style().standardIcon(QStyle.SP_MediaPlay))
 
-		self.positionSlider = QtGui.QSlider(QtCore.Qt.Horizontal)
+		self.positionSlider = QSlider(Qt.Horizontal)
 		self.positionSlider.setRange(0, 0)
 		self.positionSlider.setEnabled(False)
 		self.positionSlider_prevValue=0
 		
-		self.positionSpinBox=QtGui.QDoubleSpinBox()
+		self.positionSpinBox = QDoubleSpinBox()
 		self.positionSpinBox.setRange(0, 0)
 		self.positionSpinBox.setSingleStep(0.01)
 		self.positionSpinBox.setEnabled(False)
 		self.positionSpinBox_prevValue=0
 		
-		self.positionSlider.valueChanged.connect(self.positionSpinBox_setValue)
-		self.positionSpinBox.valueChanged.connect(self.positionSlider_setValue)
-
-		# Create layouts to place inside widget
-		playBack_Controls = QtWidgets.QWidget()
-		controlLayout = QtGui.QHBoxLayout()
+		controlLayout = QHBoxLayout()
 		controlLayout.setContentsMargins(0, 0, 0, 0)
 		
 		controlLayout.addWidget(self.playButton)
 		controlLayout.addWidget(self.positionSlider)
 		controlLayout.addWidget(self.positionSpinBox)
 
-		playBack_Controls.setLayout(controlLayout)
-
-		window_layout = QtGui.QVBoxLayout()
-
-		window_layout.addWidget(self.plotFilamentWidget)
-		window_layout.addWidget(playBack_Controls)
-
-		self.setLayout(window_layout)
-
-		if(self.newData is True):
-
-			self.initialize_data(self.filament.Time)
-
-			self.initialize_parameters()
-
-			
-
-	def openDataset(self, fileName):
-
+		self.setLayout(controlLayout)
 		
 
-		self.fileName = fileName
-		
-		self.filament.load_data(self.fileName)
-
-
-
-		if(self.filament.R is not None):
-			self.newData = True
-
-			self.initialize_data(self.filament.Time)
-
-			self.initialize_parameters()
-
-			self.plotFilamentWidget.set_colors()
-
-		
-
-
-		else:
-			self.newData = False
-
+		# Make connections
+		self.playButton.clicked.connect(self.play)
+		self.positionSlider.valueChanged.connect(self.positionSpinBox_setValue)
+		self.positionSpinBox.valueChanged.connect(self.positionSlider_setValue)
 
 
 	def positionSpinBox_setValue(self,value):
 	
-		newvalue=self.filament.Time[value]
+		newvalue = self.filament.Time[value]
 		self.positionSpinBox.setValue(newvalue)
-		self.positionSlider_prevValue=value
+		self.positionSlider_prevValue = value
 		
 	def positionSlider_setValue(self,value):
 		
@@ -260,7 +208,7 @@ class CentralWidget(QtWidgets.QWidget):
 			# self.refreshImage(self.Image_Names[newvalue])
 			self.plotFilamentWidget.current_index = newvalue
 
-			print(self.plotFilamentWidget.current_index)
+			# print(self.plotFilamentWidget.current_index)
 			self.plotFilamentWidget.update_plot()
 			# self.update_3Dplot.emit(self.Image_Time[newvalue])
 
@@ -356,6 +304,186 @@ class CentralWidget(QtWidgets.QWidget):
 			if(self.current_track_index == len(self.Time)):
 				self.current_track_index = 0
 				self.prev_track_index = 0
+
+
+
+
+
+
+
+
+
+class simParamsDisplayWidget(QWidget):
+
+	def __init__(self, filament = None, parent=None):
+		
+		super().__init__(parent)
+
+		self.filament = filament
+
+		self.displayed_parameters = ['N particles', 'radius', 'bond length', 'spring constant', 'kappa_hat', 'simulation type', 'force strength', 'stresslet strength',
+									'potDipole strength']
+
+		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 'bond length':self.filament.b0, 'spring constant':self.filament.k, 
+								'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 'force strength':self.filament.F0, 
+								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0}
+
+		assert(list(self.variable_mapping.keys()) == self.displayed_parameters)
+
+		self.add_components()
+		
+
+	def add_components(self):
+
+		self.labels = {key:[] for key in self.displayed_parameters}
+		self.value_labels = {key:[] for key in self.displayed_parameters}
+		# Widget displaying simulation parameters
+		for parameter in self.displayed_parameters:
+
+			self.labels[parameter] = QLabel(parameter + ' : ')
+
+			self.value_labels[parameter] = QLabel('')
+
+			if(self.variable_mapping[parameter] is not None):
+				self.value_labels[parameter].setText(str(self.variable_mapping[parameter]))
+			else:
+				self.value_labels[parameter].setText('')
+
+
+
+
+		sim_params_display = QGridLayout()
+
+		first_row = self.displayed_parameters[:6]
+		second_row = self.displayed_parameters[7:]
+
+		col_counter=0
+		for col_no, parameter in enumerate(first_row):
+
+			sim_params_display.addWidget(self.labels[parameter], 0, col_counter)
+			col_counter+=1
+			sim_params_display.addWidget(self.value_labels[parameter], 0, col_counter)
+			col_counter+=1
+
+		col_counter=0
+		for col_no, parameter in enumerate(second_row):
+
+			sim_params_display.addWidget(self.labels[parameter], 1, col_counter)
+			col_counter+=1
+			sim_params_display.addWidget(self.value_labels[parameter], 1, col_counter)
+			col_counter+=1
+
+		self.setLayout(sim_params_display)
+
+		
+ 
+	def update_param_values(self):
+
+		print('Updating parameter values...')
+
+		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 'bond length':self.filament.b0, 'spring constant':self.filament.k, 
+								'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 'force strength':self.filament.F0, 
+								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0}
+
+		for parameter in self.displayed_parameters:
+
+
+			if(self.variable_mapping[parameter] is not None):
+				
+
+				self.value_labels[parameter].setText(str(self.variable_mapping[parameter]))
+			else:
+
+				self.value_labels[parameter].setText('')
+
+
+
+
+
+
+		
+
+
+
+
+
+'''
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+#                            Central Widget
+#%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+'''
+class CentralWidget(QWidget):
+	
+	update_plot = Signal(float)
+
+	index = Signal(int)
+   
+	def __init__(self):
+		super().__init__()
+
+		
+		self.filament = activeFilament()
+
+		self.newData = False
+
+		# Widget for displaying the filament as a scatter plot
+		self.plotFilamentWidget = AnimatePlotWidget(filament = self.filament)
+
+		# Widget for displaying the simulation parameters
+		self.sim_parameters_display = simParamsDisplayWidget(filament = self.filament)
+
+		# Widget for sequentially displaying data
+		self.video_player = VideoPlayer(filament = self.filament, plotFilamentWidget = self.plotFilamentWidget)
+
+	
+		# Add widgets to the central widget
+
+		window_layout = QVBoxLayout()
+
+		window_layout.addWidget(self.plotFilamentWidget)
+		window_layout.addWidget(self.video_player)
+		window_layout.addWidget(self.sim_parameters_display)
+
+		self.setLayout(window_layout)
+
+		if(self.newData is True):
+
+			self.video_player.initialize_data(self.filament.Time)
+
+			self.video_player.initialize_parameters()
+
+			self.sim_parameters_display.update_param_values()
+
+			
+
+	def open_dataset(self, fileName):
+
+		
+
+		self.fileName = fileName
+		
+		self.filament.load_data(self.fileName)
+
+
+
+		if(self.filament.R is not None):
+			self.newData = True
+
+			self.video_player.initialize_data(self.filament.Time)
+
+			self.video_player.initialize_parameters()
+
+			self.plotFilamentWidget.set_colors()
+
+			self.sim_parameters_display.update_param_values()
+
+		
+		else:
+			self.newData = False
+
+
+
+	
 	
 	def connect_all(self):
 		pass
@@ -366,7 +494,7 @@ class CentralWidget(QtWidgets.QWidget):
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 '''
 		
-class MainWindow(QtWidgets.QMainWindow):
+class MainWindow(QMainWindow):
 	
    
 	def __init__(self):
@@ -380,7 +508,7 @@ class MainWindow(QtWidgets.QMainWindow):
 		
 		
 		#WIDGETS
-		self.central_widget=CentralWidget()  
+		self.central_widget = CentralWidget()  
 		self.setCentralWidget(self.central_widget)
 
 
@@ -395,7 +523,7 @@ class MainWindow(QtWidgets.QMainWindow):
 	 
 		
 		# Create new action
-		openAction = QtGui.QAction(QtGui.QIcon('open.png'), '&Open', self)        
+		openAction = QAction(QIcon('open.png'), '&Open', self)        
 		openAction.setShortcut('Ctrl+O')
 		openAction.setStatusTip('Open File')
 		openAction.triggered.connect(self.openFile)
@@ -412,9 +540,9 @@ class MainWindow(QtWidgets.QMainWindow):
 		# file_type = "pkl files (*.pkl)"
 		
 
-		self.dataFile, *rest = QtGui.QFileDialog.getOpenFileName(self, 'Open file',self.directory,"data files (*.pkl *.hdf5)")
+		self.dataFile, *rest = QFileDialog.getOpenFileName(self, 'Open file',self.directory,"data files (*.pkl *.hdf5)")
 
-		self.central_widget.openDataset(self.dataFile)
+		self.central_widget.open_dataset(self.dataFile)
 
 
 '''
@@ -427,9 +555,9 @@ if __name__ == '__main__':
 
 	#To prevent the error "Kernel died"
 	
-	app = QtGui.QApplication.instance()
+	app = QApplication.instance()
 	if app is None:
-		app = QtGui.QApplication(sys.argv)
+		app = QApplication(sys.argv)
 	
 	win= MainWindow()
 	# qss = QSSHelper.open_qss(os.path.join('aqua', 'aqua.qss'))
@@ -443,4 +571,4 @@ if __name__ == '__main__':
 
 	
 	if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-		QtGui.QApplication.instance().exec_()
+		QApplication.instance().exec_()
