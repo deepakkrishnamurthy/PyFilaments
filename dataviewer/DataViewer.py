@@ -315,6 +315,8 @@ class VideoPlayer(QWidget):
 
 class simParamsDisplayWidget(QWidget):
 
+	update_main_window = Signal()
+
 	def __init__(self, filament = None, parent=None):
 		
 		super().__init__(parent)
@@ -390,11 +392,15 @@ class simParamsDisplayWidget(QWidget):
 
 			if(self.variable_mapping[parameter] is not None):
 				
+				print(str(self.variable_mapping[parameter]))
 
 				self.value_labels[parameter].setText(str(self.variable_mapping[parameter]))
 			else:
 
 				self.value_labels[parameter].setText('')
+
+
+		QApplication.processEvents()
 
 
 
@@ -484,10 +490,6 @@ class CentralWidget(QWidget):
 
 
 	
-	
-	def connect_all(self):
-		pass
-	
 '''
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #                            Main Window
@@ -545,6 +547,7 @@ class MainWindow(QMainWindow):
 		self.central_widget.open_dataset(self.dataFile)
 
 
+
 '''
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 							 Main Function
@@ -562,13 +565,13 @@ if __name__ == '__main__':
 	win= MainWindow()
 	# qss = QSSHelper.open_qss(os.path.join('aqua', 'aqua.qss'))
 	# win.setStyleSheet(qss)
-	win.central_widget.connect_all()
+
 
 		
 	win.show()
 
-	
+	app.exec_() #
 
 	
-	if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
-		QApplication.instance().exec_()
+	# if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
+	# 	QApplication.instance().exec_()

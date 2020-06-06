@@ -29,6 +29,8 @@ from scipy import interpolate
 
 import h5py
 
+from pyfilaments.utils import printProgressBar
+
 
 class activeFilament:
 	'''
@@ -673,15 +675,23 @@ class activeFilament:
 			# Pass the current time from the ode-solver, 
 			# so as to implement time-varying conditions
 			self.rhs(r, t)
-			print(t)
+
+			printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
 			return self.drdt
 		
 		if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
 			print('Running the filament simulation ....')
+
+			printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
 			# integrate the resulting equation using odespy
 			T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
+			# initialize the odespy solver
 			solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6)
+			# Initial conditions
 			solver.set_initial_condition(self.r0)
+			# Solve!
 			self.R, self.Time = solver.solve(time_points)
 			
 			if(save):
@@ -689,7 +699,7 @@ class activeFilament:
 				self.save_data()
 				
 		else:
-			self.load_data(os.path.join(self.saveFolder, "simresults.hdf5"))
+			self.load_data(os.path.join(self.saveFolder, self.saveFile))
 
 						
 	# def loadData(self, File):
@@ -746,7 +756,10 @@ class activeFilament:
 
 					self.D_mag = f["particle potDipoles"][:]
 
-					self.activity_profile = f["activity profile"][:]
+					if('activity profile' in f.keys()):
+						self.activity_profile = f["activity profile"][:]
+					else:
+						self.activity_profile = None
 
 					
 
