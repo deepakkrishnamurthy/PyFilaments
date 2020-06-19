@@ -47,29 +47,29 @@ class analysisTools(activeFilament):
 			
 
 
-	def calculateStrain(self, R = None):
+	def calculate_axial_strain(self, R = None):
 
 		if(R is not None):
 
 
 			strain_vector = np.zeros((self.Nt, self.Np - 1))
 
-			pos_vector = np.zeros((self.dim, self.Np))
 			
 			for ii in range(self.Nt):
 
-				pos_vector[0,:] = self.R[ii, :self.Np]
-				pos_vector[1,:] = self.R[ii, self.Np:2*self.Np]
-				pos_vector[2,:] = self.R[ii, 2*self.Np:3*self.Np]
+				# Set the current filament positions to those from the simulation result at time point ii
 
-				diff = np.diff(pos_vector, axis = 1)
+				self.r = R[ii,:]
 
-				link_distance = (diff[0,:]**2 + diff[1,:]**2 + diff[2,:]**2)**(1/2)
+				self.getSeparationVector()
+
+				
 
 				strain_vector[ii,:] = link_distance/self.b0
 
 		# Size (Nt, self.Np - 1)
 		return strain_vector
+
 
 
 	def BendAngle(self):
@@ -152,6 +152,16 @@ class analysisTools(activeFilament):
 		distance = np.sum((r1_matrix - r2_matrix)**2)**(1/2)
 
 		return distance
+
+
+	# Energy based metrics:
+
+	# def filament_elastic_energy(self):
+
+	# def 
+
+
+
 
 
 

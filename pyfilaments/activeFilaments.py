@@ -27,6 +27,8 @@ import matplotlib.pyplot as plt
 from scipy import signal
 from scipy import interpolate
 
+from datetime import datetime
+
 import h5py
 
 from pyfilaments.utils import printProgressBar
@@ -625,10 +627,11 @@ class activeFilament:
 		self.scale_factor = scale_factor
 		#---------------------------------------------------------------------------------
 		#Allocate a Path and folder to save the results
+		subfolder = datetime.now().strftime('%Y-%m-%d')
 
-
+		# Create sub-folder by date
 		
-		self.path = path
+		self.path = os.path.join(path, subfolder)
 
 		if(not os.path.exists(self.path)):
 			os.makedirs(self.path)
@@ -640,13 +643,21 @@ class activeFilament:
 		self.saveFolder = os.path.join(self.path, self.folder)
 
 
-		self.saveFile = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_actTime_{}_scaleFactor_{}_{}.hdf5'.format\
-							(self.Np, self.shape, self.k, self.b0, self.F0, self.S0, self.D0, 
-							int(self.activity_timescale), self.scale_factor, sim_type)
+		copy_number = 0
+		self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
+
 
 		if(save):
 			if(not os.path.exists(self.saveFolder)):
 				os.makedirs(self.saveFolder)
+
+			while(os.path.exists(os.path.join(self.saveFolder, self.saveFile)) and overwrite == False):
+				copy_number+=1
+				self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
+
+
+
+
 		#---------------------------------------------------------------------------------
 
 		# Set the activity profile
@@ -803,9 +814,17 @@ class activeFilament:
 			f.create_dataset("particle potDipoles", data = self.D_mag)
 
 			if(self.activity_profile is not None):
-				f.create_dataset("activity profile", data = self.activity_profile)
+				f.create_dataset("activity profile", data = self.activity_profile(self.Time))
 
 
+		# Save user readable metadata in the same folder
+		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
+
+		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type,activity time scale\n')
+
+		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+str(self.activity_timescale))
+
+		self.metadata.close()
 
 
 
@@ -814,6 +833,7 @@ class activeFilament:
 				   
 	def plotFilament(self, r = None):
 		
+		plt.style.use('dark_background')
 	
 		ax1 = plt.gca()
 		

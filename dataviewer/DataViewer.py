@@ -78,16 +78,11 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		self.plot.addItem(self.s2)
 
 
-
-
-
 	def update_plot(self):
 
 		x_pos = self.filament.R[self.current_index,:self.filament.Np]
 		y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
 		z_pos = self.filament.R[self.current_index, 2*self.filament.Np : 3*self.filament.Np]
-
-		
 
 		self.s1.setData(x = x_pos, y = y_pos)
 		self.s1.setBrush(self.particle_colors)
@@ -104,6 +99,8 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		self.passive_color = np.reshape(np.array(cmocean.cm.curl(0)),(4,1))
 		self.active_color =np.reshape(np.array(cmocean.cm.curl(255)), (4,1))
 		
+		print(self.filament.Np)
+
 		for ii in range(self.filament.Np):
 			
 			if(self.filament.S_mag[ii]!=0 or self.filament.D_mag[ii]!=0):
@@ -193,7 +190,7 @@ class VideoPlayer(QWidget):
 		
 	def positionSlider_setValue(self,value):
 		
-		newvalue, hasToChange=self.find_slider_index(value)
+		newvalue, hasToChange = self.find_slider_index(value)
 	   
 		self.current_track_index = newvalue
 		if hasToChange:
@@ -403,16 +400,6 @@ class simParamsDisplayWidget(QWidget):
 		QApplication.processEvents()
 
 
-
-
-
-
-		
-
-
-
-
-
 '''
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #                            Central Widget
@@ -452,35 +439,33 @@ class CentralWidget(QWidget):
 
 		self.setLayout(window_layout)
 
-		if(self.newData is True):
+		# if(self.newData is True):
 
-			self.video_player.initialize_data(self.filament.Time)
+		# 	self.video_player.initialize_data(self.filament.Time)
 
-			self.video_player.initialize_parameters()
+		# 	self.video_player.initialize_parameters()
 
-			self.sim_parameters_display.update_param_values()
+		# 	self.sim_parameters_display.update_param_values()
 
 			
 
 	def open_dataset(self, fileName):
 
-		
+		print(self.filament.Np)
 
 		self.fileName = fileName
 		
 		self.filament.load_data(self.fileName)
 
+		print('Loaded data successfully!')
 
 
 		if(self.filament.R is not None):
 			self.newData = True
 
-			self.video_player.initialize_data(self.filament.Time)
-
-			self.video_player.initialize_parameters()
-
 			self.plotFilamentWidget.set_colors()
-
+			self.video_player.initialize_data(self.filament.Time)
+			self.video_player.initialize_parameters()
 			self.sim_parameters_display.update_param_values()
 
 		
