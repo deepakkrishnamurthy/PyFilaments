@@ -833,6 +833,8 @@ class activeFilament:
 				   
 	def plotFilament(self, r = None):
 		
+		self.setParticleColors()
+		
 		plt.style.use('dark_background')
 	
 		ax1 = plt.gca()

@@ -25,7 +25,7 @@ class analysisTools(activeFilament):
 		elif(file is not None):
 			self.load_data(file)
 
-		self.findTimePoints()
+		self.find_num_time_points()
 
 		print('No:of particles : {}'.format(self.Np))
 		print('No:of time points : {}'.format(self.Nt))
@@ -37,17 +37,15 @@ class analysisTools(activeFilament):
 		# Return shape 1 x N
 
 		c = np.sum(a*b,axis=0)
-		print(np.shape(c))
-		print(c)
 		return  c
 
-	def findTimePoints(self):
+	def find_num_time_points(self):
 
 		self.Nt, *rest  = np.shape(self.R)
 			
 
 
-	def calculate_axial_strain(self, R = None):
+	def compute_axial_strain(self, R = None):
 
 		if(R is not None):
 
@@ -72,7 +70,7 @@ class analysisTools(activeFilament):
 
 
 
-	def BendAngle(self):
+	def compute_bend_angles(self):
 		'''
 		K = |ˆr01 − ˆrN−1N|/2=sin(θ)
 		'''
@@ -82,16 +80,12 @@ class analysisTools(activeFilament):
 
 		for ii in range(self.Nt):
 
-			# Set the current filament positions to those from the simulation result at time point ii
-			self.r = self.R[ii,:]
+			
+			self.r = self.R[ii,:]  # Set the current filament positions to those from the simulation result at time point ii
 
 			
+			self.getSeparationVector()  # Get the separation vector based on this position
 
-			# Get the separation vector based on this position
-			self.getSeparationVector()
-
-
-			print(np.shape(self.dr_hat))
 
 			bendAngle[ii] = (0.5)*np.dot(self.dr_hat[:,0] - self.dr_hat[:,-1], self.dr_hat[:,0] - self.dr_hat[:,-1])**(1/2) 
 
@@ -99,7 +93,7 @@ class analysisTools(activeFilament):
 		
 		return bendAngle
 
-	def alignmentParameter(self, field_vector = [1,0,0]):
+	def compute_alignment_parameter(self, field_vector = [1,0,0]):
 
 		alignmentParameter = np.zeros((self.Nt))
 
@@ -125,7 +119,7 @@ class analysisTools(activeFilament):
 		return alignmentParameter
 
 
-	def arclength(self):
+	def compute_arc_length(self):
 
 		self.arc_length = np.zeros((self.Nt))
 
@@ -139,7 +133,7 @@ class analysisTools(activeFilament):
 			self.arc_length[ii] = np.sum(self.dr)
 
 
-	def euclideanDistance(self, r1, r2):
+	def compute_euclidean_distance(self, r1, r2):
 		'''
 			Calculate the Euclidean distance between two filament shapes
 			Use this metric to conclude if the simulation has reached steady state.
@@ -159,6 +153,40 @@ class analysisTools(activeFilament):
 	# def filament_elastic_energy(self):
 
 	# def 
+
+#-------------------------------------
+	# Plotting tools
+#-------------------------------------
+
+	def plot_tip_position(self):
+
+		
+		print(len(self.R[:, self.Np]))
+		plt.figure()
+
+		ax1 = plt.scatter(self.R[:, self.Np-1], self.R[:, 2*self.Np-1], c = self.Time)
+		ax2 = plt.scatter(self.R[:, 0], self.R[:, self.Np], 20, color ='r')
+		plt.xlabel('Filament tip (x)')
+		plt.ylabel('Filament tip (y)')
+		plt.title('Filament tip trajectory (xy)')
+		plt.axis('equal')
+		plt.xlim([0, 1.5*self.Np*self.b0])
+		plt.ylim([-1*self.Np*self.b0, 1*self.Np*self.b0])
+		cbar = plt.colorbar(ax1)
+		cbar.ax.set_ylabel('Time')
+		plt.show()
+
+	def plot_arclength_timeseries(self):
+		plt.figure()
+		plt.plot(self.Time, self.arc_length, 'ro', linestyle = '-')
+		plt.xlabel('Time')
+		plt.ylabel('Arc length')
+		plt.title('Arc length time series')
+		plt.show()
+
+
+
+
 
 
 

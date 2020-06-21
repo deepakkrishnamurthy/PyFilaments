@@ -8,10 +8,11 @@ import matplotlib.pyplot as plt
 
 
 # Filament parameters
-a = 1
-Np = 32            # radius and number of particles
+
+Np = 32            	# number of particles
+a = 1				# radius
 b0 = 2*a 			# equilibrium bond length
-k = 50				# Spring stiffness
+k = 100				# Spring stiffness
 mu = 1.0/6			# Fluid viscosity
 
 
