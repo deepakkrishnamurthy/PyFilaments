@@ -182,7 +182,7 @@ class activeFilament:
 		#                          |y1 y2 ...  |
 		#                          |z1 z2 ...  |
 		array_len = len(Array)
-		ncols = array_len/self.dim
+		ncols = int(array_len/self.dim)
 		return np.reshape(Array, (self.dim, ncols), order = 'C')
 			
 	
@@ -612,10 +612,10 @@ class activeFilament:
 		
 		# Apply the kinematic boundary conditions as a velocity condition
 		self.ApplyBC_velocity()
-		
+	
 		
 	
-	def simulate(self, Tf = 100, Npts = 10, sim_type = 'point', activity_profile = None, scale_factor = 1, 
+	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
 		
 		# Set the simulation type
@@ -655,9 +655,6 @@ class activeFilament:
 				copy_number+=1
 				self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
 
-
-
-
 		#---------------------------------------------------------------------------------
 
 		# Set the activity profile
@@ -690,6 +687,16 @@ class activeFilament:
 			printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 			return self.drdt
+
+		def terminate(u, t, step_no):  # function that returns True/False to terminate solve
+			
+			if(step_no>0):
+				distance = self.euclidean_distance(u[step_no-1], u[step_no])
+				return distance < stop_tol
+			else:
+				return False
+
+
 		
 		if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
 			print('Running the filament simulation ....')
@@ -703,7 +710,10 @@ class activeFilament:
 			# Initial conditions
 			solver.set_initial_condition(self.r0)
 			# Solve!
-			self.R, self.Time = solver.solve(time_points)
+			if(self.sim_type == 'sedimentation'):
+				self.R, self.Time = solver.solve(time_points, terminate)
+			else:
+				self.R, self.Time = solver.solve(time_points)
 			
 			if(save):
 				print('Saving results...')
@@ -872,8 +882,43 @@ class activeFilament:
 		self.metadata.close()
 
 
+	########################################################################################################
+	# Derived quantities
+	########################################################################################################
+	def euclidean_distance(self, r1, r2):
+		'''
+			Calculate the Euclidean distance between two filament shapes
+			Use this metric to conclude if the simulation has reached steady state.
+		'''
+
+		r1_matrix = self.reshapeToMatrix(r1)
+		r2_matrix = self.reshapeToMatrix(r2)
+		
+
+		# Find the center of mass of the filament and subtract it to remove translation (rotation will be added later)
+
+		r1_com = [np.nanmean(r1[:self.Np-1]), 
+		np.nanmean(r1[self.Np:2*self.Np-1]), np.nanmean(r1[2*self.Np:3*self.Np-1]) ] 
+		
+		r2_com = [np.nanmean(r2[:self.Np-1]), 
+		np.nanmean(r2[self.Np:2*self.Np-1]), np.nanmean(r2[2*self.Np:3*self.Np-1]) ] 
 
 
+		for ii in range(self.dim):
+
+			r1_matrix[ii,:] = r1_matrix[ii,:] - r1_com[ii] 
+			r2_matrix[ii,:] = r2_matrix[ii,:] - r2_com[ii] 
+
+			
+
+		distance = np.sum((r1_matrix - r2_matrix)**2)**(1/2)
+
+		return distance
+
+
+	########################################################################################################
+	# Plotting
+	########################################################################################################
 
 				   
 	def plotFilament(self, r = None):

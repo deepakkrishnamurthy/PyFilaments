@@ -19,10 +19,13 @@ import pyfilaments.analysisutils as analysis
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_1000.0/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_1000.pkl'
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_2000/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_2000.pkl'
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_3000/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_3000.pkl'
-file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_5000/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_5000.pkl'
-# root = tkinter.Tk()
-# root.withdraw()
-# file  = filedialog.askopenfilename(parent=root,initialdir="/",title='Please select a directory')
+# file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_5000/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1_actTime_5000.pkl'
+
+# file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-22/SimResults_Np_32_Shape_line_k_100_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+
+# file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/SimResults_Np_32_Shape_line_k_50_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_Np_32_Shape_line_k_50_b0_2_F_-1_S_0_D_0_actTime_0_scaleFactor_1_sedimentation.hdf5'
+
+file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/SimResults_Np_32_Shape_line_k_100_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_Np_32_Shape_line_k_100_b0_2_F_-1_S_0_D_0_actTime_0_scaleFactor_1_sedimentation.hdf5'
 
 filament = analysis.analysisTools(file = file)
 
@@ -38,6 +41,53 @@ filament = analysis.analysisTools(file = file)
 
 # filament.plot_arclength_timeseries()
 
-filament.plotFilament(r = filament.R[-1,:])
+# filament.plotFilament(r = filament.R[-1,:])
 
-filament.plot_tip_position()
+# filament.plot_tip_position()
+
+
+
+# Plot euclidean distance between filaments vs time to check for convergence to steady state
+
+r_previous = filament.R[0, :]
+r_current = filament.R[0, :]
+
+distance_array = np.zeros(filament.Nt-1)
+r_com = np.zeros((filament.dim, filament.Nt))
+
+for ii in range(filament.Nt):
+
+	r_previous = r_current
+
+	r_current = filament.R[ii, :]
+
+	r_com[:,ii] = [np.nanmean(r_current[:filament.Np-1]), 
+		np.nanmean(r_current[filament.Np:2*filament.Np-1]), np.nanmean(r_current[2*filament.Np:3*filament.Np-1]) ] 
+
+	if(ii!=0):  # Skip the first time step
+
+		distance_array[ii-1] = filament.euclidean_distance(r_previous, r_current)
+
+
+print(distance_array)
+
+filament.plotFilament(r = r_current)
+
+# Plot pair Euclidean distance vs time
+
+plt.figure()
+plt.plot(filament.Time[:-1], distance_array, 'g',linestyle = '-')
+plt.xlabel('Time')
+plt.ylabel('Euclidean distance')
+plt.show()
+
+plt.figure()
+plt.plot(filament.Time, r_com[0,:], 'r',linestyle = '-')
+plt.plot(filament.Time, r_com[1,:], 'g',linestyle = '--')
+plt.plot(filament.Time, r_com[2,:], 'b',linestyle = ':')
+
+plt.xlabel('Time')
+plt.ylabel('COM position')
+plt.show()
+
+

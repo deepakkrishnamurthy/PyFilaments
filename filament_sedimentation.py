@@ -19,7 +19,7 @@ mu = 1.0/6			# Fluid viscosity
 
 
 # Total simulation time
-Tf = 100
+Tf = 1000
 # No:of time points saved
 Npts = 500
 
