@@ -734,43 +734,86 @@ class activeFilament:
 
 		if(file is not None):
 
-			if(file[-4:] == 'hdf5'):
+			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
+
 
 				with h5py.File(file, "r") as f:
 
-					# Load the simulation data
-					self.Time = f["Time"][:]
-					dset = f["Position"]
-					self.R = dset[:]
-
-
-					# Load the metadata:
-					self.Np = dset.attrs['N particles']
-					self.radius = dset.attrs['radius']
-					self.b0 = dset.attrs['bond length']
-					self.k = dset.attrs['spring constant'] 
-
-					self.kappa_hat = dset.attrs['kappa_hat']
-
-					self.F0 = dset.attrs['force strength']
-
-					self.S0 = dset.attrs['stresslet strength'] 
-					self.D0 = dset.attrs['potDipole strength']
-
-					self.activity_timescale = dset.attrs['activity time scale']
-
-					self.sim_type = dset.attrs['simulation type']
-
-					self.F_mag = f["particle forces"][:]
 					
-					self.S_mag = f["particle stresslets"][:]
+					if('simulation data' in f.keys()): # Load the simulation data (newer method)
+						
+						dset = f['simulation data']
 
-					self.D_mag = f["particle potDipoles"][:]
+						self.Time = dset["Time"][:]
+						self.R = dset["Position"][:]
 
-					if('activity profile' in f.keys()):
-						self.activity_profile = f["activity profile"][:]
-					else:
-						self.activity_profile = None
+						self.F_mag = dset["particle forces"][:]
+						
+						self.S_mag = dset["particle stresslets"][:]
+
+						self.D_mag = dset["particle potDipoles"][:]
+
+						# Load the metadata:
+						if('viscosity' in dset.attrs.keys()):
+							self.mu = dset.attrs['viscosity']
+
+						self.Np = dset.attrs['N particles']
+						self.radius = dset.attrs['radius']
+						self.b0 = dset.attrs['bond length']
+						self.k = dset.attrs['spring constant'] 
+
+						self.kappa_hat = dset.attrs['kappa_hat']
+
+						self.F0 = dset.attrs['force strength']
+
+						self.S0 = dset.attrs['stresslet strength'] 
+						self.D0 = dset.attrs['potDipole strength']
+
+						self.activity_timescale = dset.attrs['activity time scale']
+
+						self.sim_type = dset.attrs['simulation type']
+
+						
+
+						if('activity profile' in f.keys()):
+							self.activity_profile = f["activity profile"][:]
+						else:
+							self.activity_profile = None
+
+					else:  # Load the simulation data (older method)
+						
+						self.Time = f["Time"][:]
+						dset = f["Position"]
+						self.R = dset[:]
+
+
+						# Load the metadata:
+						self.Np = dset.attrs['N particles']
+						self.radius = dset.attrs['radius']
+						self.b0 = dset.attrs['bond length']
+						self.k = dset.attrs['spring constant'] 
+
+						self.kappa_hat = dset.attrs['kappa_hat']
+
+						self.F0 = dset.attrs['force strength']
+
+						self.S0 = dset.attrs['stresslet strength'] 
+						self.D0 = dset.attrs['potDipole strength']
+
+						self.activity_timescale = dset.attrs['activity time scale']
+
+						self.sim_type = dset.attrs['simulation type']
+
+						self.F_mag = f["particle forces"][:]
+						
+						self.S_mag = f["particle stresslets"][:]
+
+						self.D_mag = f["particle potDipoles"][:]
+
+						if('activity profile' in f.keys()):
+							self.activity_profile = f["activity profile"][:]
+						else:
+							self.activity_profile = None
 
 					
 
@@ -791,10 +834,12 @@ class activeFilament:
 
 		with h5py.File(os.path.join(self.saveFolder, self.saveFile), "w") as f:
 
-			f.create_dataset("Time", data = self.Time)
+			dset = f.create_group("simulation data")
 
-			# Position contains the 3D positions of the Np particles over time. 
-			dset = f.create_dataset("Position", data = self.R)
+			dset.create_dataset("Time", data = self.Time)
+
+			
+			dset.create_dataset("Position", data = self.R)  # Position contains the 3D positions of the Np particles over time. 
 
 			dset.attrs['N particles'] = self.Np
 			dset.attrs['radius'] = self.radius
@@ -809,20 +854,20 @@ class activeFilament:
 
 
 			
-			f.create_dataset("particle forces", data = self.F_mag)
-			f.create_dataset("particle stresslets", data = self.S_mag)
-			f.create_dataset("particle potDipoles", data = self.D_mag)
+			dset.create_dataset("particle forces", data = self.F_mag)
+			dset.create_dataset("particle stresslets", data = self.S_mag)
+			dset.create_dataset("particle potDipoles", data = self.D_mag)
 
 			if(self.activity_profile is not None):
-				f.create_dataset("activity profile", data = self.activity_profile(self.Time))
+				dset.create_dataset("activity profile", data = self.activity_profile(self.Time))
 
 
 		# Save user readable metadata in the same folder
 		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
 
-		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type,activity time scale\n')
+		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type,activity time scale,viscosity\n')
 
-		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+str(self.activity_timescale))
+		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+str(self.activity_timescale)+','+str(self.mu))
 
 		self.metadata.close()
 
