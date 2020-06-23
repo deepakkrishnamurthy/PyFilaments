@@ -40,15 +40,12 @@ class activeFilament:
 		for solving hydrodynamic and steric interactions.
 	'''
 	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
-					shape ='line', scale_factor = None, bc = {0:'clamped', -1:'free'}):
+					 scale_factor = None, bc = {0:'clamped', -1:'free'}):
 		
 		#-----------------------------------------------------------------------------
 		# Filament parameters
 		#-----------------------------------------------------------------------------
 		self.dim = dim
-
-		# IC: Initial Conditions: Initial shape of the filament
-		self.shape = shape
 
 		# BC: Boundary conditions:
 		self.bc = bc
@@ -103,9 +100,7 @@ class activeFilament:
 		# Initialize arrays for storing particle positions, activity strengths etc.
 		self.allocate_arrays()
 
-		self.initialize_filament()
-
-		self.setParticleColors()
+		
 		
 		
 	def allocate_arrays(self):
@@ -615,9 +610,20 @@ class activeFilament:
 	
 		
 	
-	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', activity_profile = None, scale_factor = 1, 
+	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
 		
+		if(init_condition is not None):
+			if('shape' in init_condition.keys()):
+				self.shape = init_condition['shape']
+			if('angle' in init_condition.keys()):
+				init_angle = init_condition['angle']
+
+
+		self.initialize_filament()
+
+		self.setParticleColors()
+
 		# Set the simulation type
 		self.sim_type = sim_type
 
@@ -691,7 +697,8 @@ class activeFilament:
 		def terminate(u, t, step_no):  # function that returns True/False to terminate solve
 			
 			if(step_no>0):
-				distance = self.euclidean_distance(u[step_no-1], u[step_no])
+				u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
+				distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
 				return distance < stop_tol
 			else:
 				return False
@@ -705,10 +712,10 @@ class activeFilament:
 
 			# integrate the resulting equation using odespy
 			T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
-			# initialize the odespy solver
-			solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6)
-			# Initial conditions
-			solver.set_initial_condition(self.r0)
+			
+			solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6) # initialize the odespy solver
+			
+			solver.set_initial_condition(self.r0)  # Initial conditions
 			# Solve!
 			if(self.sim_type == 'sedimentation'):
 				self.R, self.Time = solver.solve(time_points, terminate)
@@ -861,6 +868,7 @@ class activeFilament:
 			dset.attrs['potDipole strength'] = self.D0
 			dset.attrs['simulation type'] = self.sim_type
 			dset.attrs['activity time scale'] = self.activity_timescale
+			dset.attrs['viscosity'] = self.mu
 
 
 			

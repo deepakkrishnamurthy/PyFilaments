@@ -19,7 +19,7 @@ mu = 1.0/6			# Fluid viscosity
 
 
 # Total simulation time
-Tf = 1000
+Tf = 100
 # No:of time points saved
 Npts = 500
 
@@ -48,10 +48,10 @@ print('Elasto-gravitational length scale: {}'.format(elasto_gravitational_length
 print('Spacing between colloids: {}'.format(b0))
 
 
-filament = activeFilament(dim = 3, Np = Np, radius = a, b0 = b0, k = k, mu = mu,  F0 = F_mag, S0 = 0, D0 = 0, shape = 'line', bc = bc)
+filament = activeFilament(dim = 3, Np = Np, radius = a, b0 = b0, k = k, mu = mu,  F0 = F_mag, S0 = 0, D0 = 0, bc = bc)
 
 filament.plotFilament(r = filament.r0)
 
 
 
-filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = True, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults')
+filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults')
