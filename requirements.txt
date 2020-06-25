@@ -7,7 +7,11 @@ scipy==1.1.0
 odespy
 https://github.com/rajeshrinet/odespy
 ----------------------------------------------------
+# Data
+h5py
+pip install h5py
+----------------------------------------------------
 # For data viewer
 pyqtgraph
-pyqt4 or 5
+qtpy (PyQt package)
 cmocean

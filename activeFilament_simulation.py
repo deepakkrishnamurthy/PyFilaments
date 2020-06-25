@@ -32,9 +32,24 @@ fil.plotFilament(r = fil.r0)
 
 
 
+# Check which platform
+if platform == "linux" or platform == "linux2":
+	print("linux system")
+	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	
+
+elif platform == 'darwin':
+	print("OSX system")
+	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
+	
+
+# elif platform == "win32":
+# 	print("Windows")
+# 	with open(os.devnull, 'w') as fnull:
+# 		exit_code = subprocess.call([compiler, '-Xpreprocessor', '-fopenmp', '-lomp', filename], stdout=fnull, stderr=fnull)
 
 
-fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',
+fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
 			activity_timescale = activity_timescale, sim_type = 'point')
 
 # finalPos = fil.R[-1,:]

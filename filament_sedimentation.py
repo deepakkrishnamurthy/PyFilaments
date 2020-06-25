@@ -6,20 +6,22 @@ from scipy import signal
 from scipy import interpolate
 import matplotlib.pyplot as plt 
 
+from sys import platform
+
 
 # Filament parameters
 
 Np = 32            	# number of particles
 a = 1				# radius
 b0 = 2*a 			# equilibrium bond length
-k = 100				# Spring stiffness
+k = 5000				# Spring stiffness
 mu = 1.0/6			# Fluid viscosity
 
 
 
 
 # Total simulation time
-Tf = 100
+Tf = 1000
 # No:of time points saved
 Npts = 500
 
@@ -53,5 +55,14 @@ filament = activeFilament(dim = 3, Np = Np, radius = a, b0 = b0, k = k, mu = mu,
 filament.plotFilament(r = filament.r0)
 
 
+# Check which platform to define the OpenMP flags
+if platform == "linux" or platform == "linux2":
+	print("linux system")
+	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
+	
 
-filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults')
+elif platform == 'darwin':
+	print("OSX system")
+	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
+
+filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = root_path)
