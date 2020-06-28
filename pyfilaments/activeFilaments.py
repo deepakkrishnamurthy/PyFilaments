@@ -34,6 +34,7 @@ import h5py
 from pyfilaments.utils import printProgressBar
 
 
+
 class activeFilament:
 	'''
 		This is the main active Filament class that calls the pyStokes and pyForces libraries 
@@ -47,6 +48,8 @@ class activeFilament:
 		#-----------------------------------------------------------------------------
 		self.dim = dim
 
+		self.plane = 'xy' 	# default plane
+
 		# BC: Boundary conditions:
 		self.bc = bc
 
@@ -59,7 +62,7 @@ class activeFilament:
 		self.b0 = b0
 		
 		# Filament arc-length
-		self.L = self.b0*self.Np
+		self.L = self.b0*(self.Np-1)
 		
 		
 		# Connective spring stiffness
@@ -387,8 +390,19 @@ class activeFilament:
 					
 				
 		elif(self.shape == 'sinusoid'):
-			nWaves = 1
-			Amp = 1e-4
+
+			if(self.plane == 'xy'):
+				first_index = 0
+				second_index = self.Np
+
+			elif(self.plane == 'xz'):
+				first_index = 0
+				second_index = self.xx
+
+			elif(self.plane == 'yz'):
+				first_index = self.Np
+				second_index = self.xx
+
 			for ii in range(self.Np):
 
 				# The first particle at origin
@@ -396,8 +410,14 @@ class activeFilament:
 					self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
 
 				else:
-					self.r0[ii] = ii*(self.b0)
-					self.r0[ii + self.Np] = Amp*np.sin(nWaves*self.r0[ii]*2*np.pi/((self.Np-1)*self.b0))
+					self.r0[ii + first_index] = ii*(self.b0)
+					self.r0[ii + second_index] = self.amplitude*np.sin(self.r0[ii]*2*np.pi/(self.wavelength))
+				
+
+		elif(self.shape == 'helix'):
+			nWaves = 1
+			Amp = 1e-4
+
 		
 		# Apply the kinematic boundary conditions to the filament ends
 
@@ -613,17 +633,61 @@ class activeFilament:
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
 		
+
+
 		if(init_condition is not None):
 			if('shape' in init_condition.keys()):
 				self.shape = init_condition['shape']
-			if('angle' in init_condition.keys()):
-				init_angle = init_condition['angle']
+			
+			if(self.shape=='line'):
+
+				if('angle' in init_condition.keys()):
+					self.init_angle = init_condition['angle']
+				else:
+					self.init_angle = 0
+
+
+			elif(self.shape == 'sinusoid'):
+				if('plane' in init_condition.keys()):
+					self.plane = init_condition['plane']
+				else:
+					self.plane = 'xy'
+
+				if('amplitude' in init_condition.keys()):
+					self.amplitude = init_condition['amplitude']
+				else:
+					self.amplitude = 1e-4
+
+				if('wavelength' in init_condition.keys()):
+					self.wavelength = init_condition['wavelength']
+				else:
+					self.wavelength = self.L
+
+
+			elif(self.shape == 'helix'):
+
+				if('axis' in init_condition.keys()):
+					self.axis = init_condition['axis']
+				else:
+					self.axis = 'x'
+
+				if('amplitude' in init_condition.keys()):
+					self.amplitude = init_condition['amplitude']
+				else:
+					self.amplitide = 1e-4
+
+				if('pitch' in init_condition.keys()):
+					self.pitch = init_condition['pitch']
+				else:
+					self.pitch = self.L
 
 
 		self.initialize_filament()
 
 		self.setParticleColors()
 
+		# Plot the initial filament shape
+		self.plotFilament(r = self.r0)
 		# Set the simulation type
 		self.sim_type = sim_type
 
@@ -893,6 +957,21 @@ class activeFilament:
 	########################################################################################################
 	# Derived quantities
 	########################################################################################################
+	def filament_com(self, r):
+
+		r_com = np.zeros(self.dim)
+
+		for ii in range(self.dim):
+
+			r_com[ii] = np.nanmean(r[ii*self.Np: (ii+1)*self.Np-1])
+
+		# r_com = [np.nanmean(r[:self.Np-1]), 
+		# np.nanmean(r[self.Np:2*self.Np-1]), np.nanmean(r[2*self.Np:3*self.Np-1]) ] 
+
+		return r_com
+
+
+
 	def euclidean_distance(self, r1, r2):
 		'''
 			Calculate the Euclidean distance between two filament shapes
@@ -930,6 +1009,7 @@ class activeFilament:
 
 				   
 	def plotFilament(self, r = None):
+
 		
 		self.setParticleColors()
 		
@@ -939,10 +1019,32 @@ class activeFilament:
 		
 #        1ax = fig.add_subplot(1,1,1)
 		
+		if(self.plane =='xy'):
+			first_index = 0
+			second_index = self.Np
+			xlabel = 'X'
+			ylabel = 'Y'
+		elif(self.plane == 'xz'):
+			first_index = 0
+			second_index = self.xx
+			xlabel = 'X'
+			ylabel = 'Z'
+		elif(self.plane == 'yz'):
+			first_index = self.Np
+			second_index = self.xx
+			xlabel = 'Y'
+			ylabel = 'Z'
 
-		ax1.scatter(r[:self.Np], r[self.Np:2*self.Np], 20, c = self.particle_colors, alpha = 0.75, zorder = 20, cmap = cmocean.cm.curl)
-		ax1.plot(r[:self.Np], r[self.Np:2*self.Np], color = 'k', alpha = 0.5, zorder = 10)
 
+		ax1.scatter(r[first_index:first_index+self.Np], r[second_index:second_index+self.Np], 20, c = self.particle_colors, alpha = 0.75, zorder = 20, cmap = cmocean.cm.curl)
+
+		ax1.plot(r[first_index:first_index+self.Np], r[second_index:second_index+self.Np], color = 'k', alpha = 0.5, zorder = 10)
+
+		plt.xlabel(xlabel)
+		plt.ylabel(ylabel)
+		plt.title('Filament shape '+ self.plane)
+
+		plt.show()
 #        ax.set_xlim([-0.1, self.Np*self.b0])
 #        ax.set_ylim([-self.Np*self.b0/2, self.Np*self.b0/2])
 		

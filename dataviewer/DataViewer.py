@@ -106,7 +106,7 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 			if(self.filament.S_mag[ii]!=0 or self.filament.D_mag[ii]!=0):
 				self.particle_colors.append(pg.mkBrush(255, 0, 0, 200))
 			else:
-				self.particle_colors.append(pg.mkBrush(0, 0, 255, 200))
+				self.particle_colors.append(pg.mkBrush(0, 255, 0, 200))
 
 
 class VideoPlayer(QWidget):

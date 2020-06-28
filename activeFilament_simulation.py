@@ -3,13 +3,14 @@ import numpy as np
 from scipy import signal
 from scipy import interpolate
 import matplotlib.pyplot as plt 
+from sys import platform
 
 # Total simulation time
 Tf = 1000
 # No:of time points saved
 Npts = 500
 
-activity_timescale = 200
+activity_timescale = 500
 activityFreq = 1/activity_timescale
 
 t_array = np.linspace(0, Tf+10, 500)
@@ -25,7 +26,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 20, radius = 1, S0 = 0, D0 = 1.5, shape = 'sinusoid', bc = bc)
+fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 20, radius = 1, S0 = 0, D0 = 1.5, bc = bc)
 
 fil.plotFilament(r = fil.r0)
 
@@ -50,7 +51,7 @@ elif platform == 'darwin':
 
 
 fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
-			activity_timescale = activity_timescale, sim_type = 'point')
+			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'sinusoid','plane':'xz'})
 
 # finalPos = fil.R[-1,:]
 
