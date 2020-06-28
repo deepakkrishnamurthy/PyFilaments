@@ -161,8 +161,6 @@ class activeFilament:
 			else:
 				self.particle_colors.append('b')
 				
-		print(self.particle_colors)
-	
 		
 	def reshapeToArray(self, Matrix):
 		# Takes a matrix of shape (dim, Np) and reshapes to an array (dim*Np, 1) 

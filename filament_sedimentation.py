@@ -11,10 +11,10 @@ from sys import platform
 
 # Filament parameters
 
-Np = 32            	# number of particles
+Np = 33            	# number of particles
 a = 1				# radius
 b0 = 2*a 			# equilibrium bond length
-k = 5000				# Spring stiffness
+k_array = [2000]				# Spring stiffness
 mu = 1.0/6			# Fluid viscosity
 
 
@@ -31,38 +31,39 @@ bc = {0:'free', -1:'free'}
 F_mag = -1			# Force on each particle. 
 
 
-def elasto_gravitational_number():
+for k in k_array:
+	def elasto_gravitational_number():
 
-	eg_number = k*a**2/(4*Np**3*abs(F_mag)*b0)
+		eg_number = k*a**2/(4*Np**3*abs(F_mag)*b0)
 
-	return eg_number
-
-
-tau_sedimentation = 6*np.pi*mu*a**2/abs(F_mag)
-
-elasto_gravitational_length_scale = k*b0*a**2/(4*Np*abs(F_mag))
-
-print('Elasto-gravitational number (beta): {}'.format(elasto_gravitational_number()))
-print('Sedimentation time-scale: {}'.format(tau_sedimentation))
-
-print('Elasto-gravitational length scale: {}'.format(elasto_gravitational_length_scale))
-
-print('Spacing between colloids: {}'.format(b0))
+		return eg_number
 
 
-filament = activeFilament(dim = 3, Np = Np, radius = a, b0 = b0, k = k, mu = mu,  F0 = F_mag, S0 = 0, D0 = 0, bc = bc)
+	tau_sedimentation = 6*np.pi*mu*a**2/abs(F_mag)
 
-filament.plotFilament(r = filament.r0)
+	elasto_gravitational_length_scale = k*b0*a**2/(4*Np*abs(F_mag))
+
+	print('Elasto-gravitational number (beta): {}'.format(elasto_gravitational_number()))
+	print('Sedimentation time-scale: {}'.format(tau_sedimentation))
+
+	print('Elasto-gravitational length scale: {}'.format(elasto_gravitational_length_scale))
+
+	print('Spacing between colloids: {}'.format(b0))
 
 
-# Check which platform to define the OpenMP flags
-if platform == "linux" or platform == "linux2":
-	print("linux system")
-	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
-	
+	filament = activeFilament(dim = 3, Np = Np, radius = a, b0 = b0, k = k, mu = mu,  F0 = F_mag, S0 = 0, D0 = 0, bc = bc)
 
-elif platform == 'darwin':
-	print("OSX system")
-	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
+	filament.plotFilament(r = filament.r0)
 
-filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = root_path)
+
+	# Check which platform to define the OpenMP flags
+	if platform == "linux" or platform == "linux2":
+		print("linux system")
+		root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
+		
+
+	elif platform == 'darwin':
+		print("OSX system")
+		root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
+
+	filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = root_path)
