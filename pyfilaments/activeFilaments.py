@@ -368,6 +368,9 @@ class activeFilament:
 				# The filament is initially linear along x-axis with the first particle at origin
 				self.r0[ii] = ii*(self.b0)
 				
+			# Add random fluctuations in the other two directions
+			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-4, self.Np)
+			self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-4, self.Np)
 			   
 		# Add some Random fluctuations in y-direction
 #            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
