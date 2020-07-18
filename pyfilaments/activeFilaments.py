@@ -215,7 +215,7 @@ class activeFilament:
 		self.getSeparationVector()
 		
 		# The number of angles equals the no:of particles
-		self.cosAngle = np.zeros(self.Np)
+		self.cosAngle = np.ones(self.Np)
 		
 		
 		self.startAngle = 0
@@ -756,14 +756,24 @@ class activeFilament:
 
 			return self.drdt
 
-		def terminate(u, t, step_no):  # function that returns True/False to terminate solve
+		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
 			
-			if(step_no>0):
-				u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
-				distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
-				return distance < stop_tol
+		# 	if(step_no>0):
+		# 		u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
+		# 		distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
+		# 		return distance < stop_tol
+		# 	else:
+		# 		return False
+
+		def terminate(u, t, step):
+
+			# Termination criterion based on bond-angle
+			if(step >0 && np.any(self.cosAngle<=0)):
+				return True
 			else:
 				return False
+
+
 
 
 		
@@ -782,7 +792,7 @@ class activeFilament:
 			if(self.sim_type == 'sedimentation'):
 				self.R, self.Time = solver.solve(time_points, terminate)
 			else:
-				self.R, self.Time = solver.solve(time_points)
+				self.R, self.Time = solver.solve(time_points, terminate)
 			
 			if(save):
 				print('Saving results...')

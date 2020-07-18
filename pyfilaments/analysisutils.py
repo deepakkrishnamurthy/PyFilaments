@@ -155,7 +155,7 @@ class analysisTools(activeFilament):
 		plt.ylabel('Filament tip (y)')
 		plt.title('Filament tip trajectory (xy)')
 		plt.axis('equal')
-		plt.xlim([0, 1.5*self.Np*self.b0])
+		plt.xlim([-1*self.Np*self.b0, 1.5*self.Np*self.b0])
 		plt.ylim([-1*self.Np*self.b0, 1*self.Np*self.b0])
 		cbar = plt.colorbar(ax1)
 		cbar.ax.set_ylabel('Time')
