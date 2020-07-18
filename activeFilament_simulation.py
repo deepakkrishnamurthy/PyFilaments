@@ -6,11 +6,11 @@ import matplotlib.pyplot as plt
 from sys import platform
 
 # Total simulation time
-Tf = 1000
+Tf = 10000
 # No:of time points saved
-Npts = 500
+Npts = 1000
 
-activity_timescale = 500
+activity_timescale = 1000
 activityFreq = 1/activity_timescale
 
 t_array = np.linspace(0, Tf+10, 500)
@@ -26,7 +26,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, b0 = 4, k = 20, radius = 1, S0 = 0, D0 = 1.5, bc = bc)
+fil = activeFilament(dim = 3, Np = 32, b0 = 2, k = 20, radius = 1, S0 = 0, D0 = 1.5, bc = bc)
 
 fil.plotFilament(r = fil.r0)
 
@@ -51,7 +51,7 @@ elif platform == 'darwin':
 
 
 fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
-			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'sinusoid','plane':'xz'})
+			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line','angle':0})
 
 # finalPos = fil.R[-1,:]
 
