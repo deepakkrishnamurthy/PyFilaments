@@ -358,6 +358,11 @@ class activeFilament:
 		self.D[self.Np:2*self.Np] = self.D_mag*self.p[self.Np:2*self.Np]
 		self.D[2*self.Np:3*self.Np] = self.D_mag*self.p[2*self.Np:3*self.Np]
 
+		# Constant orientation of the potential dipole along the x-axis
+		# self.D[:self.Np] = self.D_mag*np.ones(self.Np)
+		# self.D[self.Np:2*self.Np] = 0
+		# self.D[2*self.Np:3*self.Np] = 0
+
 	
 	def initialize_filamentShape(self):
 
@@ -632,7 +637,7 @@ class activeFilament:
 		
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
-				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults',overwrite = False):
+				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False):
 		
 
 
@@ -709,7 +714,7 @@ class activeFilament:
 
 		self.folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_scalefactor_{}_{}'.format\
 							(self.Np, self.shape, self.k, self.b0, self.F0, self.S0, self.D0, 
-							int(self.activity_timescale), self.scale_factor, sim_type)
+							int(self.activity_timescale), self.scale_factor, sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)
 
@@ -771,7 +776,7 @@ class activeFilament:
 		def terminate(u, t, step):
 
 			# Termination criterion based on bond-angle
-			if(step >0 && np.any(self.cosAngle<=0)):
+			if(step >0 and np.any(self.cosAngle<=0)):
 				return True
 			else:
 				return False
