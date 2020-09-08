@@ -28,6 +28,7 @@ from scipy import signal
 from scipy import interpolate
 
 from datetime import datetime
+import time
 
 import h5py
 
@@ -102,6 +103,9 @@ class activeFilament:
 		
 		# Initialize arrays for storing particle positions, activity strengths etc.
 		self.allocate_arrays()
+
+		# Other parameters
+		self.cpu_time = 0
 
 		
 		
@@ -374,8 +378,10 @@ class activeFilament:
 				self.r0[ii] = ii*(self.b0)
 				
 			# Add random fluctuations in the other two directions
+			# y-axis
 			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-4, self.Np)
-			self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-4, self.Np)
+			# z-axis
+			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-4, self.Np)
 			   
 		# Add some Random fluctuations in y-direction
 #            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
@@ -444,6 +450,13 @@ class activeFilament:
 				# The bending stiffness is set to zero only for 'free' or 'fixed' boundary conditions
 				print('Assigning {} BC to filament end {}'.format(value, key))
 				self.kappa_array[key] = 0 
+			elif value == 'clamped':
+				# @@@ Test: Clamped BC, the bending stiffness for the first link is order of magnitude higher to impose tangent condition at the filament base.
+				if key==0:
+					self.kappa_array[1] = 10*self.kappa_hat
+				elif key==-1:
+					self.kappa_array[-2] = 10*self.kappa_hat
+
 
 		print(self.kappa_array)
 
@@ -788,6 +801,8 @@ class activeFilament:
 		if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
 			print('Running the filament simulation ....')
 
+			start_time = time.time()
+
 			printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 			# integrate the resulting equation using odespy
@@ -802,6 +817,7 @@ class activeFilament:
 			else:
 				self.R, self.Time = solver.solve(time_points, terminate)
 			
+			self.cpu_time = time.time() - start_time
 			if(save):
 				print('Saving results...')
 				self.save_data()
@@ -963,9 +979,9 @@ class activeFilament:
 		# Save user readable metadata in the same folder
 		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
 
-		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type,activity time scale,viscosity\n')
+		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type,activity time scale,viscosity,Simulation time,CPU time (s)\n')
 
-		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+str(self.activity_timescale)+','+str(self.mu))
+		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+str(self.activity_timescale)+','+str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
 
 		self.metadata.close()
 
