@@ -5,15 +5,23 @@ from scipy import interpolate
 import matplotlib.pyplot as plt 
 from sys import platform
 
+
+activity_timescale = 500
+activityFreq = 1.0/activity_timescale
+
+print('Activity frequency: {}'.format(activityFreq))
+
 # Total simulation time
-Tf = 10000
+Tf = activity_timescale*500
+
+print('Total simulation time: {}'.format(Tf))
+
 # No:of time points saved
 Npts = int(Tf/10)
 
-activity_timescale = 1000
-activityFreq = 1/activity_timescale
+t_array = np.linspace(0, Tf+10, Npts)
 
-t_array = np.linspace(0, Tf+10, 500)
+print(t_array)
 
 activity_profile = -signal.square(2*np.pi*activityFreq*t_array)
 
@@ -26,7 +34,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2, k = 10, S0 = 0, D0 = 1.5, bc = bc)
+fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 1.5, bc = bc)
 
 fil.plotFilament(r = fil.r0)
 

@@ -42,7 +42,7 @@ class activeFilament:
 		for solving hydrodynamic and steric interactions.
 	'''
 	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
-					 scale_factor = None, bc = {0:'clamped', -1:'free'}):
+					 scale_factor = None, bending_axial_scalefactor = 0.25, bc = {0:'clamped', -1:'free'}):
 		
 		#-----------------------------------------------------------------------------
 		# Filament parameters
@@ -70,10 +70,14 @@ class activeFilament:
 		self.k = k
 		
 		# Bending stiffness
+		self.bending_axial_scalefactor = bending_axial_scalefactor
 		# self.kappa_hat = self.k*self.b0
 		
 		# 30 May 2020: Important change. The bending stiffness and axial stiffness now are for a homogeneous elastic rod.
-		self.kappa_hat = ((self.radius**2)/4)*self.k
+		# self.kappa_hat = ((self.radius**2)/4)*self.k
+
+		# 10 Sept 2020: Important: Generalizing the relationship between axial and bending stiffness. scale_factor = 0.25 will be the special-case of homogeneous elastic rod. 
+		self.kappa_hat = self.bending_axial_scalefactor*(self.radius**2)*self.k
 		
 		# Fluid viscosity
 		self.mu = mu
@@ -573,7 +577,6 @@ class activeFilament:
 				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
 
 				# Apply velocity bc to the next to the farthermost particle
-
 				self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
 
 	def setActivityForces(self, t):
