@@ -1028,8 +1028,6 @@ class activeFilament:
 			r1_matrix[ii,:] = r1_matrix[ii,:] - r1_com[ii] 
 			r2_matrix[ii,:] = r2_matrix[ii,:] - r2_com[ii] 
 
-			
-
 		distance = np.sum((r1_matrix - r2_matrix)**2)**(1/2)
 
 		return distance

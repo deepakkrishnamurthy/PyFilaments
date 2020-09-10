@@ -77,6 +77,13 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		self.plot.addItem(self.s1)
 		self.plot.addItem(self.s2)
 
+		self.text = pg.TextItem(color = 'w', anchor=(0,0), angle=0)
+		
+		self.plot.addItem(self.text)
+		self.text.setPos(-30, 0)
+
+		self.text.setText('{:0.1f}'.format(0))
+
 
 	def update_plot(self):
 
@@ -86,6 +93,8 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 
 		self.s1.setData(x = x_pos, y = y_pos)
 		self.s1.setBrush(self.particle_colors)
+
+		self.text.setText('{:0.1f}'.format(self.filament.Time[self.current_index]))
 
 		# Display head position
 		# x_pos_head = self.filament.R[:self.current_index,self.filament.Np-1]

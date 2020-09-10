@@ -30,7 +30,11 @@ import pyfilaments.analysisutils as analysis
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-07-09/SimResults_Np_33_Shape_sinusoid_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_1000_1/SimResults_00.hdf5'
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-07-09/SimResults_Np_33_Shape_sinusoid_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_1000_1ConstantDipole/SimResults_00.hdf5'
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-07-09/SimResults_Np_33_Shape_sinusoid_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_1000_1ConstantDipole/SimResults_01.hdf5'
-file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-07-09/SimResults_Np_33_Shape_sinusoid_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_1000_1/SimResults_01.hdf5'
+# file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-07-09/SimResults_Np_33_Shape_sinusoid_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_1000_1/SimResults_01.hdf5'
+
+# file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-07/SimResults_Np_33_Shape_line_k_25_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_01.hdf5'
+
+file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-09/SimResults_Np_33_Shape_line_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
 
 filament = analysis.analysisTools(file = file)
 
@@ -41,14 +45,21 @@ filament = analysis.analysisTools(file = file)
 
 # Calculate the filament length vs time
 
-# filament.compute_arc_length()
+filament.compute_arc_length()
+filament.plot_arclength_timeseries()
 
-
-# filament.plot_arclength_timeseries()
-
-filament.plotFilament(r = filament.R[-1,:])
+# filament.plotFilament(r = filament.R[-1,:])
 
 filament.plot_tip_position()
+
+filament.filament_tip_coverage()
+
+
+
+
+filament.plot_unique_tip_locations()
+
+filament.plot_coverage_vs_time()
 
 
 
