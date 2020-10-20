@@ -78,6 +78,9 @@ class activeFilament:
 
 		# 10 Sept 2020: Important: Generalizing the relationship between axial and bending stiffness. scale_factor = 0.25 will be the special-case of homogeneous elastic rod. 
 		self.kappa_hat = self.bending_axial_scalefactor*(self.radius**2)*self.k
+
+		# Clamped BC scale-factor
+		self.clamping_bc_scalefactor = 10
 		
 		# Fluid viscosity
 		self.mu = mu
@@ -457,9 +460,9 @@ class activeFilament:
 			elif value == 'clamped':
 				# @@@ Test: Clamped BC, the bending stiffness for the first link is order of magnitude higher to impose tangent condition at the filament base.
 				if key==0:
-					self.kappa_array[1] = 10*self.kappa_hat
+					self.kappa_array[1] = self.clamping_bc_scalefactor*self.kappa_hat
 				elif key==-1:
-					self.kappa_array[-2] = 10*self.kappa_hat
+					self.kappa_array[-2] = self.clamping_bc_scalefactor*self.kappa_hat
 
 
 		print(self.kappa_array)
@@ -870,9 +873,6 @@ class activeFilament:
 						self.D_mag = dset["particle potDipoles"][:]
 
 						# Load the metadata:
-						if('viscosity' in dset.attrs.keys()):
-							self.mu = dset.attrs['viscosity']
-
 						self.Np = dset.attrs['N particles']
 						self.radius = dset.attrs['radius']
 						self.b0 = dset.attrs['bond length']
@@ -888,7 +888,11 @@ class activeFilament:
 						self.activity_timescale = dset.attrs['activity time scale']
 
 						self.sim_type = dset.attrs['simulation type']
-
+						try:
+							self.mu = dset.attrs['viscosity']
+							self.bc = {0:[],-1:[]}
+							self.bc[0] = dset.attrs['boundary condition 0']
+							self.bc[-1] = dset.attrs['boundary condition 1']
 						
 
 						if('activity profile' in f.keys()):
@@ -956,6 +960,8 @@ class activeFilament:
 
 			
 			dset.create_dataset("Position", data = self.R)  # Position contains the 3D positions of the Np particles over time. 
+			# Array of bending stiffnesses
+			dset.create_dataset("kappa_array", data = self.kappa_array)
 
 			dset.attrs['N particles'] = self.Np
 			dset.attrs['radius'] = self.radius
@@ -968,6 +974,8 @@ class activeFilament:
 			dset.attrs['simulation type'] = self.sim_type
 			dset.attrs['activity time scale'] = self.activity_timescale
 			dset.attrs['viscosity'] = self.mu
+			dset.attrs['boundary condition 0'] = self.bc[0]
+			dset.attrs['boundary condition 1'] = self.bc[-1]
 
 
 			
@@ -982,9 +990,9 @@ class activeFilament:
 		# Save user readable metadata in the same folder
 		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
 
-		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type,activity time scale,viscosity,Simulation time,CPU time (s)\n')
+		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale,viscosity,Simulation time,CPU time (s)\n')
 
-		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+str(self.activity_timescale)+','+str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
+		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' self.bc[-1]+','+str(self.activity_timescale)+','+str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
 
 		self.metadata.close()
 
