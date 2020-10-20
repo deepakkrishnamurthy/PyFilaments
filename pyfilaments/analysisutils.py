@@ -215,6 +215,52 @@ class analysisTools(activeFilament):
 
 	# def 
 
+	def head_orientation(self):
+
+		# Find time points corresponding to activity phase =0 and activity phase = pi
+		self.phase = 2*np.pi*(self.Time%self.activity_timescale)/self.activity_timescale	
+		
+		self.tip_unit_vector = np.zeros((self.dim, self.Nt))
+
+		self.tip_cosine_angles = np.zeros((self.Nt))
+
+		# Find the tangent angle at the filament tip
+		for ii in range(self.Nt):
+
+			self.r = self.R[ii,:]
+
+			self.getSeparationVector() 	
+
+			self.tip_unit_vector[:,ii] = self.dr_hat[:,-1]
+
+
+			self.tip_cosine_angles[ii] = np.dot(self.dr_hat[:,-1], [1, 0 , 0])
+
+	# Filament energies (Axial and bending)
+
+	def axial_bending_energy(self):
+
+		self.axial_energy = np.zeros((self.Nt))
+		self.bending_energy = np.zeros((self.Nt))
+
+		for ii in range(self.Nt):
+
+			self.r = self.R[ii,:]
+
+			getSeparationVector()
+
+			self.axial_energy[ii] = np.sum((self.k/2)*(self.dr - self.b0)**2)
+
+			getBondAngles()
+
+			self.bending_energy[ii] = 10*self.kappa_hat*(1 - self.cosAngle[0]) + np.sum(self.kappa_hat*(1 - self.cosAngle[1:-1]))
+
+
+
+
+
+
+
 #-------------------------------------
 	# Plotting tools
 #-------------------------------------
@@ -285,6 +331,47 @@ class analysisTools(activeFilament):
 		plt.title('Search coverage dynamics')
 
 		plt.show()
+
+
+	def plot_head_orientation_phase(self, save_folder = None):
+
+		self.head_orientation()
+
+		clip_point = int(self.Nt)
+
+		# Plot as a phase portrait
+		x = self.phase[:clip_point]
+		y = self.tip_cosine_angles[:clip_point]
+
+		u = x[1:] - x[0:-1]
+		v = y[1:] - y[0:-1]
+
+		mask = (u**2 + v**2)**(1/2) > 2*np.pi-0.2
+
+		u[mask], v[mask] = 0,0
+
+		plt.style.use('dark_background')
+
+		plt.figure(figsize = (8,6))
+		ax1 = plt.quiver(x[:-1],y[:-1],u,v, self.Time[:clip_point], scale_units='xy', angles='xy', scale=1)
+		ax2 = plt.scatter(self.phase[0], self.tip_cosine_angles[0], 50, marker = 'o', color = 'r')
+
+		plt.xlabel('Activity phase')
+		plt.ylabel('Cosine of head orientation to unit vector along 1x')
+		cbar = plt.colorbar(ax1)
+		cbar.ax.set_ylabel('Time')
+
+		if(save_folder is not None):
+
+			file_path = save_folder + '/' + 'HeadOrientation_PhasePortrait'
+
+			plt.savefig(file_path + '.png', dpi = 300)
+			plt.savefig(file_path + '.svg', dpi = 300)
+
+		plt.show()
+
+
+
 
 
 
