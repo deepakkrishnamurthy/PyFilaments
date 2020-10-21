@@ -65,16 +65,28 @@ filament = analysis.analysisTools(file = file)
 
 # filament.filament_tip_coverage()
 
+filament.compute_arc_length()
+filament.compute_axial_bending_energy()
+
+filament.plot_timeseries(var = ['Filament arc length'], save_folder = folder)
+
+filament.compute_head_orientation()
+# filament.plot_timeseries(data = {'Tip cosine angle':[]})
+
+filament.plot_scatter(var_x = 'Filament arc length',var_y = 'Tip cosine angle', color_by = 'Time', save_folder = folder)
 
 
+filament.plot_phase_portrait(var_x = 'Axial energy', var_y = 'Bending energy', save_folder = folder)
 
 # filament.plot_unique_tip_locations()
 
 # filament.plot_coverage_vs_time()
 
-filament.plot_head_orientation_phase(save_folder = folder)
+# filament.plot_head_orientation_phase(save_folder = folder)
 
+# filament.plot_energy_timeseries(save_folder = folder)
 
+# filament.plot_axial_vs_bending_energy(save_folder = folder)
 
 # # Plot euclidean distance between filaments vs time to check for convergence to steady state
 

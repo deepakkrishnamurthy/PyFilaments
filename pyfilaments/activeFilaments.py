@@ -623,18 +623,14 @@ class activeFilament:
 		
 		self.r = r
 		
-		
 		self.getSeparationVector()
 		self.getBondAngles()
 		self.getTangentVectors()
 
-		
 		self.setStresslet()
-
 		self.setPotDipole()
 		
 		self.internal_forces()
-
 		self.external_forces()
 				
 		# Stokeslet contribution to Rigid-Body-Motion
@@ -893,6 +889,8 @@ class activeFilament:
 							self.bc = {0:[],-1:[]}
 							self.bc[0] = dset.attrs['boundary condition 0']
 							self.bc[-1] = dset.attrs['boundary condition 1']
+						except:
+							print('Attribute not found')
 						
 
 						if('activity profile' in f.keys()):
@@ -992,7 +990,7 @@ class activeFilament:
 
 		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale,viscosity,Simulation time,CPU time (s)\n')
 
-		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' self.bc[-1]+','+str(self.activity_timescale)+','+str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
+		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
 
 		self.metadata.close()
 

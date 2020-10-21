@@ -1,5 +1,5 @@
 # Utility functions for analyzing filament shapes and dynamics
-
+import os
 import numpy as np
 from pyfilaments.activeFilaments import activeFilament
 import matplotlib.pyplot as plt 
@@ -8,6 +8,8 @@ import cmocean
 # Figure parameters
 from matplotlib import rcParams
 from matplotlib import rc
+from matplotlib import cm
+
 
 rc('font', family='sans-serif') 
 rc('font', serif='Helvetica') 
@@ -20,6 +22,10 @@ class analysisTools(activeFilament):
 
 		# Initialize the parent activeFilament class so its attr are available
 		activeFilament.__init__(self)
+
+		# Dict to store derived datasets
+		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [], 'Tip cosine angle':[],'Activity phase':[],'Axial energy':[],'Bending energy':[]}
+
 
 		# Set the attributes to those of the filament on which we are doing analysis. 
 		if(filament is not None):
@@ -38,6 +44,17 @@ class analysisTools(activeFilament):
 
 		print('No:of particles : {}'.format(self.Np))
 		print('No:of time points : {}'.format(self.Nt))
+
+		# Find time points corresponding to activity phase =0 and activity phase = pi
+		self.derived_data['Phase'] = 2*np.pi*(self.Time%self.activity_timescale)/self.activity_timescale
+
+		self.derived_data['head pos x'] = self.R[:, self.Np-1]
+		self.derived_data['head pos y'] = self.R[:, 2*self.Np-1]
+		self.derived_data['head pos z'] = self.R[:, 3*self.Np-1]
+
+		
+		# Sub-folder in which to save analysis data and plots
+		self.sub_folder = 'Analysis'
 
 	def dotProduct(self, a, b):
 		''' 
@@ -130,7 +147,7 @@ class analysisTools(activeFilament):
 
 	def compute_arc_length(self):
 
-		self.arc_length = np.zeros((self.Nt))
+		self.derived_data['Filament arc length'] = np.zeros((self.Nt))
 
 		for ii in range(self.Nt):
 
@@ -139,7 +156,7 @@ class analysisTools(activeFilament):
 
 			self.getSeparationVector()
 
-			self.arc_length[ii] = np.sum(self.dr)
+			self.derived_data['Filament arc length'][ii] = np.sum(self.dr)
 
 	def distance_from_array(self, point, array):
 
@@ -215,14 +232,11 @@ class analysisTools(activeFilament):
 
 	# def 
 
-	def head_orientation(self):
+	def compute_head_orientation(self):
 
-		# Find time points corresponding to activity phase =0 and activity phase = pi
-		self.phase = 2*np.pi*(self.Time%self.activity_timescale)/self.activity_timescale	
-		
-		self.tip_unit_vector = np.zeros((self.dim, self.Nt))
+		self.derived_data['Tip unit vector'] = np.zeros((self.dim, self.Nt))
 
-		self.tip_cosine_angles = np.zeros((self.Nt))
+		self.derived_data['Tip cosine angle'] = np.zeros((self.Nt))
 
 		# Find the tangent angle at the filament tip
 		for ii in range(self.Nt):
@@ -231,39 +245,169 @@ class analysisTools(activeFilament):
 
 			self.getSeparationVector() 	
 
-			self.tip_unit_vector[:,ii] = self.dr_hat[:,-1]
-
-
-			self.tip_cosine_angles[ii] = np.dot(self.dr_hat[:,-1], [1, 0 , 0])
+			self.derived_data['Tip unit vector'][:,ii] = self.dr_hat[:,-1]
+			self.derived_data['Tip cosine angle'][ii] = np.dot(self.dr_hat[:,-1], [1, 0 , 0])
 
 	# Filament energies (Axial and bending)
 
-	def axial_bending_energy(self):
+	def compute_axial_bending_energy(self):
 
-		self.axial_energy = np.zeros((self.Nt))
-		self.bending_energy = np.zeros((self.Nt))
+		self.derived_data['Axial energy'] = np.zeros((self.Nt))
+		self.derived_data['Bending energy'] = np.zeros((self.Nt))
 
 		for ii in range(self.Nt):
 
 			self.r = self.R[ii,:]
 
-			getSeparationVector()
+			self.getSeparationVector()
 
-			self.axial_energy[ii] = np.sum((self.k/2)*(self.dr - self.b0)**2)
+			self.derived_data['Axial energy'][ii] = np.sum((self.k/2)*(self.dr - self.b0)**2)
 
-			getBondAngles()
+			self.getBondAngles()
 
-			self.bending_energy[ii] = 10*self.kappa_hat*(1 - self.cosAngle[0]) + np.sum(self.kappa_hat*(1 - self.cosAngle[1:-1]))
-
-
-
-
-
-
+			self.derived_data['Bending energy'][ii] = 10*self.kappa_hat*(1 - self.cosAngle[0]) + np.sum(self.kappa_hat*(1 - self.cosAngle[1:-1]))
 
 #-------------------------------------
 	# Plotting tools
 #-------------------------------------
+
+	def plot_timeseries(self, var, data = None, save_folder = None, title = '', colors = None):
+
+		x_data = self.Time
+		y_data = {}
+
+		for key in var:
+			if(data is not None and data[key] and data[key] is not None):
+				y_data[key] = data[key]
+			else:
+				y_data[key] = self.derived_data[key]
+
+		num_plots = len(var)
+
+		print(num_plots)
+
+		if(colors is None):
+			cmap = cm.get_cmap('viridis', 255)
+			colors = [cmap(ii) for ii in np.linspace(0,1,num_plots)]
+
+		
+		if(num_plots>1):
+			fig, ax = plt.subplots(nrows = num_plots, ncols=1, sharex = 'row')
+
+			for ii, key in enumerate(var):
+				ax[ii].plot(x_data, y_data[key], color = colors[ii], linestyle = '-', label = key)
+				ax[ii].set_ylabel(key)
+		else:
+			plt.figure()
+
+			for ii, key in enumerate(var):
+				plt.plot(x_data, y_data[key], color = colors[ii], linestyle = '-', label = key)
+				plt.ylabel(key)
+		
+		plt.legend()
+
+		if(save_folder is not None):
+
+			file_path = os.path.join(save_folder, self.sub_folder)
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = title + '_TimeSeries'
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+			
+		plt.xlabel('Time')
+		plt.show()
+		
+
+	def plot_scatter(self, var_x, var_y,data_x = None, data_y = None, color_by = 'Time', save_folder = None):
+
+		title = var_y + ' vs ' + var_x
+
+		if(data_x is None):
+			data_x = self.derived_data[var_x]
+
+		if(data_y is None):
+			data_y = self.derived_data[var_y]
+
+		if(color_by == 'Time'):
+			color = self.Time
+		elif color_by in self.derived_data.keys():
+			color = self.derived_data[color_by]
+
+		plt.figure()
+
+		ax1 = plt.scatter(data_x, data_y, c = color)
+		ax2 = plt.scatter(data_x[0], data_y[0], 20, color ='r')
+		plt.xlabel(var_x)
+		plt.ylabel(var_y)
+		plt.title(title)
+		cbar = plt.colorbar(ax1)
+		cbar.ax.set_ylabel(color_by)
+
+		if(save_folder is not None):
+
+			file_path = os.path.join(save_folder, self.sub_folder)
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = title + '_ScatterPlot'
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+
+		plt.show()
+
+	def plot_phase_portrait(self, var_x, var_y,data_x = None, data_y = None, color_by = 'Time', save_folder = None, title = []):
+
+		title = var_y + ' vs ' + var_x
+
+		if(data_x is None):
+			data_x = self.derived_data[var_x]
+
+		if(data_y is None):
+			data_y = self.derived_data[var_y]
+
+
+
+		if(color_by == 'Time'):
+			color = self.Time
+		elif color_by in self.derived_data.keys():
+			color = self.derived_data[color_by]
+
+		clip_point = int(self.Nt)
+		# Plot as a phase portrait
+		u = data_x[1:] - data_x[0:-1]
+		v = data_y[1:] - data_y[0:-1]
+
+		mask = (u**2 + v**2)**(1/2) > 2*np.pi-0.2
+
+		u[mask], v[mask] = 0,0
+
+		plt.figure(figsize = (8,6))
+		ax1 = plt.quiver(data_x[:-1],data_y[:-1],u,v, color[:clip_point], scale_units='xy', angles='xy', scale=1)
+		ax2 = plt.scatter(data_x[0], data_y[0], 50, marker = 'o', color = 'r')
+
+		plt.xlabel(var_x)
+		plt.ylabel(var_y)
+		plt.title(title)
+		cbar = plt.colorbar(ax1)
+		cbar.ax.set_ylabel(color_by)
+
+		if(save_folder is not None):
+
+			file_path = os.path.join(save_folder, self.sub_folder)
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = title + '_PhasePortrait'
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+
+		plt.show()
+
 
 	def plot_tip_position(self):
 
@@ -283,13 +427,6 @@ class analysisTools(activeFilament):
 		cbar.ax.set_ylabel('Time')
 		plt.show()
 
-	def plot_arclength_timeseries(self):
-		plt.figure()
-		plt.plot(self.Time, self.arc_length, color = 'k', linestyle = '-')
-		plt.xlabel('Time')
-		plt.ylabel('Arc length')
-		plt.title('Arc length time series')
-		plt.show()
 
 	def plot_unique_tip_locations(self):
 
@@ -318,57 +455,40 @@ class analysisTools(activeFilament):
 		# cbar.ax.set_ylabel('Probability density')
 		plt.show()
 
+	def plot_energy_timeseries(self, save_folder = None):
 
-	def plot_coverage_vs_time(self):
-
-
-		plt.figure()
-		# ax1 = plt.scatter(unique_positions[:,0], unique_positions[:,1], 40, c = position_prob_density, cmap=cmocean.cm.matter)
-		
-		ax1 = plt.plot(self.Time, self.unique_counter_time, color = 'g', linewidth = 2)
-		plt.xlabel('Time')
-		plt.ylabel('Unique head locations')
-		plt.title('Search coverage dynamics')
-
-		plt.show()
+		self.compute_axial_bending_energy()
 
 
-	def plot_head_orientation_phase(self, save_folder = None):
+		fig, ax1 = plt.subplots(figsize = (10,4))
+		color = 'tab:red'
+		ax1.plot(self.Time, self.axial_energy, linestyle = '-', linewidth = 1, color = color, alpha = 0.75)
+		ax1.set_ylabel('Axial energy', color = color)
 
-		self.head_orientation()
+		ax2 = ax1.twinx()
+		color = 'tab:blue'
 
-		clip_point = int(self.Nt)
+		ax2.plot(self.Time, self.bending_energy, linestyle = '-', linewidth = 1, color = color, alpha = 0.75)
+		ax2.set_ylabel('Bending energy', color = color)
 
-		# Plot as a phase portrait
-		x = self.phase[:clip_point]
-		y = self.tip_cosine_angles[:clip_point]
+		ax1.set_xlabel('Time')
 
-		u = x[1:] - x[0:-1]
-		v = y[1:] - y[0:-1]
-
-		mask = (u**2 + v**2)**(1/2) > 2*np.pi-0.2
-
-		u[mask], v[mask] = 0,0
-
-		plt.style.use('dark_background')
-
-		plt.figure(figsize = (8,6))
-		ax1 = plt.quiver(x[:-1],y[:-1],u,v, self.Time[:clip_point], scale_units='xy', angles='xy', scale=1)
-		ax2 = plt.scatter(self.phase[0], self.tip_cosine_angles[0], 50, marker = 'o', color = 'r')
-
-		plt.xlabel('Activity phase')
-		plt.ylabel('Cosine of head orientation to unit vector along 1x')
-		cbar = plt.colorbar(ax1)
-		cbar.ax.set_ylabel('Time')
 
 		if(save_folder is not None):
 
-			file_path = save_folder + '/' + 'HeadOrientation_PhasePortrait'
+			file_path = os.path.join(save_folder, self.sub_folder)
 
-			plt.savefig(file_path + '.png', dpi = 300)
-			plt.savefig(file_path + '.svg', dpi = 300)
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+
+			file_name = 'energy_time_series'
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300)
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300)
 
 		plt.show()
+
+
 
 
 
