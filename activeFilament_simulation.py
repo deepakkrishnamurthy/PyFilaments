@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 from sys import platform
 
 
-activity_timescale = 500
+activity_timescale = 10
 activityFreq = 1.0/activity_timescale
 
 print('Activity frequency: {}'.format(activityFreq))
 
 # Total simulation time
-Tf = activity_timescale*500
+Tf = activity_timescale*1
 
 print('Total simulation time: {}'.format(Tf))
 
 # No:of time points saved
-Npts = int(Tf/10)
+Npts = int(Tf)
 
 t_array = np.linspace(0, Tf+10, Npts)
 
@@ -34,7 +34,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 1.5, bc = bc)
+fil = activeFilament(dim = 3, Np = 1024, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 1.5, bc = bc)
 
 fil.plotFilament(r = fil.r0)
 

@@ -33,7 +33,7 @@ import time
 import h5py
 
 from pyfilaments.utils import printProgressBar
-
+from pyfilaments.profiler import profile   # Code profiling tools
 
 
 class activeFilament:
@@ -614,7 +614,7 @@ class activeFilament:
 
 		
 
-		
+	@profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
 	def rhs(self, r, t):
 		
 		self.setActivityForces(t = t)
@@ -624,6 +624,7 @@ class activeFilament:
 		self.r = r
 		
 		self.getSeparationVector()
+		# @@@ This may be getting called twice consider fixing.
 		self.getBondAngles()
 		self.getTangentVectors()
 
