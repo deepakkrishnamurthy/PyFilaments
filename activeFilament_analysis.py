@@ -37,11 +37,11 @@ import pyfilaments.analysisutils as analysis
 
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-09/SimResults_Np_33_Shape_line_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
 
-# file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-10/CompSearch_SimResults_Np_33_Shape_line_kappa_hat_5_k_20.0_b0_4_F_0_S_0_D_1.5_scalefactor_1000_1/SimResults_00.hdf5'
+file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-10/CompSearch_SimResults_Np_33_Shape_line_kappa_hat_5_k_20.0_b0_4_F_0_S_0_D_1.5_scalefactor_1000_1/SimResults_00.hdf5'
 
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-09/LowSearchCoverage_SimResults_Np_33_Shape_line_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
 
-file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-07/GoodSearch_SimResults_Np_33_Shape_line_k_25_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
+# file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-07/GoodSearch_SimResults_Np_33_Shape_line_k_25_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
 
 folder, *rest = os.path.split(file)
 
@@ -73,11 +73,12 @@ filament.plot_timeseries(var = ['Filament arc length'], save_folder = folder)
 filament.compute_head_orientation()
 # filament.plot_timeseries(data = {'Tip cosine angle':[]})
 
-filament.plot_scatter(var_x = 'Filament arc length',var_y = 'Tip cosine angle', color_by = 'Time', save_folder = folder)
+# filament.plot_scatter(var_x = 'Filament arc length',var_y = 'Tip cosine angle', color_by = 'Time', save_folder = folder)
 
 
-filament.plot_phase_portrait(var_x = 'Axial energy', var_y = 'Bending energy', save_folder = folder)
+# filament.plot_phase_portrait(var_x = 'Axial energy', var_y = 'Bending energy', save_folder = folder)
 
+filament.plot_phase_portrait(var_x = 'Filament arc length', var_y = 'Tip cosine angle', save_folder = folder)
 # filament.plot_unique_tip_locations()
 
 # filament.plot_coverage_vs_time()

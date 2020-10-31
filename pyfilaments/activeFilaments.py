@@ -542,13 +542,10 @@ class activeFilament:
 
 				self.r0[end_1], self.r0[end_1 + self.Np], self.r0[end_1 + self.xx] = pos_end_1
 
-
-
 	def ApplyBC_velocity(self):
 		'''
 		Apply the kinematic boundary conditions as a velocity condition:
 		'''
-		
 		for key in self.bc:
 
 			bc_value = self.bc[key]

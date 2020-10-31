@@ -381,12 +381,12 @@ class analysisTools(activeFilament):
 		u = data_x[1:] - data_x[0:-1]
 		v = data_y[1:] - data_y[0:-1]
 
-		mask = (u**2 + v**2)**(1/2) > 2*np.pi-0.2
+		mask = (u**2 + v**2)**(1/2) > (max(data_x) - min(data_x) - 1)
 
 		u[mask], v[mask] = 0,0
 
 		plt.figure(figsize = (8,6))
-		ax1 = plt.quiver(data_x[:-1],data_y[:-1],u,v, color[:clip_point], scale_units='xy', angles='xy', scale=1)
+		ax1 = plt.quiver(data_x[:-1],data_y[:-1],u,v, color[:clip_point], scale_units='xy', angles='xy', scale=1, headwidth = 5)
 		ax2 = plt.scatter(data_x[0], data_y[0], 50, marker = 'o', color = 'r')
 
 		plt.xlabel(var_x)
