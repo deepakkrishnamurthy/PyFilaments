@@ -61,19 +61,6 @@ cdef class filament:
 					cosAngle[ii] += dr_hat[jj,ii-1]*dr_hat[jj,ii]
 
 		
-		for ii in range(self.Np-1):
-			
-			# For the boundary-points, store the angle wrt to the x-axis of the global cartesian coordinate system
-			if(ii==0 or ii == self.Np-1):
-				
-				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii], [1, 0 , 0])
-				
-			else:
-				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii-1], self.dr_hat[:,ii] )
-				
-		
-#        print(self.cosAngle)
-		
 	# Find the local tangent vector of the filament at the position of each particle
 	def getTangentVectors(self):
 		
