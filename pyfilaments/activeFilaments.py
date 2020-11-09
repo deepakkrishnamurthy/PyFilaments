@@ -17,6 +17,7 @@ using the PyStokes library (R Singh et al ...).
 from __future__ import division
 import pystokes
 import pyforces
+import filament
 import numpy as np
 import odespy
 import os
@@ -107,7 +108,8 @@ class activeFilament:
 		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.mu)   # instantiate the classes
 		# Instantiate the pyforces class
 		self.ff = pyforces.forceFields.Forces(self.Np)
-		
+
+
 		# Initialize arrays for storing particle positions, activity strengths etc.
 		self.allocate_arrays()
 
@@ -119,31 +121,36 @@ class activeFilament:
 		
 	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
-		self.r = np.zeros(self.Np*self.dim)
-		self.p = np.zeros(self.Np*self.dim)
+		self.r = np.zeros(self.Np*self.dim, dtype = np.double)
+		self.p = np.zeros(self.Np*self.dim, dtype = np.double)
 		
-		self.r0 = np.zeros(self.Np*self.dim)
-		self.p0 = np.zeros(self.Np*self.dim)
+		self.r0 = np.zeros(self.Np*self.dim, dtype = np.double)
+		self.p0 = np.zeros(self.Np*self.dim, dtype = np.double)
 		
 		# Velocity of all the particles
-		self.drdt = np.zeros(self.Np*self.dim)
-		
-		self.F = np.zeros(self.Np*self.dim)
+		self.drdt = np.zeros(self.Np*self.dim, dtype = np.double)
 
+		self.cosAngle = np.ones(self.Np, dtype = np.double)
 
-		self.T = np.zeros(self.Np*self.dim)
+		self.t_hat = np.zeros((self.dim,self.Np), dtype = np.double)
+
+		self.F = np.zeros(self.Np*self.dim, dtype = np.double)
+		self.F_conn = np.zeros(self.dim*self.Np, dtype = np.double)
+		self.F_bending = np.zeros((self.dim,self.Np), dtype = np.double)
+
+		self.T = np.zeros(self.Np*self.dim, dtype = np.double)
 		# Stresslet 
-		self.S = np.zeros(5*self.Np)
+		self.S = np.zeros(5*self.Np, dtype = np.double)
 		# Potential dipole
-		self.D = np.zeros(self.Np*self.dim)
+		self.D = np.zeros(self.Np*self.dim, dtype = np.double)
 		
 		# Masks for specifying different activities on particles
 		# Mask for external forces
-		self.F_mag = np.zeros(self.Np*self.dim)
+		self.F_mag = np.zeros(self.Np*self.dim, dtype = np.double)
 		# Stresslets
-		self.S_mag = np.zeros(self.Np)
+		self.S_mag = np.zeros(self.Np, dtype = np.double)
 		# Potential dipoles
-		self.D_mag = np.zeros(self.Np)
+		self.D_mag = np.zeros(self.Np, dtype = np.double)
 
 		# Variables for storing the simulation results
 		self.R = None 
@@ -218,13 +225,12 @@ class activeFilament:
 		# Unit separation vectors 
 		self.dr_hat = np.vstack((self.dx_hat, self.dy_hat, self.dz_hat))
 		
+		self.dr_hat = np.array(self.dr_hat, dtype = np.double)
 #        print(self.dr_hat)
 		
 	# Calculate bond-angle vector for the filament
 	def getBondAngles(self):
-		
-		self.getSeparationVector()
-		
+				
 		# The number of angles equals the no:of particles
 		self.cosAngle = np.ones(self.Np)
 		
@@ -262,11 +268,6 @@ class activeFilament:
 				vector = self.dr_hat[:,ii-1] + self.dr_hat[:,ii]
 				self.t_hat[:,ii] = vector/(np.dot(vector, vector)**(1/2))
 				
-		
-		self.t_hat_array = self.reshapeToArray(self.t_hat)
-		
-		# Initialize the particle orientations to be along the local tangent vector
-		self.p = self.t_hat_array
 				
 	
 
@@ -274,7 +275,8 @@ class activeFilament:
 	def BendingForces(self):
 		# See notes for derivation of these expressions for bending potentials.
 
-		self.getBondAngles()
+		# This is already called in the main function. Can be removed. 
+		# self.getBondAngles()
 		
 		self.F_bending = np.zeros((self.dim,self.Np))
 		
@@ -309,7 +311,7 @@ class activeFilament:
 				
 			
 		# Now reshape the forces array
-		self.F_bending_array = self.reshapeToArray(self.F_bending)  
+		# @@@ Move to calling function. Keep the core function simple.
  
 	
 	def ConnectionForces(self):
@@ -467,6 +469,9 @@ class activeFilament:
 
 		print(self.kappa_array)
 
+		self.filament = filament.filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
+
+
 			  
 	def initialize_filament(self):
 		
@@ -479,32 +484,37 @@ class activeFilament:
 		self.getBondAngles()
 		
 		self.getTangentVectors()
+
+		self.t_hat_array = self.reshapeToArray(self.t_hat)
+		# Initialize the particle orientations to be along the local tangent vector
+		self.p = self.t_hat_array
+
 		# Orientation vectors of particles depend on local tangent vector
 		self.p0 = self.p
 		
-	def internal_forces(self):
+# 	def internal_forces(self):
 		
-		self.F = self.F*0
+# 		self.F = self.F*0
 		
 	 
-		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
+# 		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
 		
-		# Print out the lennardJones forces
-		# print(self.F)
+# 		# Print out the lennardJones forces
+# 		# print(self.F)
 
-		self.ConnectionForces()
-		self.BendingForces()
-		# Add all the intrinsic forces together
-		self.F += self.F_conn + self.F_bending_array
+# 		self.ConnectionForces()
+# 		self.BendingForces()
+# 		# Add all the intrinsic forces together
+# 		self.F += self.F_conn + self.F_bending_array
 
 
 		
-		# Add external forces
-#        self.ff.sedimentation(self.F, g = -10)
+# 		# Add external forces
+# #        self.ff.sedimentation(self.F, g = -10)
 
-	def external_forces(self):
+# 	def external_forces(self):
 
-		self.F += self.F_mag
+# 		self.F += self.F_mag
 
 	def ApplyBC_position(self):
 		'''
@@ -611,7 +621,6 @@ class activeFilament:
 
 		
 
-	@profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
 	def rhs(self, r, t):
 		
 		self.setActivityForces(t = t)
@@ -624,12 +633,24 @@ class activeFilament:
 		# @@@ This may be getting called twice consider fixing.
 		self.getBondAngles()
 		self.getTangentVectors()
+		self.t_hat_array = self.reshapeToArray(self.t_hat)
+		self.p = self.t_hat_array
 
 		self.setStresslet()
 		self.setPotDipole()
 		
-		self.internal_forces()
-		self.external_forces()
+		# Avoid a unecessary function call.
+		# self.internal_forces()
+ 		# Internal forces
+		self.F = self.F*0
+		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
+		self.ConnectionForces()
+		self.BendingForces()
+		self.F_bending_array = self.reshapeToArray(self.F_bending)  
+		# Add all the intrinsic forces together
+		self.F += self.F_conn + self.F_bending_array
+		# external forces
+		self.F += self.F_mag
 				
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
@@ -647,6 +668,54 @@ class activeFilament:
 		# Apply the kinematic boundary conditions as a velocity condition
 		self.ApplyBC_velocity()
 	
+	@profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
+	def rhs_cython(self, r, t):
+
+		self.setActivityForces(t = t)
+	
+		self.drdt = self.drdt*0
+		
+		self.r = r
+		
+		self.getSeparationVector()
+
+		self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
+	
+		self.filament.get_tangent_vectors(self.dr_hat, self.t_hat)
+		self.t_hat_array = self.reshapeToArray(self.t_hat)
+		self.p = self.t_hat_array
+
+		self.setStresslet()
+		self.setPotDipole()
+		
+		# Avoid a unecessary function call.
+		# self.internal_forces()
+ 		# Internal forces
+		self.F = self.F*0
+		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
+		self.filament.connection_forces(self.r, self.F_conn)
+		self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
+		self.F_bending_array = self.reshapeToArray(self.F_bending)  
+		# Add all the intrinsic forces together
+		self.F += self.F_conn + self.F_bending_array
+		# external forces
+		self.F += self.F_mag
+				
+		# Stokeslet contribution to Rigid-Body-Motion
+		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
+		self.rm.stokesletV(self.drdt, self.r, self.F)
+		
+		# Stresslet contribution to Rigid-Body-Motion
+		# @@@ (TO DO) For efficiency calculate this Only if any element of the Stresselt strength is non-zero
+		
+		if(self.sim_type != 'sedimentation'):
+			# For sedimentation the stresslet and potDipole contribution is zero.
+			self.rm.stressletV(self.drdt, self.r, self.S)
+			
+			self.rm.potDipoleV(self.drdt, self.r, self.D)
+		
+		# Apply the kinematic boundary conditions as a velocity condition
+		self.ApplyBC_velocity()
 		
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
@@ -771,7 +840,8 @@ class activeFilament:
 		def rhs0(r, t):
 			# Pass the current time from the ode-solver, 
 			# so as to implement time-varying conditions
-			self.rhs(r, t)
+			# self.rhs(r, t)
+			self.rhs_cython(r, t)
 
 			printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
