@@ -35,4 +35,18 @@ Navigate to the pyforces folder within the pyfilaments repo.
 `python setup.py install`
 ---
 
+OSX only: If openMP is not detected while installing pystokes and pyforces. Then follow the next steps
+
+We need to reinstall gcc with openMP for which we first need to set permissions
+`sudo chown -R $(whoami) $(brew --prefix)/*`
+
+Now install gcc
+`brew reinstall gcc --without-multilib`
+
+
+
+
+
+
+
 
