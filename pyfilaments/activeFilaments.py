@@ -80,6 +80,8 @@ class activeFilament:
 		# 10 Sept 2020: Important: Generalizing the relationship between axial and bending stiffness. scale_factor = 0.25 will be the special-case of homogeneous elastic rod. 
 		self.kappa_hat = self.bending_axial_scalefactor*(self.radius**2)*self.k
 
+		self.kappa_array = self.kappa_hat*np.ones(self.Np)
+
 		# Clamped BC scale-factor
 		self.clamping_bc_scalefactor = 10
 		
@@ -115,6 +117,12 @@ class activeFilament:
 
 		# Other parameters
 		self.cpu_time = 0
+
+		# Initialize the filament
+		self.shape = 'line'
+		self.initialize_filamentShape()
+
+		self.filament = filament.filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
 
 		
 		
@@ -388,7 +396,7 @@ class activeFilament:
 				
 			# Add random fluctuations in the other two directions
 			# y-axis
-			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-4, self.Np)
+			self.r0[self.Np:2*self.Np] = np.random.normal(0, 0.5, self.Np)
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-4, self.Np)
 			   
@@ -450,7 +458,6 @@ class activeFilament:
 	def initializeBendingStiffess(self):
 		# bc: dictionary that holds the boundary-conditions at the two ends of the filaments 
 		# Constant-bending stiffness case
-		self.kappa_array = self.kappa_hat*np.ones(self.Np)
 		
 		for key in self.bc:
 			value = self.bc[key]
@@ -619,8 +626,7 @@ class activeFilament:
 				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
 				self.D_mag[-1] = 0
 
-		
-
+	@profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
 	def rhs(self, r, t):
 		
 		self.setActivityForces(t = t)
@@ -647,11 +653,9 @@ class activeFilament:
 		self.ConnectionForces()
 		self.BendingForces()
 		self.F_bending_array = self.reshapeToArray(self.F_bending)  
-		# Add all the intrinsic forces together
-		self.F += self.F_conn + self.F_bending_array
-		# external forces
-		self.F += self.F_mag
-				
+		self.F += self.F_conn + self.F_bending_array	# Add all the intrinsic forces together
+		self.F += self.F_mag	# external forces
+
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
 		self.rm.stokesletV(self.drdt, self.r, self.F)
@@ -668,19 +672,16 @@ class activeFilament:
 		# Apply the kinematic boundary conditions as a velocity condition
 		self.ApplyBC_velocity()
 	
-	@profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
 	def rhs_cython(self, r, t):
 
 		self.setActivityForces(t = t)
 	
 		self.drdt = self.drdt*0
-		
-		self.r = r
-		
-		self.getSeparationVector()
 
+		self.r = r
+		self.getSeparationVector()
 		self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
-	
+		# self.getBondAngles()
 		self.filament.get_tangent_vectors(self.dr_hat, self.t_hat)
 		self.t_hat_array = self.reshapeToArray(self.t_hat)
 		self.p = self.t_hat_array
@@ -688,19 +689,18 @@ class activeFilament:
 		self.setStresslet()
 		self.setPotDipole()
 		
-		# Avoid a unecessary function call.
-		# self.internal_forces()
  		# Internal forces
 		self.F = self.F*0
+		self.F_conn = self.F_conn*0
+		self.F_bending = self.F_bending*0
 		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
 		self.filament.connection_forces(self.r, self.F_conn)
-		self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
+		# self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
+		self.BendingForces()
 		self.F_bending_array = self.reshapeToArray(self.F_bending)  
-		# Add all the intrinsic forces together
-		self.F += self.F_conn + self.F_bending_array
-		# external forces
-		self.F += self.F_mag
-				
+		self.F += self.F_conn + self.F_bending_array	# Add all the intrinsic forces together
+		self.F += self.F_mag	# external forces
+		
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
 		self.rm.stokesletV(self.drdt, self.r, self.F)

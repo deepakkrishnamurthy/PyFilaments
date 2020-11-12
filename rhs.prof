@@ -1,0 +1,28 @@
+         307 function calls (304 primitive calls) in 0.004 seconds
+
+   Ordered by: cumulative time
+   List reduced from 76 to 20 due to restriction <20>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.004    0.004 activeFilaments.py:629(rhs)
+        1    0.001    0.001    0.001    0.001 activeFilaments.py:283(BendingForces)
+        1    0.001    0.001    0.001    0.001 activeFilaments.py:325(ConnectionForces)
+        1    0.000    0.000    0.001    0.001 activeFilaments.py:263(getTangentVectors)
+        1    0.000    0.000    0.000    0.000 {method 'stressletV' of 'pystokes.unbounded.Rbm' objects}
+        1    0.000    0.000    0.000    0.000 {method 'stokesletV' of 'pystokes.unbounded.Rbm' objects}
+    73/70    0.000    0.000    0.000    0.000 {built-in method numpy.core._multiarray_umath.implement_array_function}
+       61    0.000    0.000    0.000    0.000 <__array_function__ internals>:2(dot)
+        1    0.000    0.000    0.000    0.000 activeFilaments.py:240(getBondAngles)
+        1    0.000    0.000    0.000    0.000 activeFilaments.py:599(setActivityForces)
+        1    0.000    0.000    0.000    0.000 {method 'potDipoleV' of 'pystokes.unbounded.Rbm' objects}
+        1    0.000    0.000    0.000    0.000 polyint.py:62(__call__)
+        1    0.000    0.000    0.000    0.000 {method 'lennardJones' of 'pyforces.forceFields.Forces' objects}
+        1    0.000    0.000    0.000    0.000 activeFilaments.py:213(getSeparationVector)
+        1    0.000    0.000    0.000    0.000 interpolate.py:656(_evaluate)
+        1    0.000    0.000    0.000    0.000 polyint.py:88(_prepare_x)
+        2    0.000    0.000    0.000    0.000 activeFilaments.py:194(reshapeToArray)
+        1    0.000    0.000    0.000    0.000 interpolate.py:671(_check_bounds)
+        1    0.000    0.000    0.000    0.000 <__array_function__ internals>:2(vstack)
+        1    0.000    0.000    0.000    0.000 activeFilaments.py:365(setStresslet)
+
+

@@ -16,7 +16,20 @@ cdef class filament_operations:
 	cdef double b0
 	cdef double[:] kappa_array
 
-	cdef double [:] vector_addition(self, double [:] vector_1, double [:] vector_2)
+	cdef double [:] unit_vector_x_view
+
+	cdef double[:] vector_view 
+
+	cdef double[:] vector_mag 
+	cdef double [:] vector_mag_2
+
+	cdef double [:] kappa_array_view
+	cdef double [:] term_n_minus
+	cdef double [:] term_n 
+	cdef double [:] term_n_plus
+	cdef double [:] term_n1 
+	cdef double [:] term_n2
+	cdef double [:] temp_vect
 
 	cpdef get_bond_angles(self, double[:, :] dr_hat, double [:] cosAngle)
 

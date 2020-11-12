@@ -12,7 +12,7 @@ activityFreq = 1.0/activity_timescale
 print('Activity frequency: {}'.format(activityFreq))
 
 # Total simulation time
-Tf = activity_timescale*1
+Tf = activity_timescale*100
 
 print('Total simulation time: {}'.format(Tf))
 
@@ -32,9 +32,9 @@ plt.figure()
 plt.plot(t_array, activity_profile)
 plt.show()
 
-bc = {0:'clamped', -1:'free'}
+bc = {0:'free', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 1.5, bc = bc)
+fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 0, bc = bc)
 
 fil.plotFilament(r = fil.r0)
 
@@ -59,7 +59,7 @@ elif platform == 'darwin':
 
 
 fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
-			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'})
+			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'arc'})
 
 # finalPos = fil.R[-1,:]
 
