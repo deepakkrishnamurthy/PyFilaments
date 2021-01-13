@@ -41,8 +41,8 @@ class activeFilament:
 		This is the main active Filament class that calls the pyStokes and pyForces libraries 
 		for solving hydrodynamic and steric interactions.
 	'''
-	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 1, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
-					 scale_factor = None, bending_axial_scalefactor = 0.25, bc = {0:'clamped', -1:'free'}):
+	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, kappa_hat = 10, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
+					 scale_factor = None, bending_axial_scalefactor = 4, bc = {0:'clamped', -1:'free'}):
 		
 		#-----------------------------------------------------------------------------
 		# Filament parameters
@@ -67,7 +67,7 @@ class activeFilament:
 		
 		
 		# Connective spring stiffness
-		self.k = k
+		self.kappa_hat = kappa_hat
 		
 		# Bending stiffness
 		self.bending_axial_scalefactor = bending_axial_scalefactor
@@ -76,8 +76,9 @@ class activeFilament:
 		# 30 May 2020: Important change. The bending stiffness and axial stiffness now are for a homogeneous elastic rod.
 		# self.kappa_hat = ((self.radius**2)/4)*self.k
 
-		# 10 Sept 2020: Important: Generalizing the relationship between axial and bending stiffness. scale_factor = 0.25 will be the special-case of homogeneous elastic rod. 
-		self.kappa_hat = self.bending_axial_scalefactor*(self.radius**2)*self.k
+		# 10 Sept 2020: Important: Generalizing the relationship between axial and bending stiffness. scale_factor = 4 will be the special-case of homogeneous elastic rod. 
+		# Also made the kappa_hat the set parameter and axial stiffness the driven parameter. 
+		self.k = self.bending_axial_scalefactor*(1/self.radius**2)*self.kappa_hat
 		
 		# Fluid viscosity
 		self.mu = mu
@@ -626,7 +627,7 @@ class activeFilament:
 		self.getTangentVectors()
 
 		
-		self.setStresslet()
+		# self.setStresslet()
 
 		self.setPotDipole()
 		
@@ -643,7 +644,7 @@ class activeFilament:
 		
 		if(self.sim_type != 'sedimentation'):
 			# For sedimentation the stresslet and potDipole contribution is zero.
-			self.rm.stressletV(self.drdt, self.r, self.S)
+			# self.rm.stressletV(self.drdt, self.r, self.S)
 			
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 		
@@ -709,7 +710,7 @@ class activeFilament:
 		self.setParticleColors()
 
 		# Plot the initial filament shape
-		self.plotFilament(r = self.r0)
+		# self.plotFilament(r = self.r0)
 		# Set the simulation type
 		self.sim_type = sim_type
 
@@ -728,8 +729,8 @@ class activeFilament:
 		if(not os.path.exists(self.path)):
 			os.makedirs(self.path)
 
-		self.folder = 'SimResults_Np_{}_Shape_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_scalefactor_{}_{}'.format\
-							(self.Np, self.shape, self.k, self.b0, self.F0, self.S0, self.D0, 
+		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_scalefactor_{}_{}'.format\
+							(self.Np, self.shape, self.kappa_hat, self.k, self.b0, self.F0, self.S0, self.D0, 
 							int(self.activity_timescale), self.scale_factor, sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)
