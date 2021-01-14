@@ -2,6 +2,7 @@ import numpy
 import os, sys, os.path, tempfile, subprocess, shutil
 from sys import platform
 from distutils.core import setup
+# from setuptools import setup
 from Cython.Build import cythonize
 from distutils.extension import Extension
 import Cython.Compiler.Options

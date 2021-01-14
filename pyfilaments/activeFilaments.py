@@ -35,7 +35,8 @@ import h5py
 
 from pyfilaments.utils import printProgressBar
 from pyfilaments.profiler import profile   # Code profiling tools
-
+import imp
+imp.reload(filament)
 
 class activeFilament:
 	'''
@@ -49,27 +50,20 @@ class activeFilament:
 		# Filament parameters
 		#-----------------------------------------------------------------------------
 		self.dim = dim
-
 		self.plane = 'xy' 	# default plane
-
 		# BC: Boundary conditions:
 		self.bc = bc
-
 		# Sets particle number based on BC. Each Clamped BC increase particle number by 1.
 		self.setParticleNumber(Np = Np)
-
 		# Particle radius
 		self.radius = radius
 		# Equlibrium bond-length
 		self.b0 = b0
-		
 		# Filament arc-length
 		self.L = self.b0*(self.Np-1)
 		
-		
 		# Connective spring stiffness
 		self.k = k
-		
 		# Bending stiffness
 		self.bending_axial_scalefactor = bending_axial_scalefactor
 		# self.kappa_hat = self.k*self.b0
@@ -95,22 +89,18 @@ class activeFilament:
 
 		# Body-force strength
 		self.F0 = F0
-
 		# Stresslet strength
 		self.S0 = S0
-		
 		# Potential-Dipole strength
 		self.D0 = D0
 
 		# Simulation type
 		self.sim_type = None
-			
-		
+
 		# Instantiate the pystokes class
 		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.mu)   # instantiate the classes
 		# Instantiate the pyforces class
 		self.ff = pyforces.forceFields.Forces(self.Np)
-
 
 		# Initialize arrays for storing particle positions, activity strengths etc.
 		self.allocate_arrays()
@@ -124,9 +114,6 @@ class activeFilament:
 
 		self.filament = filament.filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
 
-		
-		
-		
 	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
 		self.r = np.zeros(self.Np*self.dim, dtype = np.double)
@@ -137,9 +124,7 @@ class activeFilament:
 		
 		# Velocity of all the particles
 		self.drdt = np.zeros(self.Np*self.dim, dtype = np.double)
-
 		self.cosAngle = np.ones(self.Np, dtype = np.double)
-
 		self.t_hat = np.zeros((self.dim,self.Np), dtype = np.double)
 
 		self.F = np.zeros(self.Np*self.dim, dtype = np.double)
@@ -238,25 +223,18 @@ class activeFilament:
 		
 	# Calculate bond-angle vector for the filament
 	def getBondAngles(self):
-				
 		# The number of angles equals the no:of particles
-		self.cosAngle = np.ones(self.Np)
-		
-		
-		self.startAngle = 0
-		self.endAngle = 0
-		
-		for ii in range(self.Np-1):
+		self.cosAngle = np.zeros(self.Np, dtype = np.double)
+
+		for ii in range(self.Np):
 			
 			# For the boundary-points, store the angle wrt to the x-axis of the global cartesian coordinate system
-			if(ii==0 or ii == self.Np-1):
-				
+			if(ii==0):
 				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii], [1, 0 , 0])
-				
+			elif(ii==self.Np-1):
+				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii-1], [1, 0 , 0])
 			else:
 				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii-1], self.dr_hat[:,ii] )
-				
-		
 #        print(self.cosAngle)
 		
 	# Find the local tangent vector of the filament at the position of each particle
@@ -331,9 +309,9 @@ class activeFilament:
 		
 		for i in range(self.Np):
 			fx = 0.0; fy = 0.0; fz = 0.0;
-			for j in range(i,self.Np):
+			for j in range(self.Np):
 				
-				if((i-j)==1 or (i-j)==-1):
+				if((i-j)==1):
 					
 					dx = self.r[i   ] - self.r[j   ]
 					dy = self.r[i+self.Np] - self.r[j+self.Np]
@@ -359,6 +337,43 @@ class activeFilament:
 					self.F_conn[j]    -= fx 
 					self.F_conn[j+self.Np] -= fy 
 					self.F_conn[j+xx] -= fz 
+
+	def ConnectionForces_mod(self):
+		xx = 2*self.Np
+		
+		F_conn = np.zeros(self.dim*self.Np)
+
+		for i in range(self.Np):
+			fx_1, fy_1, fz_1 = 0,0,0
+			fx_2, fy_2, fz_2 = 0,0,0
+
+			if(i==0):
+				prefactor_1 = self.k*(self.dr[i] - self.b0)
+				fx_1 = prefactor_1*self.dr_hat[0, i]
+				fy_1 = prefactor_1*self.dr_hat[1, i]
+				fz_1 = prefactor_1*self.dr_hat[2, i]
+
+			elif(i==self.Np-1):
+				prefactor_2 = self.k*(self.dr[i-1] - self.b0)
+				fx_2 = prefactor_2*self.dr_hat[0, i-1]
+				fy_2 = prefactor_2*self.dr_hat[1, i-1]
+				fz_2 = prefactor_2*self.dr_hat[2, i-1]
+			else:
+				prefactor_1 = self.k*(self.dr[i] - self.b0)
+				fx_1 = prefactor_1*self.dr_hat[0, i]
+				fy_1 = prefactor_1*self.dr_hat[1, i]
+				fz_1 = prefactor_1*self.dr_hat[2, i]
+
+				prefactor_2 = self.k*(self.dr[i-1] - self.b0)
+				fx_2 = prefactor_2*self.dr_hat[0, i-1]
+				fy_2 = prefactor_2*self.dr_hat[1, i-1]
+				fz_2 = prefactor_2*self.dr_hat[2, i-1]
+
+			F_conn[i] = fx_1 - fx_2
+			F_conn[i+self.Np] = fy_1 - fy_2
+			F_conn[i+xx] = fz_1 - fz_2
+
+		return F_conn
 
 		
 		
@@ -392,13 +407,13 @@ class activeFilament:
 			# Initial particle positions and orientations
 			for ii in range(self.Np):
 				# The filament is initially linear along x-axis with the first particle at origin
-				self.r0[ii] = ii*(self.b0)
+				self.r0[ii] = ii*(0.5*self.b0)
 				
 			# Add random fluctuations in the other two directions
 			# y-axis
-			self.r0[self.Np:2*self.Np] = np.random.normal(0, 0.5, self.Np)
+			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1, self.Np)
 			# z-axis
-			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-4, self.Np)
+			self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
 			   
 		# Add some Random fluctuations in y-direction
 #            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)

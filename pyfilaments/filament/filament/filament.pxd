@@ -37,7 +37,7 @@ cdef class filament_operations:
 
 	cpdef bending_forces(self, double [:] dr, double [:, :] dr_hat, double [:] cosAngle, double[:,:] F_bending)
 
-	cpdef connection_forces(self, double [:] r, double [:] F_conn)
+	cpdef connection_forces(self, double [:] dr, double [:,:] dr_hat, double [:] F_conn)
 
 
 

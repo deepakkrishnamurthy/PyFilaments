@@ -38,17 +38,22 @@ cdef class filament_operations:
 		
 		cdef int ii, jj, Np = self.Np, dim = self.dim
 
-		for ii in prange(Np, nogil=True):
-
-			if(ii==0 or ii == Np-1):
+		for ii in prange(Np, nogil = True):
+			cosAngle[ii] = 0
+			if(ii==0):
 				cosAngle[ii] = 0
 				for jj in range(dim):
 					cosAngle[ii] += dr_hat[jj,ii]*self.unit_vector_x_view[jj]
+			elif(ii == Np-1):
+				cosAngle[ii] = 0
+				for jj in range(dim):
+					cosAngle[ii] += dr_hat[jj,ii-1]*self.unit_vector_x_view[jj]
 			else:
 				cosAngle[ii] = 0
 				for jj in range(dim):
 					cosAngle[ii] += dr_hat[jj,ii-1]*dr_hat[jj,ii]
-		# return
+
+		
 
 		
 	# # Find the local tangent vector of the filament at the position of each particle
@@ -136,42 +141,36 @@ cdef class filament_operations:
 	# 	# self.F_bending_array = self.reshapeToArray(self.F_bending)  
  
 	
-	cpdef connection_forces(self, double [:] r, double [:] F_conn):
+	cpdef connection_forces(self, double [:] dr, double [:,:] dr_hat, double [:] F_conn):
 	
 		cdef int Np = self.Np, i, j, xx = 2*Np
-		cdef double dx, dy, dz, dr2, dr, idr, fx, fy, fz, fac, k = self.k, b0 = self.b0
+		cdef double fx_1, fy_1, fz_1, fx_2, fy_2, fz_2, fac_1, fac_2, k = self.k, b0 = self.b0
 		
+		for i in prange(Np, nogil = True):
+			fx_1 = 0.0; fy_1 = 0.0; fz_1 = 0.0; fx_2 = 0.0; fy_2 = 0.0; fz_2 = 0.0;
 
-		for i in prange(Np, nogil=True):
-			fx = 0.0; fy = 0.0; fz = 0.0;
+			if(i==0):
+				fac_1 = k*(dr[i] - b0)
+				fx_1 = fac_1*dr_hat[0, i]
+				fy_1 = fac_1*dr_hat[1, i]
+				fz_1 = fac_1*dr_hat[2, i]
 
-			for j in range(i, Np):
-				
-				if((i-j)==1 or (i-j)==-1):
-					
-					dx = r[i   ] - r[j   ]
-					dy = r[i+Np] - r[j+Np]
-					dz = r[i+xx] - r[j+xx] 
-					dr2 = dx*dx + dy*dy + dz*dz
-					dr = sqrt(dr2)
-					
-	#                    dr_hat = np.array([dx, dy, dz], dtype = 'float')*(1/dr)
-					
-					fac = -k*(dr - b0)
-				
-					fx = fac*dx/dr
-					fy = fac*dy/dr
-					fz = fac*dz/dr
-					
-					
-					# Force on particle "i"
-					F_conn[i]    += fx 
-					F_conn[i+self.Np] += fy 
-					F_conn[i+xx] += fz 
-					
-					# Force on particle "j"
-					F_conn[j]    -= fx 
-					F_conn[j+self.Np] -= fy 
-					F_conn[j+xx] -= fz 
+			elif(i==Np-1):
+				fac_2 = k*(dr[i-1] - b0)
+				fx_2 = fac_2*dr_hat[0, i-1]
+				fy_2 = fac_2*dr_hat[1, i-1]
+				fz_2 = fac_2*dr_hat[2, i-1]
+			else:
+				fac_1 = k*(dr[i] - b0)
+				fx_1 = fac_1*dr_hat[0, i]
+				fy_1 = fac_1*dr_hat[1, i]
+				fz_1 = fac_1*dr_hat[2, i]
 
-		# return
+				fac_2 = k*(dr[i-1] - b0)
+				fx_2 = fac_2*dr_hat[0, i-1]
+				fy_2 = fac_2*dr_hat[1, i-1]
+				fz_2 = fac_2*dr_hat[2, i-1]
+
+			F_conn[i] = fx_1 - fx_2
+			F_conn[i+Np] = fy_1 - fy_2
+			F_conn[i+xx] = fz_1 - fz_2
