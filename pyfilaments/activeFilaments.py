@@ -243,19 +243,41 @@ class activeFilament:
 		# Unit tangent vector at the particle locations
 		self.t_hat = np.zeros((self.dim,self.Np))
 		
-		for ii in range(self.Np):
+		self.t_hat[:,0] = self.dr_hat[:,0]
+		self.t_hat[:,-1] = self.dr_hat[:,-1]
+		for ii in range(1, self.Np-1):
 			
-			if ii==0:
-				self.t_hat[:,ii] = self.dr_hat[:,ii]
-			elif ii==self.Np-1:
-				self.t_hat[:,-1] = self.dr_hat[:,-1]
-			else:
-				# For particles that have a neighbhor on each side, the tangent vector is the average of the two bonds. 
-				vector = self.dr_hat[:,ii-1] + self.dr_hat[:,ii]
-				self.t_hat[:,ii] = vector/(np.dot(vector, vector)**(1/2))
-				
-				
+			# if ii==0:
+			# 	self.t_hat[:,ii] = self.dr_hat[:,ii]
+			# elif ii==self.Np-1:
+			# 	self.t_hat[:,-1] = self.dr_hat[:,-1]
+			# else:
+			# For particles that have a neighbhor on each side, the tangent vector is the average of the two bonds. 
+			vector = (self.dr_hat[:,ii-1] + self.dr_hat[:,ii])/2
+			self.t_hat[:,ii] = vector/(np.dot(vector, vector)**(1/2))
 	
+	# (vectorized) Find the local tangent vector of the filament at the position of each particle
+	def getTangentVectors_mod(self):
+		
+		# Unit tangent vector at the particle locations
+		self.t_hat = np.ones((self.dim,self.Np))
+		
+		self.t_hat[:,1:self.Np-1] = (self.dr_hat[:,0:self.Np-2] + self.dr_hat[:,1:self.Np-1])/2
+
+		self.t_hat[:,0] = self.dr_hat[:,0]
+		self.t_hat[:,-1] = self.dr_hat[:,-1]
+
+		t_hat_mag = np.zeros(self.Np)
+
+		for jj in range(self.dim):
+			t_hat_mag += self.t_hat[jj, :]**2
+
+		t_hat_mag = t_hat_mag**(1/2)
+
+		for jj in range(self.dim):
+			self.t_hat[jj,:] = self.t_hat[jj,:]/t_hat_mag
+		
+
 
 
 	def BendingForces(self):

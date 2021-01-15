@@ -18,10 +18,9 @@ cdef class filament_operations:
 		self.kappa_array = kappa_array
 
 		self.unit_vector_x_view = np.array([1,0,0], dtype = np.double)
-		self.vector_view = np.zeros(self.dim, dtype = np.double)
-
-		self.vector_mag = np.zeros(self.Np, dtype = np.double)
-		self.vector_mag_2 = np.zeros(self.Np, dtype = np.double)
+		# self.vector_view = np.zeros(self.dim, dtype = np.double)
+		# self.vector_mag = np.zeros(self.Np, dtype = np.double)
+		# self.vector_mag_2 = np.zeros(self.Np, dtype = np.double)
 
 		self.kappa_array_view = np.array(self.kappa_array, dtype = np.double)
 		self.term_n_minus = np.zeros(self.dim, dtype = np.double)
@@ -31,7 +30,6 @@ cdef class filament_operations:
 		self.term_n2 = np.zeros(self.dim, dtype = np.double)
 		self.temp_vect = np.zeros(self.dim, dtype = np.double)
 		# Temporary variables
-		pass
 
 	# Calculate bond-angle vector for the filament
 	cpdef get_bond_angles(self, double[:, :] dr_hat, double [:] cosAngle):
@@ -53,39 +51,35 @@ cdef class filament_operations:
 				for jj in range(dim):
 					cosAngle[ii] += dr_hat[jj,ii-1]*dr_hat[jj,ii]
 
+	# # # Find the local tangent vector of the filament at the position of each particle
+	# cpdef get_tangent_vectors(self, double[:, :] dr_hat, double [:, :] t_hat):
 		
-
+	# 	cdef int ii, jj, Np = self.Np, dim = self.dim
 		
-	# # Find the local tangent vector of the filament at the position of each particle
-	cpdef get_tangent_vectors(self, double[:, :] dr_hat, double [:, :] t_hat):
-		
-		cdef int ii, jj, Np = self.Np, dim = self.dim
-		
-		# vector = np.zeros(self.dim, dtype = np.double)
+	# 	# vector = np.zeros(self.dim, dtype = np.double)
 
-		# cdef double[:] vector_view = vector
+	# 	# cdef double[:] vector_view = vector
 
-		# cdef double[:] vector_mag = np.zeros(self.Np, dtype = np.double)
-		# cdef double [:] vector_mag_2 = np.zeros(self.Np, dtype = np.double)
+	# 	# cdef double[:] vector_mag = np.zeros(self.Np, dtype = np.double)
+	# 	# cdef double [:] vector_mag_2 = np.zeros(self.Np, dtype = np.double)
 
-		t_hat[:,0] = dr_hat[:,0]
-		t_hat[:,-1] = dr_hat[:,-1]
-		# @@@ Not parallelizing these for now. 
-		for ii in prange(1, Np-1, nogil = True):
-			# For particles that have a neighbhor on each side, the tangent vector is the average of the two bonds. 
-			self.vector_mag_2[ii] = 0
+	# 	t_hat[:,0] = dr_hat[:,0]
+	# 	t_hat[:,-1] = dr_hat[:,-1]
+	# 	# @@@ Not parallelizing these for now. 
+	# 	for ii in range(1, Np-1):
+	# 		# For particles that have a neighbhor on each side, the tangent vector is the average of the two bonds. 
+	# 		self.vector_mag_2[ii] = 0
 
-			for jj in range(dim):
-				self.vector_view[jj] = dr_hat[jj,ii-1] + dr_hat[jj,ii]
-				self.vector_mag_2[ii] += self.vector_view[jj]**2
+	# 		for jj in range(dim):
+	# 			self.vector_view[jj] = (dr_hat[jj,ii-1] + dr_hat[jj,ii])/2
+	# 			self.vector_mag_2[ii] += self.vector_view[jj]**2
 			
-			self.vector_mag[ii] = sqrt(self.vector_mag_2[ii])
-			for jj in range(dim):
-				t_hat[jj,ii] = (self.vector_view[jj])/(self.vector_mag[ii])
-			# t_hat[:,ii] = (vector_view)*(1/vector_mag)
-		# return
+	# 		self.vector_mag[ii] = sqrt(self.vector_mag_2[ii])
+	# 		for jj in range(dim):
+	# 			t_hat[jj,ii] = (self.vector_view[jj])/(self.vector_mag[ii])
+	# 		# t_hat[:,ii] = (vector_view)*(1/vector_mag)
+	# 	# return
 				
-
 	cpdef bending_forces(self, double [:] dr, double [:, :] dr_hat, double [:] cosAngle, double[:,:] F_bending):
 		# See notes for derivation of these expressions for bending potentials.
 		cdef int Np = self.Np, ii, jj, xx = 2*Np, dim = self.dim
@@ -98,22 +92,27 @@ cdef class filament_operations:
 		# cdef double [:] temp_vect = np.zeros(self.dim, dtype = np.double)
 
 		# @@@ Not parallelizing these for now. 
-		for ii in prange(Np, nogil=True):
+		for ii in prange(Np, nogil = True):
+			for jj in range(dim):
+				self.temp_vect[jj] =0
+				self.term_n_minus[jj] =0
+				self.term_n_plus[jj] = 0
+				self.term_n1[jj] = 0
+				self.term_n2[jj] = 0
+				self.term_n[jj] = 0
+
 			if ii==0:
 				# Torque-free ends
 				# F_bending[:,ii] = kappa_array_view[ii+1]*(1/dr[ii])*(dr_hat[:, ii]*cosAngle[ii+1] - dr_hat[:, ii+1])
 				for jj in range(dim):
 					self.temp_vect[jj] = dr_hat[jj, ii]*cosAngle[ii+1]  - dr_hat[jj, ii+1]
 					F_bending[jj,ii] = self.kappa_array_view[ii+1]*(1/dr[ii])*(self.temp_vect[jj])
-
 			elif ii == Np-1:
 				# Torque-free ends
 				for jj in range(dim):
 					self.temp_vect[jj] = dr_hat[jj, ii-2] - cosAngle[ii - 1]*dr_hat[jj, ii-1]
 					F_bending[jj,ii] = self.kappa_array_view[ii-1]*(1/dr[ii-1])*(self.temp_vect[jj])
-		
 			else:
-				
 				if(ii!=1):
 					for jj in range(dim):
 						self.temp_vect[jj] = dr_hat[jj, ii-2] - dr_hat[jj, ii-1]*cosAngle[ii-1]
@@ -137,10 +136,7 @@ cdef class filament_operations:
 					F_bending[jj,ii] = self.term_n_minus[jj] + self.term_n[jj] + self.term_n_plus[jj]
 				
 		# return
-	# 	# # Now reshape the forces array
-	# 	# self.F_bending_array = self.reshapeToArray(self.F_bending)  
- 
-	
+	 
 	cpdef connection_forces(self, double [:] dr, double [:,:] dr_hat, double [:] F_conn):
 	
 		cdef int Np = self.Np, i, j, xx = 2*Np

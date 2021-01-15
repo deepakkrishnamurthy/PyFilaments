@@ -9,7 +9,7 @@ from sys import platform
 bc = {0:'free', -1:'free'}
 
 dim = 3
-Np = 32
+Np = 128
 fil = activeFilament(dim = dim, Np = Np, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 0, bc = bc)
 
 # fil.plotFilament(r = fil.r0)
@@ -80,36 +80,47 @@ print('Mismatch in connection forces computation (Python vs Cython mod): {}'.for
 
 print('Mismatch in connection forces computation (Python mod vs Cython): {}'.format(np.sum((F_conn_modified - F_conn_cython)**2)))
 
-# # Testing the Tangent vectors function
+# Testing the Tangent vectors function
+fil.getTangentVectors()
+tangent_vectors_python = fil.t_hat
 
-# fil.filament.get_tangent_vectors(fil.dr_hat, fil.t_hat)
+fil.getTangentVectors_mod()
+tangent_vectors_python_mod = fil.t_hat
 
-# tangent_vectors_cython = fil.t_hat
+fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
+colors = ['r', 'g', 'b']
+for ii in range(dim):
+	ax[ii].plot(tangent_vectors_python[ii,:], marker = 's', color = 'g', label = 'python')
+	# ax[ii].plot(tangent_vectors_cython[ii,:], marker = 'o', alpha = 0.4, color = 'r', label = 'cython')
+	ax[ii].plot(tangent_vectors_python_mod[ii,:], marker = 'd', alpha = 0.4, color = 'b', label = 'cython')
+	ax[ii].set_ylabel('t_hat_{}'.format(ii))
+	ax[ii].set_xlabel('Particle number')
 
-# fil.getTangentVectors()
+plt.show()
 
-# plt.figure()
-# plt.plot(fil.t_hat, 'gs')
-# plt.plot(tangent_vectors_cython, 'ro', alpha = 0.5)
-# plt.title('Tangent vectors')
-# plt.show()
-
-# print('Error in tangent vector computation: {}'.format(np.sum(fil.t_hat - tangent_vectors_cython)))
+print('Mismatch in tangent vector computation: {}'.format(np.sum((tangent_vectors_python - tangent_vectors_python_mod)**2)))
 
 
-# # Testing bending forces function
-# fil.filament.bending_forces(fil.dr, fil.dr_hat, fil.cosAngle, fil.F_bending)
+# Testing bending forces function
+fil.filament.bending_forces(fil.dr, fil.dr_hat, fil.cosAngle, fil.F_bending)
 
-# F_bending_cython = fil.F_bending
+F_bending_cython = fil.F_bending
 
-# fil.BendingForces()
+fil.BendingForces()
+F_bending_python = fil.F_bending
 
-# plt.figure()
-# plt.plot(fil.t_hat, 'gs')
-# plt.plot(tangent_vectors_cython, 'ro', alpha = 0.5)
-# plt.title('Bending forces')
-# plt.show()
-# print('Error in bending forces computation: {}'.format(np.sum(fil.F_bending - F_bending_cython)))
+
+fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
+colors = ['r', 'g', 'b']
+for ii in range(dim):
+	ax[ii].plot(F_bending_python[ii,:], marker = 's', color = 'g', label = 'python')
+	ax[ii].plot(F_bending_cython[ii,:], marker = 'o', alpha = 0.4, color = 'r', label = 'cython')
+	ax[ii].set_ylabel('bending forces_{}'.format(ii))
+	ax[ii].set_xlabel('Particle number')
+
+plt.show()
+
+print('Mismatch in bending forces computation: {}'.format(np.sum((F_bending_python - F_bending_cython)**2)))
 
 
 
