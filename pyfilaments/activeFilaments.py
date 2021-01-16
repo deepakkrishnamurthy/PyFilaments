@@ -320,8 +320,83 @@ class activeFilament:
 			
 		# Now reshape the forces array
 		# @@@ Move to calling function. Keep the core function simple.
- 
 	
+	def BendingForces_mod(self):
+
+		self.F_bending = np.zeros((self.dim,self.Np))
+		
+		xx = 2*self.Np
+
+		for ii in range(self.Np):
+			term_1_x, term_1_y, term_1_z = 0,0,0
+			term_2_x, term_2_y, term_2_z = 0,0,0
+			term_3_x, term_3_y, term_3_z = 0,0,0
+
+			# End points
+			if(ii==0):
+				prefactor_3 = self.kappa_array[ii+1]/self.dr[ii]
+
+				term_3_x = prefactor_3*(self.dr_hat[0, ii]*self.cosAngle[ii+1] - self.dr_hat[0, ii+1])
+				term_3_y = prefactor_3*(self.dr_hat[1, ii]*self.cosAngle[ii+1] - self.dr_hat[1, ii+1])
+				term_3_z = prefactor_3*(self.dr_hat[2, ii]*self.cosAngle[ii+1] - self.dr_hat[2, ii+1])
+
+			elif(ii==1):
+
+				prefactor_2_1 = self.kappa_array[ii]*(1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])
+				prefactor_2_2 = self.kappa_array[ii]*(1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])
+				prefactor_3 = self.kappa_array[ii+1]/self.dr[ii]
+
+				term_2_x = prefactor_2_1*self.dr_hat[0, ii] - prefactor_2_2*self.dr_hat[0, ii-1]
+				term_2_y = prefactor_2_1*self.dr_hat[1, ii] - prefactor_2_2*self.dr_hat[1, ii-1]
+				term_2_z = prefactor_2_1*self.dr_hat[2, ii] - prefactor_2_2*self.dr_hat[2, ii-1] 
+
+				term_3_x = prefactor_3*(self.dr_hat[0, ii]*self.cosAngle[ii+1] - self.dr_hat[0, ii+1])
+				term_3_y = prefactor_3*(self.dr_hat[1, ii]*self.cosAngle[ii+1] - self.dr_hat[1, ii+1])
+				term_3_z = prefactor_3*(self.dr_hat[2, ii]*self.cosAngle[ii+1] - self.dr_hat[2, ii+1])
+
+			elif(ii==self.Np-2):
+
+				prefactor_1 = self.kappa_array[ii-1]/(self.dr[ii-1])
+				prefactor_2_1 = self.kappa_array[ii]*(1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])
+				prefactor_2_2 = self.kappa_array[ii]*(1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])
+
+				term_1_x = prefactor_1*(self.dr_hat[0, ii-2] - self.dr_hat[0, ii-1]*self.cosAngle[ii-1])
+				term_1_y = prefactor_1*(self.dr_hat[1, ii-2] - self.dr_hat[1, ii-1]*self.cosAngle[ii-1])
+				term_1_z = prefactor_1*(self.dr_hat[2, ii-2] - self.dr_hat[2, ii-1]*self.cosAngle[ii-1])
+
+				term_2_x = prefactor_2_1*self.dr_hat[0, ii] - prefactor_2_2*self.dr_hat[0, ii-1]
+				term_2_y = prefactor_2_1*self.dr_hat[1, ii] - prefactor_2_2*self.dr_hat[1, ii-1]
+				term_2_z = prefactor_2_1*self.dr_hat[2, ii] - prefactor_2_2*self.dr_hat[2, ii-1] 
+
+			elif(ii==self.Np-1):
+				prefactor_1 = self.kappa_array[ii-1]/(self.dr[ii-1])
+				term_1_x = prefactor_1*(self.dr_hat[0, ii-2] - self.dr_hat[0, ii-1]*self.cosAngle[ii-1])
+				term_1_y = prefactor_1*(self.dr_hat[1, ii-2] - self.dr_hat[1, ii-1]*self.cosAngle[ii-1])
+				term_1_z = prefactor_1*(self.dr_hat[2, ii-2] - self.dr_hat[2, ii-1]*self.cosAngle[ii-1])
+			else:
+				# Non-endpoints 
+				prefactor_1 = self.kappa_array[ii-1]/(self.dr[ii-1])
+				prefactor_2_1 = self.kappa_array[ii]*(1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])
+				prefactor_2_2 = self.kappa_array[ii]*(1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])
+				prefactor_3 = self.kappa_array[ii+1]/self.dr[ii]
+
+				term_1_x = prefactor_1*(self.dr_hat[0, ii-2] - self.dr_hat[0, ii-1]*self.cosAngle[ii-1])
+				term_1_y = prefactor_1*(self.dr_hat[1, ii-2] - self.dr_hat[1, ii-1]*self.cosAngle[ii-1])
+				term_1_z = prefactor_1*(self.dr_hat[2, ii-2] - self.dr_hat[2, ii-1]*self.cosAngle[ii-1])
+
+				term_2_x = prefactor_2_1*self.dr_hat[0, ii] - prefactor_2_2*self.dr_hat[0, ii-1]
+				term_2_y = prefactor_2_1*self.dr_hat[1, ii] - prefactor_2_2*self.dr_hat[1, ii-1]
+				term_2_z = prefactor_2_1*self.dr_hat[2, ii] - prefactor_2_2*self.dr_hat[2, ii-1] 
+
+				term_3_x = prefactor_3*(self.dr_hat[0, ii]*self.cosAngle[ii+1] - self.dr_hat[0, ii+1])
+				term_3_y = prefactor_3*(self.dr_hat[1, ii]*self.cosAngle[ii+1] - self.dr_hat[1, ii+1])
+				term_3_z = prefactor_3*(self.dr_hat[2, ii]*self.cosAngle[ii+1] - self.dr_hat[2, ii+1])
+
+			
+			self.F_bending[0, ii] = term_1_x + term_2_x + term_3_x
+			self.F_bending[1, ii] = term_1_y + term_2_y + term_3_y
+			self.F_bending[2, ii] = term_1_z + term_2_z + term_3_z
+
 	def ConnectionForces(self):
 	
 #        def int Np = self.Np, i, j, xx = 2*Np
@@ -684,7 +759,7 @@ class activeFilament:
 		
 		# Avoid a unecessary function call.
 		# self.internal_forces()
- 		# Internal forces
+		# Internal forces
 		self.F = self.F*0
 		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
 		self.ConnectionForces()
@@ -726,7 +801,7 @@ class activeFilament:
 		self.setStresslet()
 		self.setPotDipole()
 		
- 		# Internal forces
+		# Internal forces
 		self.F = self.F*0
 		self.F_conn = self.F_conn*0
 		self.F_bending = self.F_bending*0
