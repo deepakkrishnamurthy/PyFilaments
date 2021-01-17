@@ -6,6 +6,17 @@ import matplotlib.pyplot as plt
 from sys import platform
 
 
+# Check which platform
+if platform == "linux" or platform == "linux2":
+	print("linux system")
+	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	
+
+elif platform == 'darwin':
+	print("OSX system")
+	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
+
+
 activity_timescale = 10
 activityFreq = 1.0/activity_timescale
 
@@ -32,34 +43,15 @@ plt.figure()
 plt.plot(t_array, activity_profile)
 plt.show()
 
+
 bc = {0:'free', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 0, bc = bc)
+fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 4, k = 100, S0 = 0, D0 = 0, bc = bc)
 
 fil.plotFilament(r = fil.r0)
 
-
-
-
-# Check which platform
-if platform == "linux" or platform == "linux2":
-	print("linux system")
-	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
-	
-
-elif platform == 'darwin':
-	print("OSX system")
-	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
-	
-
-# elif platform == "win32":
-# 	print("Windows")
-# 	with open(os.devnull, 'w') as fnull:
-# 		exit_code = subprocess.call([compiler, '-Xpreprocessor', '-fopenmp', '-lomp', filename], stdout=fnull, stderr=fnull)
-
-
 fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
-			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'arc'})
+			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'})
 
 # finalPos = fil.R[-1,:]
 

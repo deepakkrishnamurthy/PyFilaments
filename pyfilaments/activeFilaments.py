@@ -109,7 +109,7 @@ class activeFilament:
 		self.cpu_time = 0
 
 		# Initialize the filament
-		self.shape = 'arc'
+		self.shape = 'line'
 		self.initialize_filamentShape()
 
 		self.filament = filament.filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
@@ -496,7 +496,7 @@ class activeFilament:
 			# Initial particle positions and orientations
 			for ii in range(self.Np):
 				# The filament is initially linear along x-axis with the first particle at origin
-				self.r0[ii] = ii*(0.5*self.b0)
+				self.r0[ii] = ii*(1.5*self.b0)
 				
 			# Add random fluctuations in the other two directions
 			# y-axis
