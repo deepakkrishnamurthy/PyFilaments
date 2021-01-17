@@ -12,7 +12,7 @@ activityFreq = 1.0/activity_timescale
 print('Activity frequency: {}'.format(activityFreq))
 
 # Total simulation time
-Tf = activity_timescale*100
+Tf = activity_timescale*1000
 
 print('Total simulation time: {}'.format(Tf))
 
@@ -34,7 +34,7 @@ plt.show()
 
 bc = {0:'free', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 0, bc = bc)
+fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 0, bc = bc)
 
 fil.plotFilament(r = fil.r0)
 

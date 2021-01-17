@@ -24,7 +24,7 @@ cdef class filament_operations:
 		
 		cdef int ii, jj, Np = self.Np, dim = self.dim
 
-		for ii in prange(Np, nogil = True):
+		for ii in range(Np):
 			cosAngle[ii] = 0
 			if(ii==0):
 				cosAngle[ii] = 0
@@ -45,7 +45,7 @@ cdef class filament_operations:
 		cdef double term_1_x, term_1_y, term_1_z, term_2_x, term_2_y, term_2_z, term_3_x, term_3_y, term_3_z
 		cdef double	prefactor_1, prefactor_2_1, prefactor_2_2, prefactor_3
 
-		for ii in prange(Np, nogil = True):
+		for ii in range(Np):
 			term_1_x, term_1_y, term_1_z = 0,0,0
 			term_2_x, term_2_y, term_2_z = 0,0,0
 			term_3_x, term_3_y, term_3_z = 0,0,0
@@ -120,7 +120,7 @@ cdef class filament_operations:
 		cdef int Np = self.Np, i, j, xx = 2*Np
 		cdef double fx_1, fy_1, fz_1, fx_2, fy_2, fz_2, fac_1, fac_2, k = self.k, b0 = self.b0
 		
-		for i in prange(Np, nogil = True):
+		for i in range(Np):
 			fx_1 = 0.0; fy_1 = 0.0; fz_1 = 0.0; fx_2 = 0.0; fy_2 = 0.0; fz_2 = 0.0;
 
 			if(i==0):

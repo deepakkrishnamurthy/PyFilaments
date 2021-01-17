@@ -1,18 +1,15 @@
 from pyfilaments.activeFilaments import activeFilament
 import numpy as np
-from scipy import signal
-from scipy import interpolate
 import matplotlib.pyplot as plt 
-from sys import platform
 
 
 bc = {0:'free', -1:'free'}
 
 dim = 3
-Np = 128
+Np = 32
 
 
-N_time = 1000
+N_time = 1
 
 error_bond_angles = []
 error_tangent_vectors = []
@@ -22,9 +19,13 @@ error_bending_forces = []
 for time_point in range(N_time):
 
 	fil = activeFilament(dim = dim, Np = Np, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 0, bc = bc)
-	# fil.plotFilament(r = fil.r0)
+	fil.plotFilament(r = fil.r)
+
 
 	fil.getSeparationVector()
+	fil.getTangentVectors()
+	fil.t_hat_array = fil.reshapeToArray(fil.t_hat)
+	fil.p = fil.t_hat_array
 
 	# Testing the Bond Angles Cython function
 	fil.filament.get_bond_angles(fil.dr_hat, fil.cosAngle)
@@ -43,8 +44,29 @@ for time_point in range(N_time):
 
 	error_bond_angles.append(np.sum((fil.cosAngle - cython_angles)**2))
 
-	# Testing the connection forces function
+	# Testing the tangent vectors function
 
+	# fil.filament.get_tangent_vectors(fil.dr_hat, fil.t_hat)
+	# t_hat_cython = fil.t_hat
+
+	# fil.getTangentVectors()
+	# t_hat_python = fil.t_hat
+
+	# fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
+	# colors = ['r', 'g', 'b']
+	# for ii in range(dim):
+	# 	ax[ii].plot(t_hat_python[ii,:], marker = 's', color = 'g')
+	# 	ax[ii].plot(t_hat_cython[ii,:], marker = 'o', alpha = 0.5, color = 'r')
+	# 	ax[ii].set_ylabel('t_hat_{}'.format(ii))
+	# 	ax[ii].set_xlabel('Particle number')
+	# plt.title('Tangent vectors')
+	# plt.show()
+
+	# print('Mismatch in tangent vectors computation (Python vs Cython mod): {}'.format(np.sum((t_hat_python - t_hat_cython)**2)))
+
+
+
+	# Testing the connection forces function
 	# Compute using Cython function
 	fil.filament.connection_forces(fil.dr, fil.dr_hat, fil.F_conn) 
 
@@ -53,53 +75,27 @@ for time_point in range(N_time):
 	# Compute using Python function
 	fil.ConnectionForces()
 
-	# Compute using different (simpler) algorithm
-	F_conn_modified = fil.ConnectionForces_mod()
 
 	# Check that internal connection forces should sum to zero
 	for ii in range(dim):
 		print('{} component of force summation (python): {}'.format(ii, np.sum(fil.F_conn[ii*Np:(ii+1)*Np])))
-		print('{} component of force summation (python-modified algo): {}'.format(ii, np.sum(F_conn_modified[ii*Np:(ii+1)*Np])))
 		print('{} component of force summation (cython): {}'.format(ii, np.sum(F_conn_cython[ii*Np:(ii+1)*Np])))
 		
 
-	# fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
-	# colors = ['r', 'g', 'b']
-	# for ii in range(dim):
-	# 	ax[ii].plot(fil.F_conn[ii*Np:(ii+1)*Np], marker = 's', color = 'g')
-	# 	ax[ii].plot(F_conn_modified[ii*Np:(ii+1)*Np], marker = 'd', alpha = 0.4, color = 'b')
-	# 	ax[ii].plot(F_conn_cython[ii*Np:(ii+1)*Np], marker = 'o', alpha = 0.5, color = 'r')
-	# 	ax[ii].set_ylabel('F_{}'.format(ii))
-	# 	ax[ii].set_xlabel('Particle number')
-	# plt.title('Connection Forces')
-	# plt.show(block = False)
+	fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
+	colors = ['r', 'g', 'b']
+	for ii in range(dim):
+		ax[ii].plot(fil.F_conn[ii*Np:(ii+1)*Np], marker = 's', color = 'g')
+		ax[ii].plot(F_conn_cython[ii*Np:(ii+1)*Np], marker = 'o', alpha = 0.5, color = 'r')
+		ax[ii].set_ylabel('F_{}'.format(ii))
+		ax[ii].set_xlabel('Particle number')
+	plt.title('Connection Forces')
+	plt.show()
 
 	print('Mismatch in connection forces computation (Python vs Cython mod): {}'.format(np.sum((fil.F_conn - F_conn_cython)**2)))
 
-	print('Mismatch in connection forces computation (Python mod vs Cython): {}'.format(np.sum((F_conn_modified - F_conn_cython)**2)))
 
-	error_connection_forces.append(np.sum((F_conn_modified - F_conn_cython)**2))
-
-	# Testing the Tangent vectors function
-	fil.getTangentVectors()
-	tangent_vectors_python = fil.t_hat
-
-	fil.getTangentVectors_mod()
-	tangent_vectors_python_mod = fil.t_hat
-
-	# fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
-	# colors = ['r', 'g', 'b']
-	# for ii in range(dim):
-	# 	ax[ii].plot(tangent_vectors_python[ii,:], marker = 's', color = 'g', label = 'python')
-	# 	# ax[ii].plot(tangent_vectors_cython[ii,:], marker = 'o', alpha = 0.4, color = 'r', label = 'cython')
-	# 	ax[ii].plot(tangent_vectors_python_mod[ii,:], marker = 'd', alpha = 0.4, color = 'b', label = 'cython')
-	# 	ax[ii].set_ylabel('t_hat_{}'.format(ii))
-	# 	ax[ii].set_xlabel('Particle number')
-
-	# plt.show()
-
-	print('Mismatch in tangent vector computation: {}'.format(np.sum((tangent_vectors_python - tangent_vectors_python_mod)**2)))
-	error_tangent_vectors.append(np.sum((tangent_vectors_python - tangent_vectors_python_mod)**2))
+	error_connection_forces.append(np.sum((fil.F_conn - F_conn_cython)**2))
 
 	# Testing bending forces function
 	fil.filament.bending_forces(fil.dr, fil.dr_hat, fil.cosAngle, fil.F_bending)
@@ -109,52 +105,47 @@ for time_point in range(N_time):
 	fil.BendingForces()
 	F_bending_python = fil.F_bending
 
-	fil.BendingForces_mod()
-	F_bending_python_mod = fil.F_bending
 
+	fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
+	colors = ['r', 'g', 'b']
+	for ii in range(dim):
+		ax[ii].plot(F_bending_python[ii,:], marker = 's', color = 'g', label = 'python')
+		ax[ii].plot(F_bending_cython[ii,:], marker = 'o', alpha = 0.4, color = 'r', label = 'cython')
 
-	# fig, ax = plt.subplots(nrows = 1, ncols = 3, figsize = (12,4))
-	# colors = ['r', 'g', 'b']
-	# for ii in range(dim):
-	# 	ax[ii].plot(F_bending_python[ii,:], marker = 's', color = 'g', label = 'python')
-	# 	ax[ii].plot(F_bending_cython[ii,:], marker = 'o', alpha = 0.4, color = 'r', label = 'cython')
-	# 	ax[ii].plot(F_bending_python_mod[ii,:], marker = 'd', color = 'b', alpha = 0.4, label = 'python-mod')
+		ax[ii].set_ylabel('bending forces_{}'.format(ii))
+		ax[ii].set_xlabel('Particle number')
 
-	# 	ax[ii].set_ylabel('bending forces_{}'.format(ii))
-	# 	ax[ii].set_xlabel('Particle number')
-
-	# plt.show()
+	plt.show()
 
 	print('Mismatch in bending forces computation: {}'.format(np.sum((F_bending_cython - F_bending_python)**2)))
 
 	# Check that internal connection forces should sum to zero
 	for ii in range(dim):
 		print('{} component of bending force summation (python): {}'.format(ii, np.sum(F_bending_python[ii,:])))
-		print('{} component of bending force summation (python-modified algo): {}'.format(ii, np.sum(F_bending_python_mod[ii,:])))
 		print('{} component of bending force summation (cython): {}'.format(ii, np.sum(F_bending_cython[ii,:])))
 		
 	error_bending_forces.append(np.sum((F_bending_cython - F_bending_python)**2))
 
 
 
-plt.figure()
-plt.plot(error_bond_angles)
-plt.title('Bond angles error')
-plt.show(block = False)
+# plt.figure()
+# plt.plot(error_bond_angles)
+# plt.title('Bond angles error')
+# plt.show(block = False)
 
-plt.figure()
-plt.plot(error_tangent_vectors)
-plt.title('Tangent vectors error')
-plt.show(block = False)
+# plt.figure()
+# plt.plot(error_tangent_vectors)
+# plt.title('Tangent vectors error')
+# plt.show(block = False)
 
-plt.figure()
-plt.plot(error_connection_forces)
-plt.title('Connection forces error')
-plt.show(block = False)
+# plt.figure()
+# plt.plot(error_connection_forces)
+# plt.title('Connection forces error')
+# plt.show(block = False)
 
-plt.figure()
-plt.plot(error_bending_forces)
-plt.title('Bending forces error')
-plt.show()
+# plt.figure()
+# plt.plot(error_bending_forces)
+# plt.title('Bending forces error')
+# plt.show()
 
 
