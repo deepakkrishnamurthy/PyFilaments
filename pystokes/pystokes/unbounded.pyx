@@ -19,7 +19,7 @@ cdef class Rbm:
         cdef double dx, dy, dz, idr, idr2, vx, vy, vz, vv1, vv2, aa = (2.0*self.a*self.a)/3.0 
         cdef double mu = 1.0/(6*PI*self.eta*self.a), mu1 = mu*self.a*0.75       
         
-        for i in prange(Np, nogil=True):
+        for i in range(Np):
             vx=0; vy=0;   vz=0;
             for j in range(Np):
                 if i != j:
@@ -72,7 +72,7 @@ cdef class Rbm:
         cdef double vx, vy, vz, 
         cdef double sxx, sxy, sxz, syz, syy, srr, srx, sry, srz, mus = (28.0*self.a**3)/24 
  
-        for i in prange(Np, nogil=True):
+        for i in range(Np):
             vx=0; vy=0;   vz=0;
             for j in range(Np):
                 if i != j:
@@ -110,7 +110,7 @@ cdef class Rbm:
         cdef int Np = self.Np, i, j, xx=2*Np  
         cdef double dx, dy, dz, idr, idr3, Ddotidr, vx, vy, vz, mud = 3.0*self.a*self.a*self.a/5, mud1 = -1.0*(self.a**5)/10
  
-        for i in prange(Np, nogil=True):
+        for i in range(Np):
             vx=0; vy=0;   vz=0; 
             for j in range(Np):
                 if i != j: 

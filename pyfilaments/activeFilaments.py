@@ -17,7 +17,7 @@ using the PyStokes library (R Singh et al ...).
 from __future__ import division
 import pystokes
 import pyforces
-import filament
+import filament.filament as filament
 import numpy as np
 import odespy
 import os
@@ -34,7 +34,7 @@ import time
 import h5py
 
 from pyfilaments.utils import printProgressBar
-from pyfilaments.profiler import profile   # Code profiling tools
+# from pyfilaments.profiler import profile   # Code profiling tools
 import imp
 imp.reload(filament)
 
@@ -112,7 +112,7 @@ class activeFilament:
 		self.shape = 'line'
 		self.initialize_filamentShape()
 
-		self.filament = filament.filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
+		self.filament = filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
 
 	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
@@ -568,7 +568,7 @@ class activeFilament:
 
 			if value=='free' or value == 'fixed':
 				# The bending stiffness is set to zero only for 'free' or 'fixed' boundary conditions
-				print('Assigning {} BC to filament end {}'.format(value, key))
+				# print('Assigning {} BC to filament end {}'.format(value, key))
 				self.kappa_array[key] = 0 
 			elif value == 'clamped':
 				# @@@ Test: Clamped BC, the bending stiffness for the first link is order of magnitude higher to impose tangent condition at the filament base.
@@ -578,9 +578,9 @@ class activeFilament:
 					self.kappa_array[-2] = self.clamping_bc_scalefactor*self.kappa_hat
 
 
-		print(self.kappa_array)
+		# print(self.kappa_array)
 
-		self.filament = filament.filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
+		self.filament = filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
 
 
 			  
@@ -863,7 +863,6 @@ class activeFilament:
 
 
 		self.initialize_filament()
-
 		self.setParticleColors()
 
 		# Plot the initial filament shape
@@ -891,11 +890,8 @@ class activeFilament:
 							int(self.activity_timescale), self.scale_factor, sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)
-
-
 		copy_number = 0
 		self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
-
 
 		if(save):
 			if(not os.path.exists(self.saveFolder)):
@@ -906,7 +902,6 @@ class activeFilament:
 				self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
 
 		#---------------------------------------------------------------------------------
-
 		# Set the activity profile
 		self.activity_profile = activity_profile
 
@@ -914,7 +909,6 @@ class activeFilament:
 		if(self.sim_type == 'sedimentation'):
 			''' Simulates a filament where there is a net body force on each particle making up the filament.
 			'''
-
 			Np = self.Np
 			xx = 2*Np 
 
@@ -925,18 +919,17 @@ class activeFilament:
 
 			self.S_mag[:] = 0
 			self.D_mag[:] = 0
-
-
 		#---------------------------------------------------------------------------------
 
 		def rhs0(r, t):
-			# Pass the current time from the ode-solver, 
-			# so as to implement time-varying conditions
+			''' 
+			Pass the current time from the ode-solver, 
+			so as to implement time-varying conditions
+			
+			'''
 			# self.rhs_python(r, t)
 			self.rhs_cython(r, t)
-
 			printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
-
 			return self.drdt
 
 		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
@@ -956,10 +949,6 @@ class activeFilament:
 			else:
 				return False
 
-
-
-
-		
 		if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
 			print('Running the filament simulation ....')
 
@@ -971,7 +960,6 @@ class activeFilament:
 			T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
 			
 			solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6) # initialize the odespy solver
-			
 			solver.set_initial_condition(self.r0)  # Initial conditions
 			# Solve!
 			if(self.sim_type == 'sedimentation'):
@@ -986,22 +974,6 @@ class activeFilament:
 				
 		else:
 			self.load_data(os.path.join(self.saveFolder, self.saveFile))
-
-						
-	# def loadData(self, File):
-	# 	print('Loading Simulation from disk ....')
-
-	# 	with open(File, 'rb') as f:
-			
-	# 		self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
-	
-	# def saveData(self):
-		
-	# 	if(self.R is not None):
-			
-			
-	# 		with open(os.path.join(self.saveFolder, self.saveFile), 'wb') as f:
-	# 			pickle.dump((self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time), f)
 
 	def load_data(self, file = None):
 
@@ -1100,12 +1072,6 @@ class activeFilament:
 			
 					self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
 
-
-
-
-
-
-
 	# Implement a save module based on HDF5 format:
 	def save_data(self):
 
@@ -1158,21 +1124,6 @@ class activeFilament:
 	########################################################################################################
 	# Derived quantities
 	########################################################################################################
-	def filament_com(self, r):
-
-		r_com = np.zeros(self.dim)
-
-		for ii in range(self.dim):
-
-			r_com[ii] = np.nanmean(r[ii*self.Np: (ii+1)*self.Np-1])
-
-		# r_com = [np.nanmean(r[:self.Np-1]), 
-		# np.nanmean(r[self.Np:2*self.Np-1]), np.nanmean(r[2*self.Np:3*self.Np-1]) ] 
-
-		return r_com
-
-
-
 	def euclidean_distance(self, r1, r2):
 		'''
 			Calculate the Euclidean distance between two filament shapes

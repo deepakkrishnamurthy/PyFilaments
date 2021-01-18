@@ -15,7 +15,7 @@ cdef class Forces:
         cdef int Np = self.Np, i, j, xx = 2*Np
         cdef double dx, dy, dz, dr2, idr, rminbyr, fac, fx, fy, fz
 
-        for i in prange(Np,nogil=True):
+        for i in range(Np):
             fx = 0.0; fy = 0.0; fz = 0.0;
             for j in range(Np):
                 dx = r[i   ] - r[j   ]
