@@ -69,7 +69,18 @@ class analysisTools(activeFilament):
 
 		self.Nt, *rest  = np.shape(self.R)
 			
+	def filament_com(self, r):
 
+		r_com = np.zeros(self.dim)
+
+		for ii in range(self.dim):
+
+			r_com[ii] = np.nanmean(r[ii*self.Np: (ii+1)*self.Np-1])
+
+		# r_com = [np.nanmean(r[:self.Np-1]), 
+		# np.nanmean(r[self.Np:2*self.Np-1]), np.nanmean(r[2*self.Np:3*self.Np-1]) ] 
+
+		return r_com
 
 	def compute_axial_strain(self, R = None):
 

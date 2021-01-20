@@ -7,21 +7,22 @@ from scipy import interpolate
 import matplotlib.pyplot as plt 
 
 from sys import platform
-
+from joblib import Parallel, delayed
+import multiprocessing
 
 # Filament parameters
 
-Np = 33            	# number of particles
+Np = 48            	# number of particles
 a = 1				# radius
 b0 = 2*a 			# equilibrium bond length
-k_array = [2000]				# Spring stiffness
+k_array = [10000, 20000, 50000]				# Spring stiffness
 mu = 1.0/6			# Fluid viscosity
 
 
 
 
 # Total simulation time
-Tf = 1000
+Tf = 10000
 # No:of time points saved
 Npts = 500
 
@@ -31,7 +32,8 @@ bc = {0:'free', -1:'free'}
 F_mag = -1			# Force on each particle. 
 
 
-for k in k_array:
+def run_parametric_sweep(k):
+	
 	def elasto_gravitational_number():
 
 		eg_number = k*a**2/(4*Np**3*abs(F_mag)*b0)
@@ -45,16 +47,13 @@ for k in k_array:
 
 	print('Elasto-gravitational number (beta): {}'.format(elasto_gravitational_number()))
 	print('Sedimentation time-scale: {}'.format(tau_sedimentation))
-
 	print('Elasto-gravitational length scale: {}'.format(elasto_gravitational_length_scale))
-
 	print('Spacing between colloids: {}'.format(b0))
 
 
 	filament = activeFilament(dim = 3, Np = Np, radius = a, b0 = b0, k = k, mu = mu,  F0 = F_mag, S0 = 0, D0 = 0, bc = bc)
 
 	filament.plotFilament(r = filament.r0)
-
 
 	# Check which platform to define the OpenMP flags
 	if platform == "linux" or platform == "linux2":
@@ -67,3 +66,6 @@ for k in k_array:
 		root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
 
 	filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = root_path)
+
+num_cores = multiprocessing.cpu_count()
+results = Parallel(n_jobs=num_cores)(delayed(run_parametric_sweep)(parameter) for parameter in k_array)

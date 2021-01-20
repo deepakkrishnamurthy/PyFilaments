@@ -41,16 +41,29 @@ rcParams.update({'font.size': 12})
 # file_3 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-25/SimResults_Np_33_Shape_line_k_10000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
 
 # N = 64 filaments
-file_1 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_500_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
-file_2 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_1000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
-file_3 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_2000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
-file_4 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_5000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_1 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_500_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_2 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_1000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_3 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_2000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_4 = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2020-06-24/SimResults_Np_64_Shape_line_k_5000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
 
+
+# file_1 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-18/SimResults_Np_64_Shape_line_k_1000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_2 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-18/SimResults_Np_64_Shape_line_k_2000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_3 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-18/SimResults_Np_64_Shape_line_k_5000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_4 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-18/SimResults_Np_64_Shape_line_k_10000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+
+# file_1 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-19/SimResults_Np_33_Shape_line_k_5000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_2 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-19/SimResults_Np_33_Shape_line_k_10000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+# file_3 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-19/SimResults_Np_33_Shape_line_k_20000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+
+file_1 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-19/SimResults_Np_48_Shape_line_k_10000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+file_2 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-19/SimResults_Np_48_Shape_line_k_20000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
+file_3 = '/home/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults/2021-01-19/SimResults_Np_48_Shape_line_k_50000_b0_2_F_-1_S_0_D_0_scalefactor_0_1/SimResults_00.hdf5'
 
 symbols = ['o', 's', '*', 'd']
 colors = ['r', 'g', 'b', 'm']
 
-files = [file_1, file_2, file_3, file_4]
+files = [file_1, file_2, file_3]
 
 print(len(files))
 
@@ -130,7 +143,7 @@ for index, file in enumerate(files):
 	print(np.min(y_filament))
 	print(np.nanmean(x_filament))
 
-	theory_results = '/Users/deepak/Dropbox/LacryModeling/AnalysisResults/BenchmarkingSimulations/Xu_and_Nadim_Figure1.csv'
+	theory_results = '/home/deepak/Dropbox/LacryModeling/AnalysisResults/BenchmarkingSimulations/Xu_and_Nadim_Figure1.csv'
 
 	df = pd.read_csv(theory_results)
 
