@@ -4,6 +4,8 @@ from scipy import signal
 from scipy import interpolate
 import matplotlib.pyplot as plt 
 from sys import platform
+import pandas as pd
+import time
 
 
 # Check which platform
@@ -20,51 +22,42 @@ elif platform == 'darwin':
 activity_timescale = 10
 activityFreq = 1.0/activity_timescale
 
-print('Activity frequency: {}'.format(activityFreq))
+# Load simulation parameters file
+
+
+sim_parameters = pd.read_csv('simulation_parameters.csv')
 
 # Total simulation time
 Tf = activity_timescale*100
 
+
+activity_timescale = sim_parameters['activity_timescale'][ii]
+
+# activity_timescale = 1000
+activityFreq = 1.0/activity_timescale
+
+print('Activity frequency: {}'.format(activityFreq))
+
+# Total simulation time
+Tf = activity_timescale*sim_parameters['sim_time_scalefactor'][ii]
+
 print('Total simulation time: {}'.format(Tf))
 
 # No:of time points saved
-Npts = int(Tf)
+Npts = int(Tf/10)
 
 t_array = np.linspace(0, Tf+10, Npts)
-
-print(t_array)
-
-activity_profile = -signal.square(2*np.pi*activityFreq*t_array)
-
-activity_Function =  interpolate.interp1d(t_array, activity_profile)
-
-plt.style.use('dark_background')
-plt.figure()
-plt.plot(t_array, activity_profile)
-plt.show()
 
 
 bc = {0:'free', -1:'free'}
 
 fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 4, k = 100, S0 = 0, D0 = 0, bc = bc)
 
+
 fil.plotFilament(r = fil.r0)
 
+
 fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
-			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'})
+  activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'})
 
-# finalPos = fil.R[-1,:]
 
-# fil.plotSimResult()
-
-# fil.plotFilament(r = finalPos)
-
-# fil.plotFlowFields(save = False)
-
-# fil.plotFilament(r = finalPos)
-
-# fil.plotFilamentStrain()
-
-# fil.resultViewer()
-
-# fil.animateResult()
