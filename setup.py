@@ -3,6 +3,7 @@ import os, sys, os.path, tempfile, subprocess, shutil
 from sys import platform
 from distutils.core import setup
 # from setuptools import setup
+import setuptools
 from Cython.Build import cythonize
 from distutils.extension import Extension
 import Cython.Compiler.Options
@@ -102,8 +103,10 @@ setup(
 		extra_link_args=omp_args 
 		)]),
 	libraries=[],
+	# packages = setuptools.find_packages(),
 	packages=['pyfilaments', 'pyfilaments/filament'],
-	package_data={'pyfilaments/filament': ['*.pxd']}
+	package_data={'pyfilaments/filament': ['*.pxd']},
+	include_package_data=True
 )
 
 

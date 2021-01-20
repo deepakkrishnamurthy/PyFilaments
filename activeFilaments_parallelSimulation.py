@@ -23,7 +23,7 @@ activityFreq = 1.0/activity_timescale
 
 print('Activity frequency: {}'.format(activityFreq))
 # Total simulation time
-Tf = activity_timescale*500
+Tf = activity_timescale*10
 print('Total simulation time: {}'.format(Tf))
 # No:of time points saved
 Npts = int(Tf)
@@ -42,13 +42,13 @@ bc = {0:'clamped', -1:'free'}
 
 def run_parametric_simulation(parameter):
 
-	fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
+	fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
 
 	fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
 			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'})
 
 
-parameter_list = np.array([10, 20, 50, 100])
+parameter_list = np.array([10, 15, 20, 50])
 
 num_cores = multiprocessing.cpu_count()
 

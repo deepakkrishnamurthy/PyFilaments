@@ -17,7 +17,7 @@ using the PyStokes library (R Singh et al ...).
 from __future__ import division
 import pystokes
 import pyforces
-import filament.filament as filament
+import pyfilaments.filament.filament_operations
 import numpy as np
 import odespy
 import os
@@ -36,7 +36,7 @@ import h5py
 from pyfilaments.utils import printProgressBar
 # from pyfilaments.profiler import profile   # Code profiling tools
 import imp
-imp.reload(filament)
+# imp.reload(filament)
 
 class activeFilament:
 	'''
@@ -365,7 +365,7 @@ class activeFilament:
 		# Initialize the bending-stiffness array
 		self.initialize_bending_stiffness()
 		self.get_separation_vectors()
-		self.get_bond_angles()
+		self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
 		
 		self.get_tangent_vectors()
 
@@ -479,48 +479,6 @@ class activeFilament:
 				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
 				self.D_mag[-1] = 0
 
-	def rhs_python(self, r, t):
-		
-		self.set_filament_activity(t = t)
-	
-		self.drdt = self.drdt*0
-		
-		self.r = r
-		
-		self.get_separation_vectors()
-		# @@@ This may be getting called twice consider fixing.
-		self.get_bond_angles()
-		self.get_tangent_vectors()
-		self.t_hat_array = self.reshape_to_array(self.t_hat)
-		self.p = self.t_hat_array
-
-		self.set_stresslet()
-		self.set_potDipole()
-		
-		# Internal forces
-		self.F = self.F*0
-		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
-		self.connection_forces()
-		self.bending_forces()
-		self.F_bending_array = self.reshape_to_array(self.F_bending)  
-		self.F += self.F_conn + self.F_bending_array	# Add all the intrinsic forces together
-		self.F += self.F_mag	# external forces
-
-		# Stokeslet contribution to Rigid-Body-Motion
-		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
-		self.rm.stokesletV(self.drdt, self.r, self.F)
-		
-		# Stresslet contribution to Rigid-Body-Motion
-		# @@@ (TO DO) For efficiency calculate this Only if any element of the Stresselt strength is non-zero
-		
-		if(self.sim_type != 'sedimentation'):
-			# For sedimentation the stresslet and potDipole contribution is zero.
-			# self.rm.stressletV(self.drdt, self.r, self.S)
-			
-			self.rm.potDipoleV(self.drdt, self.r, self.D)
-		
-		# Apply the kinematic boundary conditions as a velocity condition
-		self.apply_BC_velocity()
 	
 	# @profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
 	def rhs_cython(self, r, t):
@@ -634,7 +592,7 @@ class activeFilament:
 		if(not os.path.exists(self.path)):
 			os.makedirs(self.path)
 
-		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_{}_simType_{}'.format\
+		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
 							(self.Np, self.shape, self.kappa_hat, self.k, self.b0, self.F0, self.S0, self.D0, 
 							int(self.activity_timescale), sim_type) + note
 
@@ -676,7 +634,6 @@ class activeFilament:
 			so as to implement time-varying conditions
 			
 			'''
-			# self.rhs_python(r, t)
 			self.rhs_cython(r, t)
 			# printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 			return self.drdt
@@ -693,7 +650,7 @@ class activeFilament:
 		def terminate(u, t, step):
 
 			# Termination criterion based on bond-angle
-			if(step >0 and np.any(self.cosAngle<=0)):
+			if(step >0 and np.any(self.cosAngle<0)):
 				return True
 			else:
 				return False
