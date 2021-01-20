@@ -12,10 +12,10 @@ import multiprocessing
 
 # Filament parameters
 
-Np = 48            	# number of particles
+Np = 64            	# number of particles
 a = 1				# radius
 b0 = 2*a 			# equilibrium bond length
-k_array = [10000, 20000, 50000]				# Spring stiffness
+k_array = [500, 1000]				# Spring stiffness
 mu = 1.0/6			# Fluid viscosity
 
 

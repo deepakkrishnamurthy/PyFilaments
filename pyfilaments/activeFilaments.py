@@ -43,8 +43,8 @@ class activeFilament:
 		This is the main active Filament class that calls the pyStokes and pyForces libraries 
 		for solving hydrodynamic and steric interactions.
 	'''
-	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, kappa_hat = 10, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
-					 scale_factor = None, bending_axial_scalefactor = 4, bc = {0:'clamped', -1:'free'}):
+	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 10, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
+					 scale_factor = None, bending_axial_scalefactor = 0.25, bc = {0:'clamped', -1:'free'}):
 		
 		#-----------------------------------------------------------------------------
 		# Filament parameters
@@ -218,20 +218,6 @@ class activeFilament:
 		self.dr_hat = np.array(self.dr_hat, dtype = np.double)
 #        print(self.dr_hat)
 		
-	# Calculate bond-angle vector for the filament
-	def get_bond_angles(self):
-		# The number of angles equals the no:of particles
-		self.cosAngle = np.zeros(self.Np, dtype = np.double)
-		for ii in range(self.Np):
-			# For the boundary-points, store the angle wrt to the x-axis of the global cartesian coordinate system
-			if(ii==0):
-				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii], [1, 0 , 0])
-			elif(ii==self.Np-1):
-				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii-1], [1, 0 , 0])
-			else:
-				self.cosAngle[ii] = np.dot(self.dr_hat[:,ii-1], self.dr_hat[:,ii] )
-#        print(self.cosAngle)
-		
 	# (vectorized) Find the local tangent vector of the filament at the position of each particle
 	def get_tangent_vectors(self):
 		
@@ -253,117 +239,6 @@ class activeFilament:
 		for jj in range(self.dim):
 			self.t_hat[jj,:] = self.t_hat[jj,:]/t_hat_mag
 	
-	def bending_forces(self):
-
-		self.F_bending = np.zeros((self.dim,self.Np))
-		
-		xx = 2*self.Np
-
-		for ii in range(self.Np):
-			term_1_x, term_1_y, term_1_z = 0,0,0
-			term_2_x, term_2_y, term_2_z = 0,0,0
-			term_3_x, term_3_y, term_3_z = 0,0,0
-
-			# End points
-			if(ii==0):
-				prefactor_3 = self.kappa_array[ii+1]/self.dr[ii]
-
-				term_3_x = prefactor_3*(self.dr_hat[0, ii]*self.cosAngle[ii+1] - self.dr_hat[0, ii+1])
-				term_3_y = prefactor_3*(self.dr_hat[1, ii]*self.cosAngle[ii+1] - self.dr_hat[1, ii+1])
-				term_3_z = prefactor_3*(self.dr_hat[2, ii]*self.cosAngle[ii+1] - self.dr_hat[2, ii+1])
-
-			elif(ii==1):
-
-				prefactor_2_1 = self.kappa_array[ii]*(1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])
-				prefactor_2_2 = self.kappa_array[ii]*(1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])
-				prefactor_3 = self.kappa_array[ii+1]/self.dr[ii]
-
-				term_2_x = prefactor_2_1*self.dr_hat[0, ii] - prefactor_2_2*self.dr_hat[0, ii-1]
-				term_2_y = prefactor_2_1*self.dr_hat[1, ii] - prefactor_2_2*self.dr_hat[1, ii-1]
-				term_2_z = prefactor_2_1*self.dr_hat[2, ii] - prefactor_2_2*self.dr_hat[2, ii-1] 
-
-				term_3_x = prefactor_3*(self.dr_hat[0, ii]*self.cosAngle[ii+1] - self.dr_hat[0, ii+1])
-				term_3_y = prefactor_3*(self.dr_hat[1, ii]*self.cosAngle[ii+1] - self.dr_hat[1, ii+1])
-				term_3_z = prefactor_3*(self.dr_hat[2, ii]*self.cosAngle[ii+1] - self.dr_hat[2, ii+1])
-
-			elif(ii==self.Np-2):
-
-				prefactor_1 = self.kappa_array[ii-1]/(self.dr[ii-1])
-				prefactor_2_1 = self.kappa_array[ii]*(1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])
-				prefactor_2_2 = self.kappa_array[ii]*(1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])
-
-				term_1_x = prefactor_1*(self.dr_hat[0, ii-2] - self.dr_hat[0, ii-1]*self.cosAngle[ii-1])
-				term_1_y = prefactor_1*(self.dr_hat[1, ii-2] - self.dr_hat[1, ii-1]*self.cosAngle[ii-1])
-				term_1_z = prefactor_1*(self.dr_hat[2, ii-2] - self.dr_hat[2, ii-1]*self.cosAngle[ii-1])
-
-				term_2_x = prefactor_2_1*self.dr_hat[0, ii] - prefactor_2_2*self.dr_hat[0, ii-1]
-				term_2_y = prefactor_2_1*self.dr_hat[1, ii] - prefactor_2_2*self.dr_hat[1, ii-1]
-				term_2_z = prefactor_2_1*self.dr_hat[2, ii] - prefactor_2_2*self.dr_hat[2, ii-1] 
-
-			elif(ii==self.Np-1):
-				prefactor_1 = self.kappa_array[ii-1]/(self.dr[ii-1])
-				term_1_x = prefactor_1*(self.dr_hat[0, ii-2] - self.dr_hat[0, ii-1]*self.cosAngle[ii-1])
-				term_1_y = prefactor_1*(self.dr_hat[1, ii-2] - self.dr_hat[1, ii-1]*self.cosAngle[ii-1])
-				term_1_z = prefactor_1*(self.dr_hat[2, ii-2] - self.dr_hat[2, ii-1]*self.cosAngle[ii-1])
-			else:
-				# Non-endpoints 
-				prefactor_1 = self.kappa_array[ii-1]/(self.dr[ii-1])
-				prefactor_2_1 = self.kappa_array[ii]*(1/self.dr[ii-1] + self.cosAngle[ii]/self.dr[ii])
-				prefactor_2_2 = self.kappa_array[ii]*(1/self.dr[ii] + self.cosAngle[ii]/self.dr[ii-1])
-				prefactor_3 = self.kappa_array[ii+1]/self.dr[ii]
-
-				term_1_x = prefactor_1*(self.dr_hat[0, ii-2] - self.dr_hat[0, ii-1]*self.cosAngle[ii-1])
-				term_1_y = prefactor_1*(self.dr_hat[1, ii-2] - self.dr_hat[1, ii-1]*self.cosAngle[ii-1])
-				term_1_z = prefactor_1*(self.dr_hat[2, ii-2] - self.dr_hat[2, ii-1]*self.cosAngle[ii-1])
-
-				term_2_x = prefactor_2_1*self.dr_hat[0, ii] - prefactor_2_2*self.dr_hat[0, ii-1]
-				term_2_y = prefactor_2_1*self.dr_hat[1, ii] - prefactor_2_2*self.dr_hat[1, ii-1]
-				term_2_z = prefactor_2_1*self.dr_hat[2, ii] - prefactor_2_2*self.dr_hat[2, ii-1] 
-
-				term_3_x = prefactor_3*(self.dr_hat[0, ii]*self.cosAngle[ii+1] - self.dr_hat[0, ii+1])
-				term_3_y = prefactor_3*(self.dr_hat[1, ii]*self.cosAngle[ii+1] - self.dr_hat[1, ii+1])
-				term_3_z = prefactor_3*(self.dr_hat[2, ii]*self.cosAngle[ii+1] - self.dr_hat[2, ii+1])
-
-			
-			self.F_bending[0, ii] = term_1_x + term_2_x + term_3_x
-			self.F_bending[1, ii] = term_1_y + term_2_y + term_3_y
-			self.F_bending[2, ii] = term_1_z + term_2_z + term_3_z
-
-	def connection_forces(self):
-		xx = 2*self.Np
-		
-		self.F_conn = np.zeros(self.dim*self.Np)
-
-		for i in range(self.Np):
-			fx_1, fy_1, fz_1 = 0,0,0
-			fx_2, fy_2, fz_2 = 0,0,0
-
-			if(i==0):
-				prefactor_1 = self.k*(self.dr[i] - self.b0)
-				fx_1 = prefactor_1*self.dr_hat[0, i]
-				fy_1 = prefactor_1*self.dr_hat[1, i]
-				fz_1 = prefactor_1*self.dr_hat[2, i]
-
-			elif(i==self.Np-1):
-				prefactor_2 = self.k*(self.dr[i-1] - self.b0)
-				fx_2 = prefactor_2*self.dr_hat[0, i-1]
-				fy_2 = prefactor_2*self.dr_hat[1, i-1]
-				fz_2 = prefactor_2*self.dr_hat[2, i-1]
-			else:
-				prefactor_1 = self.k*(self.dr[i] - self.b0)
-				fx_1 = prefactor_1*self.dr_hat[0, i]
-				fy_1 = prefactor_1*self.dr_hat[1, i]
-				fz_1 = prefactor_1*self.dr_hat[2, i]
-
-				prefactor_2 = self.k*(self.dr[i-1] - self.b0)
-				fx_2 = prefactor_2*self.dr_hat[0, i-1]
-				fy_2 = prefactor_2*self.dr_hat[1, i-1]
-				fz_2 = prefactor_2*self.dr_hat[2, i-1]
-
-			self.F_conn[i] = fx_1 - fx_2
-			self.F_conn[i+self.Np] = fy_1 - fy_2
-			self.F_conn[i+xx] = fz_1 - fz_2
-
 
 	def set_stresslet(self):
 		# Specifies the stresslet on each active particle
@@ -393,6 +268,8 @@ class activeFilament:
 			for ii in range(self.Np):
 				# The filament is initially linear along x-axis with the first particle at origin
 				self.r0[ii] = ii*(self.b0)
+				# Linear filament along Y-axis
+				# self.r0[ii + self.Np] = ii*(self.b0)
 				
 			# Add random fluctuations in the other two directions
 			# y-axis
@@ -757,9 +634,9 @@ class activeFilament:
 		if(not os.path.exists(self.path)):
 			os.makedirs(self.path)
 
-		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_scalefactor_{}_{}'.format\
+		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_{}_simType_{}'.format\
 							(self.Np, self.shape, self.kappa_hat, self.k, self.b0, self.F0, self.S0, self.D0, 
-							int(self.activity_timescale), self.scale_factor, sim_type) + note
+							int(self.activity_timescale), sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)
 		copy_number = 0
@@ -801,32 +678,32 @@ class activeFilament:
 			'''
 			# self.rhs_python(r, t)
 			self.rhs_cython(r, t)
-			printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
+			# printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 			return self.drdt
 
-		def terminate(u, t, step_no):  # function that returns True/False to terminate solve
+		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
 			
-			if(step_no>0):
-				u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
-				distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
-				return distance < stop_tol
-			else:
-				return False
-
-		# def terminate(u, t, step):
-
-		# 	# Termination criterion based on bond-angle
-		# 	if(step >0 and np.any(self.cosAngle<=0)):
-		# 		return True
+		# 	if(step_no>0):
+		# 		u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
+		# 		distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
+		# 		return distance < stop_tol
 		# 	else:
 		# 		return False
+
+		def terminate(u, t, step):
+
+			# Termination criterion based on bond-angle
+			if(step >0 and np.any(self.cosAngle<=0)):
+				return True
+			else:
+				return False
 
 		if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
 			print('Running the filament simulation ....')
 
 			start_time = time.time()
 
-			printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
+			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 			# integrate the resulting equation using odespy
 			T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
@@ -835,7 +712,7 @@ class activeFilament:
 			solver.set_initial_condition(self.r0)  # Initial conditions
 			# Solve!
 			if(self.sim_type == 'sedimentation'):
-				self.R, self.Time = solver.solve(time_points, terminate)
+				self.R, self.Time = solver.solve(time_points)
 			else:
 				self.R, self.Time = solver.solve(time_points, terminate)
 			

@@ -27,13 +27,11 @@ cdef class filament_operations:
 		for ii in range(Np):
 			cosAngle[ii] = 0
 			if(ii==0):
-				cosAngle[ii] = 0
-				for jj in range(dim):
-					cosAngle[ii] += dr_hat[jj,ii]*self.unit_vector_x_view[jj]
+				cosAngle[ii] = 1  # Dummy value for end points
+				
 			elif(ii == Np-1):
-				cosAngle[ii] = 0
-				for jj in range(dim):
-					cosAngle[ii] += dr_hat[jj,ii-1]*self.unit_vector_x_view[jj]
+				cosAngle[ii] = 1  # Dummy value for end points
+				
 			else:
 				cosAngle[ii] = 0
 				for jj in range(dim):
