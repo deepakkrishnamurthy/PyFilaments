@@ -22,9 +22,9 @@ for time_point in range(N_time):
 	fil.plotFilament(r = fil.r)
 
 
-	fil.getSeparationVector()
-	fil.getTangentVectors()
-	fil.t_hat_array = fil.reshapeToArray(fil.t_hat)
+	fil.get_separation_vectors()
+	fil.get_tangent_vectors()
+	fil.t_hat_array = fil.reshape_to_array(fil.t_hat)
 	fil.p = fil.t_hat_array
 
 	# Testing the Bond Angles Cython function
@@ -32,7 +32,7 @@ for time_point in range(N_time):
 
 	cython_angles = fil.cosAngle
 
-	fil.getBondAngles()
+	fil.get_bond_angles()
 
 	# plt.figure()
 	# plt.plot(fil.cosAngle, 'gs', label ='pure python')
@@ -73,7 +73,7 @@ for time_point in range(N_time):
 	F_conn_cython = fil.F_conn
 
 	# Compute using Python function
-	fil.ConnectionForces()
+	fil.connection_forces()
 
 
 	# Check that internal connection forces should sum to zero
@@ -102,7 +102,7 @@ for time_point in range(N_time):
 
 	F_bending_cython = fil.F_bending
 
-	fil.BendingForces()
+	fil.bending_forces()
 	F_bending_python = fil.F_bending
 
 
