@@ -19,7 +19,7 @@ elif platform == 'darwin':
 	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
 
 
-activity_timescale = 10
+activity_timescale = 1500
 activityFreq = 1.0/activity_timescale
 
 
@@ -39,10 +39,17 @@ Npts = int(Tf/10)
 
 t_array = np.linspace(0, Tf+10, Npts)
 
+activity_profile = -signal.square(2*np.pi*activityFreq*t_array)
+activity_Function =  interpolate.interp1d(t_array, activity_profile)
 
-bc = {0:'free', -1:'free'}
+plt.style.use('dark_background')
+plt.figure()
+plt.plot(t_array, activity_profile)
+plt.show()
 
-fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 4, k = 10, S0 = 0, D0 = 0, bc = bc)
+bc = {0:'clamped', -1:'free'}
+
+fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = 20, S0 = 0, D0 = 1.5, bc = bc)
 
 
 fil.plotFilament(r = fil.r0)

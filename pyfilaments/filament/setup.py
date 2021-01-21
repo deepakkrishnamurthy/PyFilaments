@@ -3,7 +3,6 @@ import os, sys, os.path, tempfile, subprocess, shutil
 from sys import platform
 from distutils.core import setup
 # from setuptools import setup
-import setuptools
 from Cython.Build import cythonize
 from distutils.extension import Extension
 import Cython.Compiler.Options
@@ -88,7 +87,7 @@ else:
 	print('No OpenMP found!')
 
 setup(
-	name='pyfilaments',
+	name='filament',
 	version='1.0.0',
 	url='https://github.com/deepakkrishnamurthy/PyFilaments',
 	author='Deepak Krishnamurthy',
@@ -97,16 +96,13 @@ setup(
 	description='python library for computing active filament dynamics in Stokes flows',
 	long_description='pyfilaments is a library for computing active filament dynamic using active colloid hydrodynamics. It is built on top of pystokes.',
 	platforms='tested on LINUX',
-	ext_modules=cythonize([ Extension("pyfilaments/filament/*", ["pyfilaments/filament/*.pyx"],
+	ext_modules=cythonize([ Extension("filament/*", ["filament/*.pyx"],
 		include_dirs=[numpy.get_include()],
 		extra_compile_args=omp_args,
 		extra_link_args=omp_args 
 		)]),
 	libraries=[],
-	# packages = setuptools.find_packages(),
-	packages=['pyfilaments', 'pyfilaments/filament'],
-	package_data={'pyfilaments/filament': ['*.pxd']},
-	include_package_data=True
+	packages=['filament'],
+	package_data={'filament': ['*.pxd']}
 )
-
 

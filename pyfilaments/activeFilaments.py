@@ -17,14 +17,13 @@ using the PyStokes library (R Singh et al ...).
 from __future__ import division
 import pystokes
 import pyforces
-import pyfilaments.filament.filament_operations
+import filament.filament as filament
 import numpy as np
 import odespy
 import os
 import cmocean
 import pickle
 import matplotlib.pyplot as plt 
-
 from scipy import signal
 from scipy import interpolate
 
@@ -32,11 +31,9 @@ from datetime import datetime
 import time
 
 import h5py
-
-from pyfilaments.utils import printProgressBar
+from tqdm import tqdm
 # from pyfilaments.profiler import profile   # Code profiling tools
 import imp
-# imp.reload(filament)
 
 class activeFilament:
 	'''
@@ -61,14 +58,11 @@ class activeFilament:
 		self.b0 = b0
 		# Filament arc-length
 		self.L = self.b0*(self.Np-1)
-		
 		# Connective spring stiffness
 		self.k = k
-
 		# Bending stiffness
 		self.bending_axial_scalefactor = bending_axial_scalefactor
-		# self.kappa_hat = self.k*self.b0
-		
+	
 		# 30 May 2020: Important change. The bending stiffness and axial stiffness now are for a homogeneous elastic rod.
 		# self.kappa_hat = ((self.radius**2)/4)*self.k
 
@@ -518,22 +512,17 @@ class activeFilament:
 		
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
-				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False):
+				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0):
 		
-
-
 		if(init_condition is not None):
 			if('shape' in init_condition.keys()):
 				self.shape = init_condition['shape']
-			
 			if(self.shape=='line'):
 
 				if('angle' in init_condition.keys()):
 					self.init_angle = init_condition['angle']
 				else:
 					self.init_angle = 0
-
-
 			elif(self.shape == 'sinusoid'):
 				if('plane' in init_condition.keys()):
 					self.plane = init_condition['plane']
@@ -549,25 +538,23 @@ class activeFilament:
 					self.wavelength = init_condition['wavelength']
 				else:
 					self.wavelength = self.L
-
-
 			elif(self.shape == 'helix'):
 
 				if('axis' in init_condition.keys()):
 					self.axis = init_condition['axis']
 				else:
 					self.axis = 'x'
-
 				if('amplitude' in init_condition.keys()):
 					self.amplitude = init_condition['amplitude']
 				else:
 					self.amplitide = 1e-4
-
 				if('pitch' in init_condition.keys()):
 					self.pitch = init_condition['pitch']
 				else:
 					self.pitch = self.L
 
+		self.time_now = 0
+		self.time_prev = 0
 
 		self.initialize_filament()
 		self.set_particle_colors()
@@ -586,7 +573,6 @@ class activeFilament:
 		subfolder = datetime.now().strftime('%Y-%m-%d')
 
 		# Create sub-folder by date
-		
 		self.path = os.path.join(path, subfolder)
 
 		if(not os.path.exists(self.path)):
@@ -607,11 +593,9 @@ class activeFilament:
 			while(os.path.exists(os.path.join(self.saveFolder, self.saveFile)) and overwrite == False):
 				copy_number+=1
 				self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
-
 		#---------------------------------------------------------------------------------
 		# Set the activity profile
 		self.activity_profile = activity_profile
-
 		# if simulating constant external forces
 		if(self.sim_type == 'sedimentation'):
 			''' Simulates a filament where there is a net body force on each particle making up the filament.
@@ -627,15 +611,15 @@ class activeFilament:
 			self.S_mag[:] = 0
 			self.D_mag[:] = 0
 		#---------------------------------------------------------------------------------
-
 		def rhs0(r, t):
 			''' 
 			Pass the current time from the ode-solver, 
 			so as to implement time-varying conditions
-			
 			'''
 			self.rhs_cython(r, t)
-			# printProgressBar(t, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
+			self.time_now = t
+			self.pbar.update(100*(self.time_now - self.time_prev)/Tf)
+			self.time_prev = self.time_now
 			return self.drdt
 
 		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
@@ -659,24 +643,26 @@ class activeFilament:
 			print('Running the filament simulation ....')
 
 			start_time = time.time()
+			tqdm_text = "Progress param #" + "{}".format(self.k).zfill(1)
 
-			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
+			with tqdm(total = 100, desc=tqdm_text, position=pid+1) as self.pbar:
+				# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
-			# integrate the resulting equation using odespy
-			T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
-			
-			solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6) # initialize the odespy solver
-			solver.set_initial_condition(self.r0)  # Initial conditions
-			# Solve!
-			if(self.sim_type == 'sedimentation'):
-				self.R, self.Time = solver.solve(time_points)
-			else:
-				self.R, self.Time = solver.solve(time_points, terminate)
-			
-			self.cpu_time = time.time() - start_time
-			if(save):
-				print('Saving results...')
-				self.save_data()
+				# integrate the resulting equation using odespy
+				T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
+				
+				solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6) # initialize the odespy solver
+				solver.set_initial_condition(self.r0)  # Initial conditions
+				# Solve!
+				if(self.sim_type == 'sedimentation'):
+					self.R, self.Time = solver.solve(time_points)
+				else:
+					self.R, self.Time = solver.solve(time_points, terminate)
+				
+				self.cpu_time = time.time() - start_time
+				if(save):
+					print('Saving results...')
+					self.save_data()
 				
 		else:
 			self.load_data(os.path.join(self.saveFolder, self.saveFile))
