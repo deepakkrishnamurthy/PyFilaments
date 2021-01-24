@@ -19,12 +19,12 @@ elif platform == 'darwin':
 	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
 
 
-activity_timescale = 1500
+activity_timescale = 1000
 activityFreq = 1.0/activity_timescale
 
 
 # Total simulation time
-Tf = activity_timescale*100
+Tf = activity_timescale*500
 
 
 # activity_timescale = 1000
@@ -49,7 +49,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 4, k = 20, S0 = 0, D0 = 1.5, bc = bc)
+fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 2, k = 20, S0 = 0, D0 = 1.5, bc = bc)
 
 
 fil.plotFilament(r = fil.r0)

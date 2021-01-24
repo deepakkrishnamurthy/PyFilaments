@@ -559,8 +559,9 @@ class activeFilament:
 		self.initialize_filament()
 		self.set_particle_colors()
 
+		print(self.shape)
 		# Plot the initial filament shape
-		# self.plotFilament(r = self.r0)
+		self.plotFilament(r = self.r0)
 		# Set the simulation type
 		self.sim_type = sim_type
 
