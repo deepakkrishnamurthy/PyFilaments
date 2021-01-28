@@ -265,9 +265,6 @@ class activeFilament:
 				self.r0[ii] = ii*(self.b0)
 				# Linear filament along Y-axis
 				# self.r0[ii + self.Np] = ii*(self.b0)
-				
-			# Set the random generator seed to create repeatable Initial Conditions
-			np.random.seed(1)
 			# Add random fluctuations in the other two directions
 			# y-axis
 			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-4, self.Np)
@@ -676,6 +673,7 @@ class activeFilament:
 					self.R, self.Time = solver.solve(time_points)
 				else:
 					self.R, self.Time = solver.solve(time_points, terminate)
+					# self.R, self.Time = solver.solve(time_points)
 				
 				self.cpu_time = time.time() - start_time
 				if(save):
