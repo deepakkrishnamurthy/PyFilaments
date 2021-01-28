@@ -11,7 +11,7 @@ import time
 # Check which platform
 if platform == "linux" or platform == "linux2":
 	print("linux system")
-	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	root_path = '/home/deepak/LacryModelling_Local/ModellingResults'
 	
 
 elif platform == 'darwin':
@@ -19,12 +19,12 @@ elif platform == 'darwin':
 	root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
 
 
-activity_timescale = 1000
+activity_timescale = 750
 activityFreq = 1.0/activity_timescale
 
 
 # Total simulation time
-Tf = activity_timescale*500
+Tf = activity_timescale*15
 
 
 # activity_timescale = 1000
@@ -35,7 +35,8 @@ print('Activity frequency: {}'.format(activityFreq))
 # Total simulation time
 
 # No:of time points saved
-Npts = int(Tf/10)
+time_step_save = 10
+Npts = int(Tf/time_step_save)
 
 t_array = np.linspace(0, Tf+10, Npts)
 
@@ -49,7 +50,7 @@ plt.show()
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 2, k = 20, S0 = 0, D0 = 1.5, bc = bc)
+fil = activeFilament(dim = 3, Np = 64, radius = 1, b0 = 2.1, k = 9, S0 = 0, D0 = 1.5, bc = bc)
 
 
 fil.plotFilament(r = fil.r0)

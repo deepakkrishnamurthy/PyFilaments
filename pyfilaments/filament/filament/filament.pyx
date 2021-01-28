@@ -1,6 +1,6 @@
 cimport cython
 import numpy as np
-from libc.math cimport sqrt
+from libc.math cimport sqrt, pow
 from cython.parallel import prange
 cdef double PI = 3.14159265359
 
@@ -10,14 +10,18 @@ cdef double PI = 3.14159265359
 @cython.nonecheck(False)
 cdef class filament_operations:
 	
-	def __init__(self, Np, dim, b0, k, kappa_array): 
+	def __init__(self, Np, dim, radius, b0, k, kappa_array, ljrmin = 3, ljeps = 0.01): 
+		self.radius = radius
 		self.b0 = b0 
 		self.Np = Np
 		self.dim = dim
 		self.k = k
 		self.kappa_array = kappa_array
+		self.k_sc = 1000
 		self.unit_vector_x_view = np.array([1,0,0], dtype = np.double)
 		self.kappa_array_view = np.array(self.kappa_array, dtype = np.double)
+		self.ljrmin = ljrmin
+		self.ljeps = ljeps
 
 	# Calculate bond-angle vector for the filament
 	cpdef get_bond_angles(self, double[:, :] dr_hat, double [:] cosAngle):
@@ -26,9 +30,9 @@ cdef class filament_operations:
 
 		for ii in range(Np):
 			if(ii==0):
-				cosAngle[ii] = 1  # Dummy value for end points
+				cosAngle[ii] = 1  	# Dummy value for end points
 			elif(ii == Np-1):
-				cosAngle[ii] = 1 # Dummy value for end points
+				cosAngle[ii] = 1 	# Dummy value for end points
 			else:
 				cosAngle[ii] = 0
 				for jj in range(dim):
@@ -143,3 +147,184 @@ cdef class filament_operations:
 			F_conn[i] = fx_1 - fx_2
 			F_conn[i+Np] = fy_1 - fy_2
 			F_conn[i+xx] = fz_1 - fz_2
+
+	cpdef self_contact_forces(self, double [:] r, double [:] dr, double [:,:] dr_hat, double [:] F_sc):
+
+		cdef int Np = self.Np, i, j, xx = 2*Np, index
+		cdef double h_i, h_j, dmin_x, dmin_y, dmin_z, dmin_2, epsilon, gamma_min_final, delta_min_final 
+		cdef double f_x, f_y, f_z, dx, dy, dz, dr_ij, dr_ij1, dr_i1j, dr_i1j1, dri_dot_drj
+		cdef double b0 = self.b0, radius = self.radius, k_sc = self.k_sc
+		cdef double min_distance = (b0*b0) + 4.0*radius*radius, torque_scale_factor
+		cdef double ljrmin = self.ljrmin, ljeps = self.ljeps,  idr, rminbyr, fac
+
+		for i in range(Np-1):
+			f_x=0.0; f_y=0.0; f_z=0.0;
+			for j in range(Np-1):
+				dx = r[i   ] - r[j+1]
+				dy = r[i+Np] - r[j+1+Np]
+				dz = r[i+xx] - r[j+1+xx] 
+				dr_ij1 = dx*dx + dy*dy + dz*dz
+			
+				dx = r[i+1] - r[j   ]
+				dy = r[i+1+Np] - r[j+Np]
+				dz = r[i+1+xx] - r[j+xx] 
+				dr_i1j = dx*dx + dy*dy + dz*dz
+			
+				dx = r[i+1] - r[j+1]
+				dy = r[i+1+Np] - r[j+1+Np]
+				dz = r[i+1+xx] - r[j+1+xx] 
+				dr_i1j1 = dx*dx + dy*dy + dz*dz
+
+				dx = r[i   ] - r[j   ]
+				dy = r[i+Np] - r[j+Np]
+				dz = r[i+xx] - r[j+xx] 
+				dr_ij = dx*dx + dy*dy + dz*dz
+			
+				# if i!=j and abs(i-j)>int(Np/4) and (dr_ij < min_distance or dr_ij1 < min_distance or dr_i1j < min_distance or dr_i1j1 < min_distance):  # No need to check for interactions between very close spheres
+				if i!=j and abs(i-j)> 3:
+				# calculate the minimum distance between the two rod-segments that span i, i+1 and j, j+1
+					
+					h_i, h_j, dri_dot_drj = self.perp_separation(r, dr_hat, dr, i, j)
+					
+					if(dri_dot_drj == 0):
+						f_x = 0
+						f_y = 0
+						f_z = 0
+					else:
+						if(h_i >= 0 and h_i <= dr[i] and h_j >= 0 and h_j <= dr[j]):
+							gamma_min_final, delta_min_final = 0,0 
+						else:
+							gamma_min_final, delta_min_final = self.parallel_separation(dri_dot_drj, dr[i], dr[j], h_i, h_j)
+
+						dmin_x = r[i   ] - r[j   ] + (h_i + gamma_min_final)*dr_hat[0, i] - (h_j + delta_min_final)*dr_hat[0, j]
+						dmin_y = r[i+Np] - r[j+Np] + (h_i + gamma_min_final)*dr_hat[1, i] - (h_j + delta_min_final)*dr_hat[1, j]
+						dmin_z = r[i+xx] - r[j+xx] + (h_i + gamma_min_final)*dr_hat[2, i] - (h_j + delta_min_final)*dr_hat[2, j]
+
+						dmin_2	= dmin_x*dmin_x +dmin_y*dmin_y + dmin_z*dmin_z
+
+						# epsilon = (2*radius - sqrt(dmin_2))
+
+						if(dmin_2 < (ljrmin*ljrmin)):
+							idr     = 1.0/sqrt(dmin_2)
+							rminbyr = ljrmin*idr 
+							fac   = ljeps*(pow(rminbyr, 12) - pow(rminbyr, 6))*idr*idr
+							# if(epsilon>0):
+							f_x += fac*dmin_x
+							f_y += fac*dmin_y
+							f_z += fac*dmin_z
+
+					# torque_scale_factor = (h_j + delta_min_final)/dr[j]
+					# # Force on colloid j
+					# F_sc[j] = -f_x*(1-torque_scale_factor)
+					# F_sc[j+Np] = -f_y*(1-torque_scale_factor)
+					# F_sc[j+xx] = -f_z*(1-torque_scale_factor)
+
+					# # Force on colloid j+1 
+					# F_sc[j + 1] = -f_x*torque_scale_factor
+					# F_sc[j+1+Np] = -f_y*torque_scale_factor
+					# F_sc[j+1+xx] = -f_z*torque_scale_factor
+
+			# Force on colloid i
+			torque_scale_factor = (h_i + gamma_min_final)/dr[i]
+			F_sc[i] += f_x*(1 - torque_scale_factor)
+			F_sc[i+Np] += f_y*(1 - torque_scale_factor)
+			F_sc[i+xx] += f_z*(1 - torque_scale_factor)
+
+			# Force on colloid i+1 
+			F_sc[i + 1] += f_x*torque_scale_factor
+			F_sc[i+1+Np] += f_y*torque_scale_factor
+			F_sc[i+1+xx] += f_z*torque_scale_factor
+
+			
+		return
+
+	cpdef perp_separation(self, double [:] r, double [:, :] dr_hat, double [:] dr, int i, int j):
+		""" 
+			Takes as input two line-sgments and outputs the minimal 3D separation vector (normal to both lines)
+			Returns: h_i, h_j (parameters along the line that determine the minimum separation vector)
+		"""
+		cdef int Np = self.Np, xx = 2*Np, index
+		cdef double h_i, h_j
+		cdef double dr_ij, dr_ij1, dr_i1j, dr_i1j1, dri_dot_drj, dri_dot_r, drj_dot_r
+		
+		dri_dot_drj = 0; dri_dot_r = 0; drj_dot_r = 0;
+		for index in range(3):
+			dri_dot_drj += dr_hat[index, i]*dr_hat[index, j]
+			dri_dot_r += dr_hat[index, i]*(r[i + index*Np] - r[j + index*Np])
+			drj_dot_r += dr_hat[index, j]*(r[i + index*Np] - r[j + index*Np])
+			
+		if(abs(dri_dot_drj - 1)<1e-6):
+			# Lines are parallel
+			return 0, 0, 0
+		else:
+			h_i = (drj_dot_r*dri_dot_drj - dri_dot_r)/(dr[i]*(1 - dri_dot_drj*dri_dot_drj))
+			h_j = (drj_dot_r - dri_dot_drj*dri_dot_r)/(dr[j]*(1 - dri_dot_drj*dri_dot_drj))
+
+			return h_i, h_j, dri_dot_drj
+
+	cpdef parallel_separation(self, double dri_dot_drj, double l_i, double l_j, double h_i, double h_j):
+		"""
+		Adapted from Allen et al. Adv. Chem. Phys. Vol LXXXVI, 1003, p.1.
+
+		Takes input of two line-segments and returns the shortest distance and parameters giving the shortest distance vector 
+		in the plane parallel to both line segments
+		Returns: lambda_min, delta_min
+		"""
+		cdef double gamma_1, gamma_2, delta_1, delta_2, gamma_m, delta_m, gamma_min, delta_min, gamma_min_final, delta_min_final
+		cdef double a1, a2, b1, b2, f1, f2
+
+		gamma_1 = -h_i 
+		gamma_2 = -h_i + l_i
+		gamma_m = gamma_1
+		# Choose the line closest to the origin
+		if(gamma_1*gamma_1 > gamma_2*gamma_2):
+			gamma_m = gamma_2
+
+		delta_1 = -h_j
+		delta_2 = -h_j +l_j
+		delta_m = delta_1
+
+		if(delta_1*delta_1 > delta_2*delta_2):
+			delta_m = delta_2
+
+		# Optimize delta on gamma_m
+		gamma_min = gamma_m
+		delta_min = gamma_m*dri_dot_drj
+
+		if(delta_min + h_j >= 0 and delta_min + h_j <= l_j):
+			delta_min = delta_min
+		else:
+			delta_min = delta_1
+			a1 = delta_min - delta_1
+			a2 = delta_min - delta_2
+			if(a1*a1 > a2*a2):
+				delta_min = delta_2
+
+		# Distance at this gamma and delta value
+		f1 = gamma_min*gamma_min + delta_min*delta_min - 2*gamma_min*delta_min*dri_dot_drj
+		gamma_min_final = gamma_min
+		delta_min_final = delta_min
+
+		# Now choose the line delta_m and optimize gamma
+		delta_min = delta_m
+		gamma_min = delta_m*dri_dot_drj
+
+		if(gamma_min + h_i >= 0 and gamma_min + h_i <= l_i):
+			gamma_min = gamma_min
+		else:
+			gamma_min = gamma_1
+			b1 = gamma_min - gamma_1
+			b2 = gamma_min - gamma_2
+			if(b1*b1 > b2*b2):
+				gamma_min = gamma_2
+
+		f2 = gamma_min*gamma_min + delta_min*delta_min - 2*gamma_min*delta_min*dri_dot_drj
+		
+		if(f1 < f2):
+			pass
+		else:
+			delta_min_final = delta_min
+			gamma_min_final = gamma_min
+
+		return gamma_min_final, delta_min_final
+
