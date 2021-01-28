@@ -78,8 +78,8 @@ class activeFilament:
 		self.mu = mu
 		
 		# Parameters for the near-field Lennard-Jones potential
-		self.ljeps = 0.1
-		self.ljrmin = 2.0*self.radius
+		self.ljeps = 1
+		self.ljrmin = 2.1*self.radius
 		
 
 		# Body-force strength
@@ -107,7 +107,7 @@ class activeFilament:
 		self.shape = 'line'
 		self.initialize_filamentShape()
 
-		self.filament = filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
+		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 
 	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
@@ -125,6 +125,7 @@ class activeFilament:
 		self.F = np.zeros(self.Np*self.dim, dtype = np.double)
 		self.F_conn = np.zeros(self.dim*self.Np, dtype = np.double)
 		self.F_bending = np.zeros((self.dim,self.Np), dtype = np.double)
+		self.F_sc = np.zeros(self.dim*self.Np, dtype = np.double)
 
 		self.T = np.zeros(self.Np*self.dim, dtype = np.double)
 		# Stresslet 
@@ -264,7 +265,6 @@ class activeFilament:
 				self.r0[ii] = ii*(self.b0)
 				# Linear filament along Y-axis
 				# self.r0[ii + self.Np] = ii*(self.b0)
-				
 			# Add random fluctuations in the other two directions
 			# y-axis
 			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-4, self.Np)
@@ -347,7 +347,7 @@ class activeFilament:
 
 		# print(self.kappa_array)
 
-		self.filament = filament.filament_operations(self.Np, self.dim, self.b0, self.k, self.kappa_array)
+		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 3*self.radius, ljeps = 10)
 
 
 			  
@@ -482,7 +482,6 @@ class activeFilament:
 		self.r = r
 		self.get_separation_vectors()
 		self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
-		# self.get_bond_angles()
 		self.get_tangent_vectors()
 		self.t_hat_array = self.reshape_to_array(self.t_hat)
 		self.p = self.t_hat_array
@@ -492,11 +491,17 @@ class activeFilament:
 		self.F = self.F*0
 		self.F_conn = self.F_conn*0
 		self.F_bending = self.F_bending*0
+		self.F_sc = self.F_sc*0
+
 		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
 		self.filament.connection_forces(self.dr, self.dr_hat, self.F_conn)
 		self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
+		self.filament.self_contact_forces(self.r, self.dr, self.dr_hat, self.F_sc)
+		# if(np.max(self.F_sc)>1E-6):
+			# print('Contact forces \n', np.max(self.F_sc))
+
 		self.F_bending_array = self.reshape_to_array(self.F_bending)  
-		self.F += self.F_conn + self.F_bending_array	# Add all the intrinsic forces together
+		self.F += self.F_conn + self.F_bending_array + self.F_sc	# Add all the intrinsic forces together
 		self.F += self.F_mag	# external forces
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
@@ -505,7 +510,7 @@ class activeFilament:
 		# @@@ (TO DO) For efficiency calculate this Only if any element of the Stresselt strength is non-zero
 		if(self.sim_type != 'sedimentation'):
 			# For sedimentation the stresslet and potDipole contribution is zero.
-			self.rm.stressletV(self.drdt, self.r, self.S)
+			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 		# Apply the kinematic boundary conditions as a velocity condition
 		self.apply_BC_velocity()
@@ -640,6 +645,15 @@ class activeFilament:
 			else:
 				return False
 
+		# Termination based on self contact
+		# def terminate(u, t, step):
+
+		# 	# Termination criterion based on bond-angle
+		# 	if(step >0 and np.sum(self.F_sc)>1E-6):
+		# 		return True
+		# 	else:
+		# 		return False
+
 		if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
 			print('Running the filament simulation ....')
 
@@ -659,6 +673,7 @@ class activeFilament:
 					self.R, self.Time = solver.solve(time_points)
 				else:
 					self.R, self.Time = solver.solve(time_points, terminate)
+					# self.R, self.Time = solver.solve(time_points)
 				
 				self.cpu_time = time.time() - start_time
 				if(save):

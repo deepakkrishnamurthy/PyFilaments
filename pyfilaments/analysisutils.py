@@ -21,7 +21,9 @@ class analysisTools(activeFilament):
 	def __init__(self, filament = None, file = None):
 
 		# Initialize the parent activeFilament class so its attr are available
-		activeFilament.__init__(self)
+		super().__init__()
+
+		print(self.Np)
 
 		# Dict to store derived datasets
 		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [], 'Tip cosine angle':[],'Activity phase':[],'Axial energy':[],'Bending energy':[]}
@@ -52,7 +54,6 @@ class analysisTools(activeFilament):
 		self.derived_data['head pos y'] = self.R[:, 2*self.Np-1]
 		self.derived_data['head pos z'] = self.R[:, 3*self.Np-1]
 
-		
 		# Sub-folder in which to save analysis data and plots
 		self.sub_folder = 'Analysis'
 
@@ -68,6 +69,7 @@ class analysisTools(activeFilament):
 	def find_num_time_points(self):
 
 		self.Nt, *rest  = np.shape(self.R)
+		print('Time step: {}'.format(np.max(self.Time)/self.Nt))
 			
 	def filament_com(self, r):
 
@@ -96,7 +98,7 @@ class analysisTools(activeFilament):
 
 				self.r = R[ii,:]
 
-				self.getSeparationVector()
+				self.get_separation_vectors()
 
 				
 
@@ -111,23 +113,13 @@ class analysisTools(activeFilament):
 		'''
 		K = |ˆr01 − ˆrN−1N|/2=sin(θ)
 		'''
-
-
 		bendAngle = np.zeros((self.Nt))
 
-		for ii in range(self.Nt):
-
-			
-			self.r = self.R[ii,:]  # Set the current filament positions to those from the simulation result at time point ii
-
-			
-			self.getSeparationVector()  # Get the separation vector based on this position
-
-
+		for ii in range(self.Nt):			
+			self.r = self.R[ii,:]  # Set the current filament positions to those from the simulation result at time point ii			
+			self.get_separation_vectors()  # Get the separation vector based on this position
 			bendAngle[ii] = (0.5)*np.dot(self.dr_hat[:,0] - self.dr_hat[:,-1], self.dr_hat[:,0] - self.dr_hat[:,-1])**(1/2) 
 
-
-		
 		return bendAngle
 
 	def compute_alignment_parameter(self, field_vector = [1,0,0]):
@@ -140,15 +132,10 @@ class analysisTools(activeFilament):
 
 			# Set the current filament positions to those from the simulation result at time point ii
 			self.r = self.R[ii,:]
-
-			
-
 			# Get the separation vector based on this position
-			self.getSeparationVector()
+			self.get_separation_vectors()
 
 			alignmentParameter[ii] = (1/(self.Np-1))*(np.sum((3/2)*self.dotProduct(self.dr_hat, field_vector)**2 - (1/2)))
-
-
 		plt.figure()
 		plt.plot(self.Time, alignmentParameter, 'ro')
 		plt.show()
@@ -165,7 +152,7 @@ class analysisTools(activeFilament):
 			# Particle positions at time ii
 			self.r = self.R[ii,:]
 
-			self.getSeparationVector()
+			self.get_separation_vectors()
 
 			self.derived_data['Filament arc length'][ii] = np.sum(self.dr)
 
@@ -180,6 +167,19 @@ class analysisTools(activeFilament):
 		distance = (dx**2 + dy**2 + dz**2)**(1/2)
 
 		return distance
+
+	def compute_tip_velocity(self):
+
+		self.derived_data['tip speed'] = np.zeros(self.Nt-1)
+		for ii in range(self.Nt-1):
+
+			delta_t = self.Time[ii+1] - self.Time[ii]
+			v_x = (self.derived_data['head pos x'][ii+1]-self.derived_data['head pos x'][ii])/delta_t
+			v_y = (self.derived_data['head pos y'][ii+1]-self.derived_data['head pos y'][ii])/delta_t
+			v_z = (self.derived_data['head pos z'][ii+1]-self.derived_data['head pos z'][ii])/delta_t
+
+			self.derived_data['tip speed'][ii] = (v_x**2 + v_y**2 + v_z**2)**(1/2)
+
 
 
 	def filament_tip_coverage(self):
@@ -254,7 +254,7 @@ class analysisTools(activeFilament):
 
 			self.r = self.R[ii,:]
 
-			self.getSeparationVector() 	
+			self.get_separation_vectors() 	
 
 			self.derived_data['Tip unit vector'][:,ii] = self.dr_hat[:,-1]
 			self.derived_data['Tip cosine angle'][ii] = np.dot(self.dr_hat[:,-1], [1, 0 , 0])
@@ -270,13 +270,208 @@ class analysisTools(activeFilament):
 
 			self.r = self.R[ii,:]
 
-			self.getSeparationVector()
+			self.get_separation_vectors()
 
 			self.derived_data['Axial energy'][ii] = np.sum((self.k/2)*(self.dr - self.b0)**2)
 
-			self.getBondAngles()
+			self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
 
 			self.derived_data['Bending energy'][ii] = 10*self.kappa_hat*(1 - self.cosAngle[0]) + np.sum(self.kappa_hat*(1 - self.cosAngle[1:-1]))
+
+	def self_contact_forces(self, r, dr, dr_hat):
+
+		Np = self.Np
+		xx = 2*Np
+		b0 = self.b0
+		radius = self.radius
+		ljrmin = 3.0*radius
+		ljeps = 0.1
+		min_distance = (b0*b0) + 4.0*radius*radius
+
+		for i in range(Np-1):
+			f_x=0.0; f_y=0.0; f_z=0.0;
+			for j in range(Np-1):
+				dx = r[i   ] - r[j+1]
+				dy = r[i+Np] - r[j+1+Np]
+				dz = r[i+xx] - r[j+1+xx] 
+				dr_ij1 = dx*dx + dy*dy + dz*dz
+			
+				dx = r[i+1] - r[j   ]
+				dy = r[i+1+Np] - r[j+Np]
+				dz = r[i+1+xx] - r[j+xx] 
+				dr_i1j = dx*dx + dy*dy + dz*dz
+			
+				dx = r[i+1] - r[j+1]
+				dy = r[i+1+Np] - r[j+1+Np]
+				dz = r[i+1+xx] - r[j+1+xx] 
+				dr_i1j1 = dx*dx + dy*dy + dz*dz
+
+				dx = r[i   ] - r[j   ]
+				dy = r[i+Np] - r[j+Np]
+				dz = r[i+xx] - r[j+xx] 
+				dr_ij = dx*dx + dy*dy + dz*dz
+			
+				# if i!=j and abs(i-j)>int(Np/4) and (dr_ij < min_distance or dr_ij1 < min_distance or dr_i1j < min_distance or dr_i1j1 < min_distance):  # No need to check for interactions between very close spheres
+				if i!=j and abs(i-j)> 4 and (dr_ij < min_distance or dr_ij1 < min_distance or dr_i1j < min_distance or dr_i1j1 < min_distance):
+				# calculate the minimum distance between the two rod-segments that span i, i+1 and j, j+1
+					
+					h_i, h_j, dri_dot_drj = self.perp_separation(r, dr_hat, dr, i, j)
+					
+					if(dri_dot_drj == 0):
+						f_x = 0
+						f_y = 0
+						f_z = 0
+					else:
+						if(h_i >= 0 and h_i <= dr[i] and h_j >= 0 and h_j <= dr[j]):
+							gamma_min_final, delta_min_final = 0,0 
+						else:
+							gamma_min_final, delta_min_final = self.parallel_separation(dri_dot_drj, dr[i], dr[j], h_i, h_j)
+
+						dmin_x = r[i   ] - r[j   ] + (h_i + gamma_min_final)*dr_hat[0, i] - (h_j + delta_min_final)*dr_hat[0, j]
+						dmin_y = r[i+Np] - r[j+Np] + (h_i + gamma_min_final)*dr_hat[1, i] - (h_j + delta_min_final)*dr_hat[1, j]
+						dmin_z = r[i+xx] - r[j+xx] + (h_i + gamma_min_final)*dr_hat[2, i] - (h_j + delta_min_final)*dr_hat[2, j]
+
+						dmin_2	= dmin_x*dmin_x +dmin_y*dmin_y + dmin_z*dmin_z
+
+						# epsilon = (2*radius - sqrt(dmin_2))
+
+						idr     = 1.0/(dmin_2**(1/2))
+						rminbyr = ljrmin*idr 
+						fac   = ljeps*(np.power(rminbyr, 12) - np.power(rminbyr, 6))*idr*idr
+						# if(epsilon>0):
+						f_x += fac*dmin_x
+						f_y += fac*dmin_y
+						f_z += fac*dmin_z
+
+						# Force on colloid i
+					torque_scale_factor = (h_i + gamma_min_final)/dr[i]
+					self.F_sc[i] += f_x*(1 - torque_scale_factor)
+					self.F_sc[i+Np] += f_y*(1 - torque_scale_factor)
+					self.F_sc[i+xx] += f_z*(1 - torque_scale_factor)
+
+					# Force on colloid i+1 
+					self.F_sc[i + 1] += f_x*torque_scale_factor
+					self.F_sc[i+1+Np] += f_y*torque_scale_factor
+					self.F_sc[i+1+xx] += f_z*torque_scale_factor
+
+					# torque_scale_factor = (h_j + delta_min_final)/dr[j]
+					# # Force on colloid j
+					# F_sc[j] = -f_x*(1-torque_scale_factor)
+					# F_sc[j+Np] = -f_y*(1-torque_scale_factor)
+					# F_sc[j+xx] = -f_z*(1-torque_scale_factor)
+
+					# # Force on colloid j+1 
+					# F_sc[j + 1] = -f_x*torque_scale_factor
+					# F_sc[j+1+Np] = -f_y*torque_scale_factor
+					# F_sc[j+1+xx] = -f_z*torque_scale_factor
+
+				
+
+	def perp_separation(self, r, dr_hat, dr, i, j):
+		""" 
+			Takes as input two line-sgments and outputs the minimal 3D separation vector (normal to both lines)
+			Returns: h_i, h_j (parameters along the line that determine the minimum separation vector)
+		"""
+		Np = self.Np 
+		xx = 2*Np
+		
+		
+		dri_dot_drj = 0; dri_dot_r = 0; drj_dot_r = 0;
+		for index in range(3):
+			dri_dot_drj += dr_hat[index, i]*dr_hat[index, j]
+			dri_dot_r += dr_hat[index, i]*(r[i + index*Np] - r[j + index*Np])
+			drj_dot_r += dr_hat[index, j]*(r[i + index*Np] - r[j + index*Np])
+			
+		if(abs(dri_dot_drj - 1)<1e-6):
+			# Lines are parallel
+			return 0, 0, 0
+		else:
+			h_i = (drj_dot_r*dri_dot_drj - dri_dot_r)/(dr[i]*(1 - dri_dot_drj*dri_dot_drj))
+			h_j = (drj_dot_r - dri_dot_drj*dri_dot_r)/(dr[j]*(1 - dri_dot_drj*dri_dot_drj))
+
+			return h_i, h_j, dri_dot_drj
+	def parallel_separation(self, dri_dot_drj, l_i, l_j, h_i, h_j):
+		"""
+		Adapted from Allen et al. Adv. Chem. Phys. Vol LXXXVI, 1003, p.1.
+
+		Takes input of two line-segments and returns the shortest distance and parameters giving the shortest distance vector 
+		in the plane parallel to both line segments
+		Returns: lambda_min, delta_min
+		"""
+		gamma_1 = -h_i 
+		gamma_2 = -h_i + l_i
+		gamma_m = gamma_1
+		# Choose the line closest to the origin
+		if(gamma_1*gamma_1 > gamma_2*gamma_2):
+			gamma_m = gamma_2
+
+		delta_1 = -h_j
+		delta_2 = -h_j +l_j
+		delta_m = delta_1
+
+		if(delta_1*delta_1 > delta_2*delta_2):
+			delta_m = delta_2
+
+		# Optimize delta on gamma_m
+		gamma_min = gamma_m
+		delta_min = gamma_m*dri_dot_drj
+
+		if(delta_min + h_j >= 0 and delta_min + h_j <= l_j):
+			delta_min = delta_min
+		else:
+			delta_min = delta_1
+			a1 = delta_min - delta_1
+			a2 = delta_min - delta_2
+			if(a1*a1 > a2*a2):
+				delta_min = delta_2
+
+		# Distance at this gamma and delta value
+		f1 = gamma_min*gamma_min + delta_min*delta_min - 2*gamma_min*delta_min*dri_dot_drj
+		gamma_min_final = gamma_min
+		delta_min_final = delta_min
+
+		# Now choose the line delta_m and optimize gamma
+		delta_min = delta_m
+		gamma_min = delta_m*dri_dot_drj
+
+		if(gamma_min + h_i >= 0 and gamma_min + h_i <= l_i):
+			gamma_min = gamma_min
+		else:
+			gamma_min = gamma_1
+			b1 = gamma_min - gamma_1
+			b2 = gamma_min - gamma_2
+			if(b1*b1 > b2*b2):
+				gamma_min = gamma_2
+
+		f2 = gamma_min*gamma_min + delta_min*delta_min - 2*gamma_min*delta_min*dri_dot_drj
+		
+		if(f1 < f2):
+			pass
+		else:
+			delta_min_final = delta_min
+			gamma_min_final = gamma_min
+
+		return gamma_min_final, delta_min_final
+	
+	# Diagnostics/Testing functions
+	def compute_self_interaction_forces(self):
+		self.derived_data['self-interaction forces'] = np.zeros((self.dim*self.Np, self.Nt))
+		
+		for ii in range(self.Nt):
+
+			print(ii)
+			self.r = self.R[ii,:]
+
+			self.get_separation_vectors()
+			self.F_sc = np.zeros(self.dim*self.Np, dtype = np.double)
+			assert(np.sum(self.F_sc[:self.Np])==0)
+			assert(np.sum(self.F_sc[self.Np:2*self.Np])==0)
+			assert(np.sum(self.F_sc[2*self.Np:3*self.Np])==0)
+			self.self_contact_forces(self.r, self.dr, self.dr_hat)
+
+			self.derived_data['self-interaction forces'][:, ii] = self.F_sc
+
+
 
 #-------------------------------------
 	# Plotting tools
@@ -473,13 +668,13 @@ class analysisTools(activeFilament):
 
 		fig, ax1 = plt.subplots(figsize = (10,4))
 		color = 'tab:red'
-		ax1.plot(self.Time, self.axial_energy, linestyle = '-', linewidth = 1, color = color, alpha = 0.75)
+		ax1.plot(self.Time, self.derived_data['Axial energy'], linestyle = '-', linewidth = 1, color = color, alpha = 0.75)
 		ax1.set_ylabel('Axial energy', color = color)
 
 		ax2 = ax1.twinx()
 		color = 'tab:blue'
 
-		ax2.plot(self.Time, self.bending_energy, linestyle = '-', linewidth = 1, color = color, alpha = 0.75)
+		ax2.plot(self.Time, self.derived_data['Bending energy'], linestyle = '-', linewidth = 1, color = color, alpha = 0.75)
 		ax2.set_ylabel('Bending energy', color = color)
 
 		ax1.set_xlabel('Time')
