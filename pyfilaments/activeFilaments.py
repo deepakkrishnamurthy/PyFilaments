@@ -497,11 +497,11 @@ class activeFilament:
 		self.filament.connection_forces(self.dr, self.dr_hat, self.F_conn)
 		self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
 		self.filament.self_contact_forces(self.r, self.dr, self.dr_hat, self.F_sc)
-		# if(np.max(self.F_sc)>1E-6):
-			# print('Contact forces \n', np.max(self.F_sc))
+		if(np.max(self.F_sc)>1E-6):
+			print('Contact forces \n', np.max(self.F_sc))
 
 		self.F_bending_array = self.reshape_to_array(self.F_bending)  
-		self.F += self.F_conn + self.F_bending_array + self.F_sc	# Add all the intrinsic forces together
+		self.F += self.F_conn + self.F_bending_array	# Add all the intrinsic forces together
 		self.F += self.F_mag	# external forces
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
@@ -519,6 +519,48 @@ class activeFilament:
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0):
 		
+		np.random.seed(pid)
+		#---------------------------------------------------------------------------------
+		def rhs0(r, t):
+			''' 
+			Pass the current time from the ode-solver, 
+			so as to implement time-varying conditions
+			'''
+			self.rhs_cython(r, t)
+			self.time_now = t
+			self.pbar.update(100*(self.time_now - self.time_prev)/Tf)
+			self.time_prev = self.time_now
+			return self.drdt
+
+		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
+			
+		# 	if(step_no>0):
+		# 		u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
+		# 		distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
+		# 		return distance < stop_tol
+		# 	else:
+		# 		return False
+
+		def terminate(u, t, step):
+
+			# Termination criterion based on bond-angle
+			if(step >0 and np.any(self.cosAngle<0)):
+				return True
+			else:
+				return False
+
+		# Termination based on self contact
+		# def terminate(u, t, step):
+
+		# 	# Termination criterion based on bond-angle
+		# 	if(step >0 and np.sum(self.F_sc)>1E-6):
+		# 		return True
+		# 	else:
+		# 		return False
+
+		self.save = save
+		self.overwrite = overwrite
+
 		if(init_condition is not None):
 			if('shape' in init_condition.keys()):
 				self.shape = init_condition['shape']
@@ -566,7 +608,7 @@ class activeFilament:
 
 		print(self.shape)
 		# Plot the initial filament shape
-		self.plotFilament(r = self.r0)
+		# self.plotFilament(r = self.r0)
 		# Set the simulation type
 		self.sim_type = sim_type
 
@@ -589,23 +631,14 @@ class activeFilament:
 							int(self.activity_timescale), sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)
-		copy_number = 0
-		self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
-
-		if(save):
-			if(not os.path.exists(self.saveFolder)):
-				os.makedirs(self.saveFolder)
-
-			while(os.path.exists(os.path.join(self.saveFolder, self.saveFile)) and overwrite == False):
-				copy_number+=1
-				self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
 		#---------------------------------------------------------------------------------
 		# Set the activity profile
 		self.activity_profile = activity_profile
 		# if simulating constant external forces
 		if(self.sim_type == 'sedimentation'):
-			''' Simulates a filament where there is a net body force on each particle making up the filament.
-			'''
+			""" 
+				Simulates a filament where there is a net body force on each particle making up the filament.
+			"""
 			Np = self.Np
 			xx = 2*Np 
 
@@ -616,113 +649,61 @@ class activeFilament:
 
 			self.S_mag[:] = 0
 			self.D_mag[:] = 0
-		#---------------------------------------------------------------------------------
-		def rhs0(r, t):
-			''' 
-			Pass the current time from the ode-solver, 
-			so as to implement time-varying conditions
-			'''
-			self.rhs_cython(r, t)
-			self.time_now = t
-			self.pbar.update(100*(self.time_now - self.time_prev)/Tf)
-			self.time_prev = self.time_now
-			return self.drdt
+		
+		print('Running the filament simulation ....')
 
-		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
+		start_time = time.time()
+		tqdm_text = "Param: {} Progress: ".format(self.k).zfill(1)
+
+		# Stagger the start of the simulations to avoid issues with concurrent writing to disk
+		time.sleep(pid)
+
+		with tqdm(total = 100, desc=tqdm_text, position=pid+1) as self.pbar:
+			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
+
+			# integrate the resulting equation using odespy
+			T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
 			
-		# 	if(step_no>0):
-		# 		u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
-		# 		distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
-		# 		return distance < stop_tol
-		# 	else:
-		# 		return False
-
-		def terminate(u, t, step):
-
-			# Termination criterion based on bond-angle
-			if(step >0 and np.any(self.cosAngle<0)):
-				return True
+			solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6) # initialize the odespy solver
+			solver.set_initial_condition(self.r0)  # Initial conditions
+			# Solve!
+			if(self.sim_type == 'sedimentation'):
+				self.R, self.Time = solver.solve(time_points)
 			else:
-				return False
-
-		# Termination based on self contact
-		# def terminate(u, t, step):
-
-		# 	# Termination criterion based on bond-angle
-		# 	if(step >0 and np.sum(self.F_sc)>1E-6):
-		# 		return True
-		# 	else:
-		# 		return False
-
-		if(not os.path.exists(os.path.join(self.saveFolder, self.saveFile)) or overwrite==True):
-			print('Running the filament simulation ....')
-
-			start_time = time.time()
-			tqdm_text = "Progress param #" + "{}".format(self.k).zfill(1)
-
-			with tqdm(total = 100, desc=tqdm_text, position=pid+1) as self.pbar:
-				# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
-
-				# integrate the resulting equation using odespy
-				T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
-				
-				solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6) # initialize the odespy solver
-				solver.set_initial_condition(self.r0)  # Initial conditions
-				# Solve!
-				if(self.sim_type == 'sedimentation'):
-					self.R, self.Time = solver.solve(time_points)
-				else:
-					self.R, self.Time = solver.solve(time_points, terminate)
-					# self.R, self.Time = solver.solve(time_points)
-				
-				self.cpu_time = time.time() - start_time
-				if(save):
-					print('Saving results...')
-					self.save_data()
-				
-		else:
-			self.load_data(os.path.join(self.saveFolder, self.saveFile))
+				self.R, self.Time = solver.solve(time_points, terminate)
+				# self.R, self.Time = solver.solve(time_points)
+			
+			self.cpu_time = time.time() - start_time
+			if(self.save):
+				print('Saving results...')
+				self.save_data()
 
 	def load_data(self, file = None):
 
 		print('Loading Simulation data from disk ...')
 
 		if(file is not None):
-
 			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
 
-
 				with h5py.File(file, "r") as f:
-
-					
 					if('simulation data' in f.keys()): # Load the simulation data (newer method)
 						
 						dset = f['simulation data']
-
 						self.Time = dset["Time"][:]
 						self.R = dset["Position"][:]
-
 						self.F_mag = dset["particle forces"][:]
-						
 						self.S_mag = dset["particle stresslets"][:]
-
 						self.D_mag = dset["particle potDipoles"][:]
-
 						# Load the metadata:
 						self.Np = dset.attrs['N particles']
 						self.radius = dset.attrs['radius']
 						self.b0 = dset.attrs['bond length']
 						self.k = dset.attrs['spring constant'] 
-
 						self.kappa_hat = dset.attrs['kappa_hat']
-
 						self.F0 = dset.attrs['force strength']
-
 						self.S0 = dset.attrs['stresslet strength'] 
 						self.D0 = dset.attrs['potDipole strength']
-
 						self.activity_timescale = dset.attrs['activity time scale']
-
 						self.sim_type = dset.attrs['simulation type']
 						try:
 							self.mu = dset.attrs['viscosity']
@@ -731,50 +712,33 @@ class activeFilament:
 							self.bc[-1] = dset.attrs['boundary condition 1']
 						except:
 							print('Attribute not found')
-						
-
 						if('activity profile' in f.keys()):
 							self.activity_profile = f["activity profile"][:]
 						else:
 							self.activity_profile = None
 
 					else:  # Load the simulation data (older method)
-						
 						self.Time = f["Time"][:]
 						dset = f["Position"]
 						self.R = dset[:]
-
-
 						# Load the metadata:
 						self.Np = dset.attrs['N particles']
 						self.radius = dset.attrs['radius']
 						self.b0 = dset.attrs['bond length']
 						self.k = dset.attrs['spring constant'] 
-
 						self.kappa_hat = dset.attrs['kappa_hat']
-
 						self.F0 = dset.attrs['force strength']
-
 						self.S0 = dset.attrs['stresslet strength'] 
 						self.D0 = dset.attrs['potDipole strength']
-
 						self.activity_timescale = dset.attrs['activity time scale']
-
 						self.sim_type = dset.attrs['simulation type']
-
 						self.F_mag = f["particle forces"][:]
-						
 						self.S_mag = f["particle stresslets"][:]
-
 						self.D_mag = f["particle potDipoles"][:]
-
 						if('activity profile' in f.keys()):
 							self.activity_profile = f["activity profile"][:]
 						else:
 							self.activity_profile = None
-
-					
-
 			else:
 				with open(file, 'rb') as f:
 			
@@ -783,18 +747,26 @@ class activeFilament:
 	# Implement a save module based on HDF5 format:
 	def save_data(self):
 
+		copy_number = 0
+		self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
+
+		if(self.save):
+			if(not os.path.exists(self.saveFolder)):
+				os.makedirs(self.saveFolder)
+
+			# Choose a new copy number for multiple simulations with the same parameters
+			while(os.path.exists(os.path.join(self.saveFolder, self.saveFile)) and self.overwrite == False):
+				copy_number+=1
+				self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
+
 
 		with h5py.File(os.path.join(self.saveFolder, self.saveFile), "w") as f:
 
 			dset = f.create_group("simulation data")
-
 			dset.create_dataset("Time", data = self.Time)
-
-			
 			dset.create_dataset("Position", data = self.R)  # Position contains the 3D positions of the Np particles over time. 
 			# Array of bending stiffnesses
 			dset.create_dataset("kappa_array", data = self.kappa_array)
-
 			dset.attrs['N particles'] = self.Np
 			dset.attrs['radius'] = self.radius
 			dset.attrs['bond length'] = self.b0
@@ -809,8 +781,6 @@ class activeFilament:
 			dset.attrs['boundary condition 0'] = self.bc[0]
 			dset.attrs['boundary condition 1'] = self.bc[-1]
 
-
-			
 			dset.create_dataset("particle forces", data = self.F_mag)
 			dset.create_dataset("particle stresslets", data = self.S_mag)
 			dset.create_dataset("particle potDipoles", data = self.D_mag)
@@ -818,14 +788,10 @@ class activeFilament:
 			if(self.activity_profile is not None):
 				dset.create_dataset("activity profile", data = self.activity_profile(self.Time))
 
-
 		# Save user readable metadata in the same folder
 		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
-
 		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale,viscosity,Simulation time,CPU time (s)\n')
-
 		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
-
 		self.metadata.close()
 
 
@@ -837,11 +803,8 @@ class activeFilament:
 			Calculate the Euclidean distance between two filament shapes
 			Use this metric to conclude if the simulation has reached steady state.
 		'''
-
 		r1_matrix = self.reshape_to_matrix(r1)
 		r2_matrix = self.reshape_to_matrix(r2)
-		
-
 		# Find the center of mass of the filament and subtract it to remove translation (rotation will be added later)
 
 		r1_com = [np.nanmean(r1[:self.Np-1]), 
@@ -849,8 +812,6 @@ class activeFilament:
 		
 		r2_com = [np.nanmean(r2[:self.Np-1]), 
 		np.nanmean(r2[self.Np:2*self.Np-1]), np.nanmean(r2[2*self.Np:3*self.Np-1]) ] 
-
-
 		for ii in range(self.dim):
 
 			r1_matrix[ii,:] = r1_matrix[ii,:] - r1_com[ii] 
@@ -859,7 +820,6 @@ class activeFilament:
 		distance = np.sum((r1_matrix - r2_matrix)**2)**(1/2)
 
 		return distance
-
 
 	########################################################################################################
 	# Plotting

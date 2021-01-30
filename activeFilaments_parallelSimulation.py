@@ -18,7 +18,7 @@ elif platform == 'darwin':
 	print("OSX system")
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
-activity_timescale = 750
+activity_timescale = 1000
 activityFreq = 1.0/activity_timescale
 
 print('Activity frequency: {}'.format(activityFreq))
@@ -28,7 +28,6 @@ print('Total simulation time: {}'.format(Tf))
 # No:of time points saved
 Npts = int(Tf/10)
 t_array = np.linspace(0, Tf+10, Npts)
-print(t_array)
 
 activity_profile = -signal.square(2*np.pi*activityFreq*t_array)
 activity_Function =  interpolate.interp1d(t_array, activity_profile)
@@ -48,8 +47,20 @@ def run_parametric_simulation(pid, parameter):
 			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'}, pid = pid)
 
 
-parameter_list = np.array([15, 20, 25, 50])
+parameter_list = np.array([45])
+num_initial_conditions = 6
+
+parameter_list_full = []
+
+for ii in range(num_initial_conditions):
+	parameter_list_full.append(parameter_list)
+
+parameter_list_full = np.array(parameter_list_full).flatten()
+
+print(parameter_list_full)
 
 num_cores = multiprocessing.cpu_count()
 
-results = Parallel(n_jobs=num_cores,  verbose=10)(delayed(run_parametric_simulation)(pid, parameter) for pid, parameter in enumerate(parameter_list))
+num_cores = 12
+
+results = Parallel(n_jobs=num_cores,  verbose=10)(delayed(run_parametric_simulation)(pid, parameter) for pid, parameter in enumerate(parameter_list_full))

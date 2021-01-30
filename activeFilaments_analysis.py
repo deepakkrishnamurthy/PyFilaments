@@ -40,7 +40,9 @@ import pyfilaments.analysisutils as analysis
 
 # file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-22/ActivityTime_1000/SimResults_Np_33_Shape_line_kappa_hat_2.5_k_10_b0_2_F_0_S_0_D_1.5_activityTime_1000_simType_point/SimResults_00.hdf5'
 
-file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-23/ActivityTime_1000/SimResults_Np_33_Shape_line_kappa_hat_2.5_k_10_b0_2_F_0_S_0_D_1.5_activityTime_1000_simType_point/SimResults_00.hdf5'
+# file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-23/ActivityTime_1000/SimResults_Np_33_Shape_line_kappa_hat_2.5_k_10_b0_2_F_0_S_0_D_1.5_activityTime_1000_simType_point/SimResults_00.hdf5'
+
+file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_10.0_k_40_b0_2.1_F_0_S_0_D_1.5_activityTime_1000_simType_point/SimResults_02.hdf5'
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-09/LowSearchCoverage_SimResults_Np_33_Shape_line_k_50_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
 
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-07/GoodSearch_SimResults_Np_33_Shape_line_k_25_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
@@ -75,24 +77,24 @@ filament = analysis.analysisTools(file = file)
 
 
 
-# filament.compute_self_interaction_forces()
+filament.compute_self_interaction_forces()
 
 
-# # # # Plot the self-interaction forces vs time
-# forces_x = filament.derived_data['self-interaction forces'][0:filament.Np, :]
-# forces_y = filament.derived_data['self-interaction forces'][filament.Np:2*filament.Np, :]
-# forces_z = filament.derived_data['self-interaction forces'][2*filament.Np:3*filament.Np, :]
-# fig, (ax0, ax1, ax2) = plt.subplots(nrows=1, ncols = 3)
-# c = ax0.pcolor(forces_x)
-# ax0.set_title('Forces x')
-# fig.colorbar(c, ax = ax0)
-# c = ax1.pcolor(forces_y)
-# ax1.set_title('Forces y')
-# fig.colorbar(c, ax = ax1)
-# c =ax2.pcolor(forces_z)
-# ax2.set_title('Forces z')
-# fig.colorbar(c, ax = ax2)
-# plt.show()
+# # # Plot the self-interaction forces vs time
+forces_x = filament.derived_data['self-interaction forces'][0:filament.Np, :]
+forces_y = filament.derived_data['self-interaction forces'][filament.Np:2*filament.Np, :]
+forces_z = filament.derived_data['self-interaction forces'][2*filament.Np:3*filament.Np, :]
+fig, (ax0, ax1, ax2) = plt.subplots(nrows=1, ncols = 3)
+c = ax0.pcolor(forces_x)
+ax0.set_title('Forces x')
+fig.colorbar(c, ax = ax0)
+c = ax1.pcolor(forces_y)
+ax1.set_title('Forces y')
+fig.colorbar(c, ax = ax1)
+c =ax2.pcolor(forces_z)
+ax2.set_title('Forces z')
+fig.colorbar(c, ax = ax2)
+plt.show()
 
 
 filament.compute_tip_velocity()

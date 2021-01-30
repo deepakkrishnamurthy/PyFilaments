@@ -9,7 +9,7 @@ import cmocean
 from matplotlib import rcParams
 from matplotlib import rc
 from matplotlib import cm
-
+from tqdm import tqdm
 
 rc('font', family='sans-serif') 
 rc('font', serif='Helvetica') 
@@ -457,10 +457,11 @@ class analysisTools(activeFilament):
 	def compute_self_interaction_forces(self):
 		self.derived_data['self-interaction forces'] = np.zeros((self.dim*self.Np, self.Nt))
 		
-		for ii in range(self.Nt):
+		stride = 100
+		for ii, index in enumerate(tqdm(range(0,self.Nt, stride))):
 
-			print(ii)
-			self.r = self.R[ii,:]
+	
+			self.r = self.R[index,:]
 
 			self.get_separation_vectors()
 			self.F_sc = np.zeros(self.dim*self.Np, dtype = np.double)
