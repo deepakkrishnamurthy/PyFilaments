@@ -520,8 +520,8 @@ class activeFilament:
 		self.filament.connection_forces(self.dr, self.dr_hat, self.F_conn)
 		self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
 		self.filament.self_contact_forces(self.r, self.dr, self.dr_hat, self.F_sc)
-		if(np.max(self.F_sc)>1E-6 and int(t)%100 == 0):
-			print('Contact forces \n', np.max(self.F_sc))
+		# if(np.max(self.F_sc)>1E-6 and int(t)%100 == 0):
+		# 	print('Contact forces \n', np.max(self.F_sc))
 
 		self.F_bending_array = self.reshape_to_array(self.F_bending)  
 		self.F += self.F_conn + self.F_bending_array + self.F_sc	# Add all the intrinsic forces together
@@ -696,8 +696,8 @@ class activeFilament:
 			if(self.sim_type == 'sedimentation'):
 				self.R, self.Time = solver.solve(time_points)
 			else:
-				# self.R, self.Time = solver.solve(time_points, terminate)
-				self.R, self.Time = solver.solve(time_points)
+				self.R, self.Time = solver.solve(time_points, terminate)
+				# self.R, self.Time = solver.solve(time_points)
 			
 			self.cpu_time = time.time() - start_time
 			if(self.save):
