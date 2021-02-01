@@ -2,17 +2,17 @@
 import numpy as np
 # Define two line segments in 3D space
 r_i = np.array([0,0,0])
-r_j = np.array([1,1,0])
+r_j = np.array([0,1,0])
 
 # Line segment orientations
-dr_hat_i = np.array([2,1,0])
-dr_hat_j = np.array([2,1,0])
+dr_hat_i = np.array([1,1,1])
+dr_hat_j = np.array([1,1,1])
 
 dr_hat_i = dr_hat_i/(np.dot(dr_hat_i, dr_hat_i)**(1/2))
 dr_hat_j = dr_hat_j/(np.dot(dr_hat_j, dr_hat_j)**(1/2))
 
 l_i = 1	# Line lengths
-l_j = 1
+l_j = 2
 radius = 1 # Radius of the cylinder whose center-line is give by the line segments.
 
 
@@ -50,7 +50,9 @@ if(np.isclose(dri_dot_drj,1.0, 1e-6)):
 		d_perp2 += perp_line[index]*perp_line[index]
 
 	d_perp = d_perp2**(1/2)
-
+	print(50*'*')
+	print('Perpendicular distance between the line segments (parallel case): {}'.format(d_perp))
+	print(50*'*')
 	# Calculate the line of closest approach in the plane containing the two lines.
 
 	# Let gamma and delta be the parameter along each line. We want to find gamma and delta that gives the closest line
@@ -119,10 +121,6 @@ if(np.isclose(dri_dot_drj,1.0, 1e-6)):
 		print('Actual closest distance that lies on both lines (parallel case): {}'.format(d_par))
 		print(50*'*')
 
-
-
-
-
 else:
 	"""
 		If the lines are not parallel then find the unique common perpendicular line. 
@@ -131,12 +129,14 @@ else:
 	print('Lines are not parallel... calculating common normal')
 	print(50*'*')
 
-	h_i = (drj_dot_r*dri_dot_drj - dri_dot_r)/(l_i*(1 - dri_dot_drj*dri_dot_drj))
-	h_j = (drj_dot_r - dri_dot_drj*dri_dot_r)/(l_j*(1 - dri_dot_drj*dri_dot_drj))
+	h_i = (drj_dot_r*dri_dot_drj - dri_dot_r)/((1 - dri_dot_drj*dri_dot_drj))
+	h_j = (drj_dot_r - dri_dot_drj*dri_dot_r)/((1 - dri_dot_drj*dri_dot_drj))
 
 	d_min_ji = r_ji +h_i*dr_hat_i - h_j*dr_hat_j
 	d_perp = np.dot(d_min_ji, d_min_ji)**(1/2)
-
+	print(50*'*')
+	print('Perpendicular distance between the line segments (non-parallel case): {}'.format(d_perp))
+	print(50*'*')
 	# Now find the minimum in-plane distance (for non-parallel lines)
 	# Adapted from Allen et al. Adv. Chem. Phys. Vol LXXXVI, 1003, p.1.
 

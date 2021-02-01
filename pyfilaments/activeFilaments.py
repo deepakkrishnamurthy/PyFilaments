@@ -78,7 +78,7 @@ class activeFilament:
 		self.mu = mu
 		
 		# Parameters for the near-field Lennard-Jones potential
-		self.ljeps = 1
+		self.ljeps = 1.0
 		self.ljrmin = 2.1*self.radius
 		
 
@@ -347,7 +347,7 @@ class activeFilament:
 
 		# print(self.kappa_array)
 
-		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 3*self.radius, ljeps = 10)
+		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 2.1*self.radius, ljeps = 1.0)
 
 
 			  
@@ -411,9 +411,7 @@ class activeFilament:
 		Apply the kinematic boundary conditions as a velocity condition:
 		'''
 		for key in self.bc:
-
 			bc_value = self.bc[key]
-
 			# Proximal end
 			if(key==0):
 				# Index correspond to end particle and next nearest particle (proximal end)
@@ -422,7 +420,6 @@ class activeFilament:
 
 				vel_end = (0,0,0)
 				vel_end_1 = (0,0,0)
-				
 			# Distal end
 			elif(key == -1 or key == self.Np-1):
 				# Index correspond to end particle and next nearest particle (distal end)
@@ -431,17 +428,43 @@ class activeFilament:
 
 				vel_end_1 = (0,0,0)
 				vel_end = (0,0,0)
-				
-
 			if(bc_value == 'fixed'):
 				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
 			elif(bc_value == 'clamped'):
-
 				# Apply velocity bc to the farthermost particle
 				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
-
 				# Apply velocity bc to the next to the farthermost particle
 				self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
+
+	def apply_BC_force(self):
+		'''
+		Apply the kinematic boundary conditions as a velocity condition:
+		'''
+		for key in self.bc:
+			bc_value = self.bc[key]
+			# Proximal end
+			if(key==0):
+				# Index correspond to end particle and next nearest particle (proximal end)
+				end = 0
+				end_1 = 1
+
+				force_end = (0,0,0)
+				force_end_1 = (0,0,0)
+			# Distal end
+			elif(key == -1 or key == self.Np-1):
+				# Index correspond to end particle and next nearest particle (distal end)
+				end = self.Np - 1
+				end_1 = self.Np - 2
+
+				force_end_1 = (0,0,0)
+				force_end = (0,0,0)
+			if(bc_value == 'fixed'):
+				self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_end
+			elif(bc_value == 'clamped'):
+				# Apply force bc to the farthermost particle
+				self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_end
+				# Apply force bc to the next to the farthermost particle
+				self.F[end_1], self.F[end_1 + self.Np], self.F[end_1 + self.xx]  = force_end_1
 
 	def set_filament_activity(self, t):
 
@@ -497,12 +520,15 @@ class activeFilament:
 		self.filament.connection_forces(self.dr, self.dr_hat, self.F_conn)
 		self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
 		self.filament.self_contact_forces(self.r, self.dr, self.dr_hat, self.F_sc)
-		if(np.max(self.F_sc)>1E-6):
+		if(np.max(self.F_sc)>1E-6 and int(t)%100 == 0):
 			print('Contact forces \n', np.max(self.F_sc))
 
 		self.F_bending_array = self.reshape_to_array(self.F_bending)  
-		self.F += self.F_conn + self.F_bending_array	# Add all the intrinsic forces together
+		self.F += self.F_conn + self.F_bending_array + self.F_sc	# Add all the intrinsic forces together
 		self.F += self.F_mag	# external forces
+
+		# Apply the appropriate force BC for tethered particles such that the Hydrodynamics are satisfied.
+		# self.apply_BC_force()
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
 		self.rm.stokesletV(self.drdt, self.r, self.F)
@@ -670,8 +696,8 @@ class activeFilament:
 			if(self.sim_type == 'sedimentation'):
 				self.R, self.Time = solver.solve(time_points)
 			else:
-				self.R, self.Time = solver.solve(time_points, terminate)
-				# self.R, self.Time = solver.solve(time_points)
+				# self.R, self.Time = solver.solve(time_points, terminate)
+				self.R, self.Time = solver.solve(time_points)
 			
 			self.cpu_time = time.time() - start_time
 			if(self.save):

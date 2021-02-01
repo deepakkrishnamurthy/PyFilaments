@@ -27,5 +27,5 @@ cdef class filament_operations:
 	cpdef connection_forces(self, double [:] dr, double [:,:] dr_hat, double [:] F_conn)
 	cpdef self_contact_forces(self, double [:] r, double [:] dr, double [:,:] dr_hat, double [:] F_sc)
 
-	cpdef perp_separation(self, double [:] r, double [:, :] dr_hat, double [:] dr, int i, int j)
 	cpdef parallel_separation(self, double dri_dot_drj, double l_i, double l_j, double h_i, double h_j)
+	cpdef parallel_separation_parallel_lines(self, double dri_dot_r, double l_i, double l_j)

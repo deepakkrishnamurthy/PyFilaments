@@ -151,15 +151,19 @@ cdef class filament_operations:
 	cpdef self_contact_forces(self, double [:] r, double [:] dr, double [:,:] dr_hat, double [:] F_sc):
 
 		cdef int Np = self.Np, i, j, xx = 2*Np, index
-		cdef double h_i, h_j, dmin_x, dmin_y, dmin_z, dmin_2, epsilon, gamma_min_final, delta_min_final 
-		cdef double f_x, f_y, f_z, dx, dy, dz, dr_ij, dr_ij1, dr_i1j, dr_i1j1, dri_dot_drj
+		cdef double h_i, h_j, dmin_x, dmin_y, dmin_z, dmin_2, epsilon, gamma_final, delta_final, d_perp2 
+		cdef double f_x, f_y, f_z, dx, dy, dz, dr_ij, dr_ij1, dr_i1j, dr_i1j1, dri_dot_drj, dri_dot_r, drj_dot_r
 		cdef double b0 = self.b0, radius = self.radius, k_sc = self.k_sc
 		cdef double min_distance = (b0*b0) + 4.0*radius*radius, torque_scale_factor
 		cdef double ljrmin = self.ljrmin, ljeps = self.ljeps,  idr, rminbyr, fac
 
 		for i in range(Np-1):
-			f_x=0.0; f_y=0.0; f_z=0.0;
+			f_x = 0.0; f_y = 0.0; f_z = 0.0;
+			
 			for j in range(Np-1):
+				torque_scale_factor = 0
+				h_i = 0.0; h_j = 0.0; gamma_final = 0.0; delta_final = 0.0;
+ 
 				dx = r[i   ] - r[j+1]
 				dy = r[i+Np] - r[j+1+Np]
 				dz = r[i+xx] - r[j+1+xx] 
@@ -181,39 +185,69 @@ cdef class filament_operations:
 				dr_ij = dx*dx + dy*dy + dz*dz
 			
 				# if i!=j and abs(i-j)>int(Np/4) and (dr_ij < min_distance or dr_ij1 < min_distance or dr_i1j < min_distance or dr_i1j1 < min_distance):  # No need to check for interactions between very close spheres
-				if i!=j and abs(i-j)> 3:
-				# calculate the minimum distance between the two rod-segments that span i, i+1 and j, j+1
+				if i!=j and abs(i-j)> 2:
+
+					# Check if the lines are parallel
+					dri_dot_drj = 0; dri_dot_r = 0; drj_dot_r = 0;
+					for index in range(3):
+						dri_dot_drj += dr_hat[index, i]*dr_hat[index, j]
+						dri_dot_r += dr_hat[index, i]*(r[i + index*Np] - r[j + index*Np])
+						drj_dot_r += dr_hat[index, j]*(r[i + index*Np] - r[j + index*Np])
 					
-					h_i, h_j, dri_dot_drj = self.perp_separation(r, dr_hat, dr, i, j)
-					
-					if(dri_dot_drj == 0):
-						f_x = 0
-						f_y = 0
-						f_z = 0
-					else:
-						if(h_i >= 0 and h_i <= dr[i] and h_j >= 0 and h_j <= dr[j]):
-							gamma_min_final, delta_min_final = 0,0 
+					if((dri_dot_drj - 1.0)*(dri_dot_drj - 1.0) < 1e-6):
+						# The lines are parallel or nearly parallel
+						# Find the distance between the parallel lines
+						h_i = 0
+						h_j = 0
+
+						d_min2 = 0.0
+						for index in range(3):
+							d_min2 = (r[i + index*Np] - r[j + index*Np] - dri_dot_r*dr_hat[index, i])*(r[i + index*Np] - r[j + index*Np] - dri_dot_r*dr_hat[index, i])
+
+						# Check this against the minimum distance between two rods
+						if(d_min2 <= ljrmin*ljrmin):
+							# The parallel rods are close enough to interact. Find the actual closest line and direction of the interaction force vector.
+							gamma_final, delta_final = self.parallel_separation_parallel_lines(dri_dot_r, dr[i], dr[j])
+
 						else:
-							gamma_min_final, delta_min_final = self.parallel_separation(dri_dot_drj, dr[i], dr[j], h_i, h_j)
+							# The rods are parallel but are not close enough to interact, in thsi case the interaction force is zero.
+							f_x = 0
+							f_y = 0
+							f_z = 0
+							break
+					else:
+						# Non-parallel case.
+					
+						# Find the common normal to both rods.
+						h_i = (drj_dot_r*dri_dot_drj - dri_dot_r)/(1 - dri_dot_drj*dri_dot_drj)
+						h_j = (drj_dot_r - dri_dot_drj*dri_dot_r)/(1 - dri_dot_drj*dri_dot_drj)
 
-						dmin_x = r[i   ] - r[j   ] + (h_i + gamma_min_final)*dr_hat[0, i] - (h_j + delta_min_final)*dr_hat[0, j]
-						dmin_y = r[i+Np] - r[j+Np] + (h_i + gamma_min_final)*dr_hat[1, i] - (h_j + delta_min_final)*dr_hat[1, j]
-						dmin_z = r[i+xx] - r[j+xx] + (h_i + gamma_min_final)*dr_hat[2, i] - (h_j + delta_min_final)*dr_hat[2, j]
+						# Find the in-plane points of cloest-approach 
+						if(h_i >= 0 and h_i <= dr[i] and h_j >= 0 and h_j <= dr[j]):
+							gamma_final, delta_final = 0,0 
+						else:
+							gamma_final, delta_final = self.parallel_separation(dri_dot_drj, dr[i], dr[j], h_i, h_j)
 
-						dmin_2	= dmin_x*dmin_x +dmin_y*dmin_y + dmin_z*dmin_z
+					# Find the line of closest approach between the two rods based on the calculated parameters. 
+					dmin_x = r[i   ] - r[j   ] + (h_i + gamma_final)*dr_hat[0, i] - (h_j + delta_final)*dr_hat[0, j]
+					dmin_y = r[i+Np] - r[j+Np] + (h_i + gamma_final)*dr_hat[1, i] - (h_j + delta_final)*dr_hat[1, j]
+					dmin_z = r[i+xx] - r[j+xx] + (h_i + gamma_final)*dr_hat[2, i] - (h_j + delta_final)*dr_hat[2, j]
 
-						# epsilon = (2*radius - sqrt(dmin_2))
+					dmin_2	= dmin_x*dmin_x +dmin_y*dmin_y + dmin_z*dmin_z
 
-						if(dmin_2 < (ljrmin*ljrmin)):
-							idr     = 1.0/sqrt(dmin_2)
-							rminbyr = ljrmin*idr 
-							fac   = ljeps*(pow(rminbyr, 12) - pow(rminbyr, 6))*idr*idr
-							# if(epsilon>0):
-							f_x += fac*dmin_x
-							f_y += fac*dmin_y
-							f_z += fac*dmin_z
+					# epsilon = (2*radius - sqrt(dmin_2))
 
-					# torque_scale_factor = (h_j + delta_min_final)/dr[j]
+					if(dmin_2 <= (ljrmin*ljrmin)):
+						idr     = 1.0/sqrt(dmin_2)
+						rminbyr = ljrmin*idr 
+						fac   = ljeps*(pow(rminbyr, 12) - pow(rminbyr, 6))*idr*idr
+						# if(epsilon>0):
+						f_x += fac*dmin_x
+						f_y += fac*dmin_y
+						f_z += fac*dmin_z
+						torque_scale_factor = (h_i + gamma_final)/dr[i]
+
+					# torque_scale_factor = (h_j + delta_final)/dr[j]
 					# # Force on colloid j
 					# F_sc[j] = -f_x*(1-torque_scale_factor)
 					# F_sc[j+Np] = -f_y*(1-torque_scale_factor)
@@ -225,7 +259,7 @@ cdef class filament_operations:
 					# F_sc[j+1+xx] = -f_z*torque_scale_factor
 
 			# Force on colloid i
-			torque_scale_factor = (h_i + gamma_min_final)/dr[i]
+			
 			F_sc[i] += f_x*(1 - torque_scale_factor)
 			F_sc[i+Np] += f_y*(1 - torque_scale_factor)
 			F_sc[i+xx] += f_z*(1 - torque_scale_factor)
@@ -238,30 +272,6 @@ cdef class filament_operations:
 			
 		return
 
-	cpdef perp_separation(self, double [:] r, double [:, :] dr_hat, double [:] dr, int i, int j):
-		""" 
-			Takes as input two line-sgments and outputs the minimal 3D separation vector (normal to both lines)
-			Returns: h_i, h_j (parameters along the line that determine the minimum separation vector)
-		"""
-		cdef int Np = self.Np, xx = 2*Np, index
-		cdef double h_i, h_j
-		cdef double dr_ij, dr_ij1, dr_i1j, dr_i1j1, dri_dot_drj, dri_dot_r, drj_dot_r
-		
-		dri_dot_drj = 0; dri_dot_r = 0; drj_dot_r = 0;
-		for index in range(3):
-			dri_dot_drj += dr_hat[index, i]*dr_hat[index, j]
-			dri_dot_r += dr_hat[index, i]*(r[i + index*Np] - r[j + index*Np])
-			drj_dot_r += dr_hat[index, j]*(r[i + index*Np] - r[j + index*Np])
-			
-		if(abs(dri_dot_drj - 1)<1e-6):
-			# Lines are parallel
-			return 0, 0, 0
-		else:
-			h_i = (drj_dot_r*dri_dot_drj - dri_dot_r)/(dr[i]*(1 - dri_dot_drj*dri_dot_drj))
-			h_j = (drj_dot_r - dri_dot_drj*dri_dot_r)/(dr[j]*(1 - dri_dot_drj*dri_dot_drj))
-
-			return h_i, h_j, dri_dot_drj
-
 	cpdef parallel_separation(self, double dri_dot_drj, double l_i, double l_j, double h_i, double h_j):
 		"""
 		Adapted from Allen et al. Adv. Chem. Phys. Vol LXXXVI, 1003, p.1.
@@ -270,7 +280,7 @@ cdef class filament_operations:
 		in the plane parallel to both line segments
 		Returns: lambda_min, delta_min
 		"""
-		cdef double gamma_1, gamma_2, delta_1, delta_2, gamma_m, delta_m, gamma_min, delta_min, gamma_min_final, delta_min_final
+		cdef double gamma_1, gamma_2, delta_1, delta_2, gamma_m, delta_m, gamma_min, delta_min, gamma_final, delta_final
 		cdef double a1, a2, b1, b2, f1, f2
 
 		gamma_1 = -h_i 
@@ -302,8 +312,8 @@ cdef class filament_operations:
 
 		# Distance at this gamma and delta value
 		f1 = gamma_min*gamma_min + delta_min*delta_min - 2*gamma_min*delta_min*dri_dot_drj
-		gamma_min_final = gamma_min
-		delta_min_final = delta_min
+		gamma_final = gamma_min
+		delta_final = delta_min
 
 		# Now choose the line delta_m and optimize gamma
 		delta_min = delta_m
@@ -323,8 +333,67 @@ cdef class filament_operations:
 		if(f1 < f2):
 			pass
 		else:
-			delta_min_final = delta_min
-			gamma_min_final = gamma_min
+			delta_final = delta_min
+			gamma_final = gamma_min
 
-		return gamma_min_final, delta_min_final
+		return gamma_final, delta_final
+
+	cpdef parallel_separation_parallel_lines(self, double dri_dot_r, double l_i, double l_j):
+		"""
+			Find the line of closest separtion between points lying on parallel lines.
+			Handles both cases:
+			1. Overalapping lines.
+			2. No overlapping lines
+
+		"""
+		cdef double gamma_min, gamma_max, delta_min, delta_max, gamma_final, delta_final
+
+		#Find gamma_min
+		if(-dri_dot_r<0):
+			gamma_min = 0.0
+		elif (-dri_dot_r >= 0 and -dri_dot_r < l_i):
+			gamma_min = -dri_dot_r
+		else:
+			gamma_min = l_i
+
+		# Find delta_min
+		if(dri_dot_r < 0):
+			delta_min = 0
+		elif(dri_dot_r >=0 and dri_dot_r < l_j):
+			delta_min = dri_dot_r
+		else:
+			delta_min = l_j
+
+		# Find gamma_max
+		if(l_j - dri_dot_r < 0):
+			gamma_max = 0.0
+		elif(l_j - dri_dot_r >=0 and l_j - dri_dot_r < l_i):
+			gamma_max = l_j - dri_dot_r
+		else:
+			gamma_max = l_i
+
+		# Find delta_max:
+		if(l_i + dri_dot_r < 0):
+			delta_max = 0.0
+		elif(l_i + dri_dot_r >= 0 and l_i + dri_dot_r < l_j):
+			delta_max = l_i + dri_dot_r 
+		else:
+			delta_max  = l_j
+
+		# Find gamma_final and delta_final by choosing the mid-point of the overlap if there is overlap
+		if (gamma_min!=gamma_max and delta_min!= delta_max):
+			# In case the two lines have an overlap region
+			gamma_final = (gamma_min + gamma_max)/2.0
+			delta_final = (delta_min + delta_max)/2.0
+		else:
+			# In the case where there is no overlap.
+			# In this case the line of closest approach passes through one of the end-points in each line.
+			gamma_final = gamma_max
+			delta_final = delta_max
+
+		return gamma_final, delta_final
+		
+		
+
+		
 

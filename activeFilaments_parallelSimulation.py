@@ -47,7 +47,7 @@ def run_parametric_simulation(pid, parameter):
 			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'}, pid = pid)
 
 
-parameter_list = np.array([45])
+parameter_list = np.array([35])
 num_initial_conditions = 6
 
 parameter_list_full = []
