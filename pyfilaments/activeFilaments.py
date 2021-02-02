@@ -445,26 +445,53 @@ class activeFilament:
 			# Proximal end
 			if(key==0):
 				# Index correspond to end particle and next nearest particle (proximal end)
-				end = 0
+				end = 0 
 				end_1 = 1
 
-				force_end = (0,0,0)
-				force_end_1 = (0,0,0)
+				force_dummy = (0,0,0)
+				vel_dummy = (0,0,0)
 			# Distal end
 			elif(key == -1 or key == self.Np-1):
 				# Index correspond to end particle and next nearest particle (distal end)
 				end = self.Np - 1
 				end_1 = self.Np - 2
 
-				force_end_1 = (0,0,0)
-				force_end = (0,0,0)
+				force_dummy = (0,0,0)
+				vel_dummy = (0,0,0)
+
 			if(bc_value == 'fixed'):
-				self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_end
+				# Calculate velocity at the colloids without constraints
+				vel_no_constraint = np.zeros(self.dim, dtype = np.double)
+
+				self.rm.stokesletV_i(end, vel_no_constraint, self.r, self.F) 
+				self.rm.potDipoleV_i(end, vel_no_constraint, self.r, self.D)
+
+				constraint_force = -6*np.pi*self.mu*self.radius*vel_no_constraint
+
+				self.F[end] += constraint_force[0]
+				self.F[end + self.Np] += constraint_force[1]
+				self.F[end + self.xx] += constraint_force[2]
+
 			elif(bc_value == 'clamped'):
-				# Apply force bc to the farthermost particle
-				self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_end
-				# Apply force bc to the next to the farthermost particle
-				self.F[end_1], self.F[end_1 + self.Np], self.F[end_1 + self.xx]  = force_end_1
+				
+				# Calculate velocity at the colloids without constraints
+				vel_no_constraint_end_1 = np.zeros(self.dim, dtype = np.double)
+
+				self.rm.stokesletV_i(end_1, vel_no_constraint_end_1, self.r, self.F) 
+				self.rm.potDipoleV_i(end_1, vel_no_constraint_end_1, self.r, self.D)
+
+
+				constraint_force += -6*np.pi*self.mu*self.radius*vel_no_constraint_end_1
+
+				self.F[end_1] += constraint_force[0]
+				self.F[end_1 + self.Np] += constraint_force[1]
+				self.F[end_1 + self.xx] += constraint_force[2]
+
+				# # Apply force bc the "dummy/ghost" particle used for implementing the clamped BC
+				# self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_dummy
+
+				# # Apply a velocity BC to the "dummy/ghost" particle used for implementing the clamped BC
+				# self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_dummy
 
 	def set_filament_activity(self, t):
 
@@ -519,7 +546,7 @@ class activeFilament:
 		self.ff.lennardJones(self.F, self.r, self.ljeps, self.ljrmin)
 		self.filament.connection_forces(self.dr, self.dr_hat, self.F_conn)
 		self.filament.bending_forces(self.dr, self.dr_hat, self.cosAngle, self.F_bending)
-		self.filament.self_contact_forces(self.r, self.dr, self.dr_hat, self.F_sc)
+		# self.filament.self_contact_forces(self.r, self.dr, self.dr_hat, self.F_sc)
 		# if(np.max(self.F_sc)>1E-6 and int(t)%100 == 0):
 		# 	print('Contact forces \n', np.max(self.F_sc))
 
@@ -527,8 +554,8 @@ class activeFilament:
 		self.F += self.F_conn + self.F_bending_array + self.F_sc	# Add all the intrinsic forces together
 		self.F += self.F_mag	# external forces
 
-		# Apply the appropriate force BC for tethered particles such that the Hydrodynamics are satisfied.
-		# self.apply_BC_force()
+		# Apply the appropriate force BC for tethered particles such that the Hydrodynamics + BC are satisfied.
+		self.apply_BC_force()
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
 		self.rm.stokesletV(self.drdt, self.r, self.F)
@@ -539,7 +566,7 @@ class activeFilament:
 			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 		# Apply the kinematic boundary conditions as a velocity condition
-		self.apply_BC_velocity()
+		# self.apply_BC_velocity()
 		
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 

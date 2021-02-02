@@ -63,7 +63,7 @@ cdef class Rbm:
                 vx += vv1*F[j]    + vv2*dx 
                 vy += vv1*F[j+Np] + vv2*dy 
                 vz += vv1*F[j+xx] + vv2*dz 
-        # Stokelet contribution to the RMB velocity at particle i        
+        # Stokelet contribution to the RBM velocity at particle i        
         v[0]    += mu*F[i]    + mu1*vx
         v[1] += mu*F[i+Np] + mu1*vy
         v[2] += mu*F[i+xx] + mu1*vz
