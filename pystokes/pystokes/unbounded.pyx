@@ -39,6 +39,35 @@ cdef class Rbm:
             v[i+Np] += mu*F[i+Np] + mu1*vy
             v[i+xx] += mu*F[i+xx] + mu1*vz
         return 
+
+    cpdef stokesletV_i(self, int i, double [:] v, double [:] r, double [:] F):
+        """
+            Convenience function for calculating the RBM velocity at any one particle i
+
+        """
+        cdef int Np  = self.Np, j, xx=2*Np
+        cdef double dx, dy, dz, idr, idr2, vx, vy, vz, vv1, vv2, aa = (2.0*self.a*self.a)/3.0 
+        cdef double mu = 1.0/(6*PI*self.eta*self.a), mu1 = mu*self.a*0.75       
+        
+        vx=0; vy=0;   vz=0;
+        for j in range(Np):
+            if i != j:
+                dx = r[i]    - r[j]
+                dy = r[i+Np] - r[j+Np]
+                dz = r[i+xx] - r[j+xx] 
+                idr = 1.0/sqrt( dx*dx + dy*dy + dz*dz )
+                idr2 = idr*idr
+                
+                vv1 = (1+aa*idr2)*idr 
+                vv2 = (1-3*aa*idr2)*( F[j]*dx + F[j+Np]*dy + F[j+xx]*dz )*idr2*idr
+                vx += vv1*F[j]    + vv2*dx 
+                vy += vv1*F[j+Np] + vv2*dy 
+                vz += vv1*F[j+xx] + vv2*dz 
+        # Stokelet contribution to the RMB velocity at particle i        
+        v[0]    += mu*F[i]    + mu1*vx
+        v[1] += mu*F[i+Np] + mu1*vy
+        v[2] += mu*F[i+xx] + mu1*vz
+        return 
                
    
     cpdef rotletV(self, double [:] v, double [:] r, double [:] T):
@@ -128,7 +157,30 @@ cdef class Rbm:
             v[i]   += mud*D[i]    + mud1*vx
             v[i+Np]+= mud*D[i+Np] + mud1*vy
             v[i+xx]+= mud*D[i+xx] + mud1*vz
-        return 
+        return
+
+    cpdef potDipoleV_i(self, int i, double [:] v, double [:] r, double [:] D):
+        cdef int Np = self.Np, j, xx=2*Np  
+        cdef double dx, dy, dz, idr, idr3, Ddotidr, vx, vy, vz, mud = 3.0*self.a*self.a*self.a/5, mud1 = -1.0*(self.a**5)/10
+ 
+        vx=0; vy=0;   vz=0; 
+        for j in range(Np):
+            if i != j: 
+                dx = r[ i]   - r[j]
+                dy = r[i+Np] - r[j+Np]
+                dz = r[i+xx] - r[j+xx] 
+                idr = 1.0/sqrt( dx*dx + dy*dy + dz*dz )
+                idr3 = idr*idr*idr 
+                Ddotidr = (D[j]*dx + D[j+Np]*dy + D[j+xx]*dz)*idr*idr
+
+                vx += (D[j]    - 3.0*Ddotidr*dx )*idr3
+                vy += (D[j+Np] - 3.0*Ddotidr*dy )*idr3
+                vz += (D[j+xx] - 3.0*Ddotidr*dz )*idr3
+        
+        v[0]   += mud*D[i]    + mud1*vx
+        v[1]+= mud*D[i+Np] + mud1*vy
+        v[2]+= mud*D[i+xx] + mud1*vz
+        return  
 
 
     cpdef vortletV(self, double [:] v, double [:] r, double [:] V):

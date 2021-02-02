@@ -12,8 +12,10 @@ cdef class Rbm:
     cdef int Np
 
     cpdef stokesletV(self, double [:] v,  double [:] r, double [:] F)
+
+    # Convenience funcction to calculate RBM velocity at particle i
+    cpdef stokesletV_i(self, int i, double [:] v,  double [:] r, double [:] F)
                
-   
     cpdef rotletV(self,    double [:] v,  double [:] r, double [:] T)
     
     
@@ -21,6 +23,9 @@ cdef class Rbm:
 
 
     cpdef potDipoleV(self, double [:] v,  double [:] r, double [:] D)
+
+    # Convenience funcction to calculate RBM velocity at particle i
+    cpdef potDipoleV_i(self, int i, double [:] v, double [:] r, double [:] D)
 
 
     cpdef vortletV(self,   double [:] v,  double [:] r, double [:] V)
