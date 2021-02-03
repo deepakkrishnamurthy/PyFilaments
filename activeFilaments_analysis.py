@@ -42,9 +42,9 @@ import pyfilaments.analysisutils as analysis
 
 # file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-23/ActivityTime_1000/SimResults_Np_33_Shape_line_kappa_hat_2.5_k_10_b0_2_F_0_S_0_D_1.5_activityTime_1000_simType_point/SimResults_00.hdf5'
 
-file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_6.25_k_25_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_02.hdf5'
+# file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_6.25_k_25_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_02.hdf5'
 
-# file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_3.75_k_15_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_03.hdf5'
+file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_3.75_k_15_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_03.hdf5'
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-07/GoodSearch_SimResults_Np_33_Shape_line_k_25_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
 
 folder, *rest = os.path.split(file)
@@ -60,17 +60,15 @@ filament = analysis.analysisTools(file = file)
 
 # Calculate the filament length vs time
 
-filament.compute_arc_length()
+# filament.compute_arc_length()
 # filament.plot_arclength_timeseries()
 
 # # filament.plotFilament(r = filament.R[-1,:])
 
 # filament.plot_tip_position()
 
-filament.filament_tip_coverage()
+filament.filament_tip_coverage(save = True)
 
-# filament.compute_arc_length()
-# filament.compute_axial_bending_energy()
 
 # filament.plot_timeseries(var = ['Filament arc length'])
 
@@ -107,19 +105,20 @@ filament.filament_tip_coverage()
 
 
 filament.compute_head_orientation()
-filament.plot_timeseries(var =['Tip cosine angle','Filament arc length'])
+filament.compute_arc_length()
+filament.plot_timeseries(var =['Tip cosine angle','Filament arc length'], save = True)
 
-filament.plot_filament_centerlines()
+filament.plot_filament_centerlines(save = True)
 
 # filament.plot_scatter(var_x = 'Filament arc length',var_y = 'Tip cosine angle', color_by = 'Time', save_folder = folder)
 
-
-# filament.plot_phase_portrait(var_x = 'Axial energy', var_y = 'Bending energy', save_folder = None)
+filament.compute_axial_bending_energy()
+filament.plot_phase_portrait(var_x = 'Axial energy', var_y = 'Bending energy', save_folder = None, save = True)
 
 # filament.plot_phase_portrait(var_x = 'Filament arc length', var_y = 'Tip cosine angle', save_folder = folder)
-filament.plot_unique_tip_locations()
+filament.plot_unique_tip_locations(save = True)
 
-filament.plot_coverage_vs_time()
+# filament.plot_coverage_vs_time()
 
 # filament.plot_head_orientation_phase(save_folder = folder)
 
