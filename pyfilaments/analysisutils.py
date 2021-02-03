@@ -2,7 +2,9 @@
 import os
 import numpy as np
 from pyfilaments.activeFilaments import activeFilament
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+
 import cmocean
 
 # Figure parameters
@@ -183,7 +185,7 @@ class analysisTools(activeFilament):
 
 
 	def filament_tip_coverage(self):
-		'''
+		"""
 		calculates the no:of unique areas covered by the tip of the filament (head). This serves as a metric for 
 		search coverage. 
 		Pseudocode:
@@ -196,7 +198,7 @@ class analysisTools(activeFilament):
 				- Increment unique_counter by 1. 
 			- Else if the distance to all previous unique locations is < particle_diameter
 				- Increment the hit_counter for the point nearest to the current location by 1. 
-		'''
+		"""
 		self.unique_counter = 0
 		self.unique_positions = []
 		self.hits_counter = {}
@@ -694,6 +696,33 @@ class analysisTools(activeFilament):
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300)
 
 		plt.show()
+
+	def plot_filament_centerlines(self, save_folder = None):
+
+		stride = 50
+		cmap = cm.get_cmap('viridis', 255)
+		colors = [cmap(ii) for ii in np.linspace(0,1,self.Nt)]
+		norm = mpl.colors.Normalize(vmin=np.min(self.Time), vmax=np.max(self.Time))
+
+		# cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap,
+  #                               norm=norm,
+  #                               orientation='horizontal')
+
+		fig, ax1 = plt.subplots(figsize = (8,8))
+		for ii in range(self.Nt):			
+			self.r = self.R[ii,:]
+			if(ii%stride==0):
+				cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = colors[ii], linewidth=2.0, alpha = 0.5)
+
+		ax1.set_xlabel('X position')
+		ax1.set_ylabel('Y position')
+		ax1.set_title('Overlay of filament shapes')
+		fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+             ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
+		plt.axis('equal')
+		plt.show()
+
+
 
 
 
