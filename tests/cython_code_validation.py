@@ -32,17 +32,15 @@ for time_point in range(N_time):
 
 	cython_angles = fil.cosAngle
 
-	fil.get_bond_angles()
 
-	# plt.figure()
+	plt.figure()
 	# plt.plot(fil.cosAngle, 'gs', label ='pure python')
-	# plt.plot(cython_angles, 'ro', alpha = 0.5, label ='cython')
-	# plt.title('Bond angles')
-	# plt.legend()
-	# plt.show(block = False)
+	plt.plot(cython_angles, 'ro', alpha = 0.5, label ='cython')
+	plt.title('Bond angles')
+	plt.legend()
+	plt.show(block = False)
 	# print('Mismatch in bending angles computation: {}'.format(np.sum((fil.cosAngle - cython_angles)**2)))
 
-	error_bond_angles.append(np.sum((fil.cosAngle - cython_angles)**2))
 
 	# Testing the tangent vectors function
 

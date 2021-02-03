@@ -71,6 +71,7 @@ class activeFilament:
 
 		self.kappa_array = self.kappa_hat*np.ones(self.Np)
 
+		print(self.kappa_array)
 		# Clamped BC scale-factor
 		self.clamping_bc_scalefactor = 10
 		
@@ -151,7 +152,8 @@ class activeFilament:
 		count = 0
 		for key in self.bc:
 			if(self.bc[key] == 'clamped'):
-				count += 1
+				# count += 1
+				pass
 
 		self.Np = Np + count
 
@@ -199,6 +201,8 @@ class activeFilament:
 		# length Np-1
 		# Lengths of the separation vectors
 		self.dr = (self.dx**2 + self.dy**2 + self.dz**2)**(1/2)
+
+		# print('separation distances', self.dr)
 		
 		# length Np-1
 		self.dx_hat = self.dx/self.dr
@@ -211,7 +215,7 @@ class activeFilament:
 		self.dr_hat = np.vstack((self.dx_hat, self.dy_hat, self.dz_hat))
 		
 		self.dr_hat = np.array(self.dr_hat, dtype = np.double)
-#        print(self.dr_hat)
+		# print('Separation unit vectors', self.dr_hat)
 		
 	# (vectorized) Find the local tangent vector of the filament at the position of each particle
 	def get_tangent_vectors(self):
@@ -267,7 +271,7 @@ class activeFilament:
 				# self.r0[ii + self.Np] = ii*(self.b0)
 			# Add random fluctuations in the other two directions
 			# y-axis
-			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-4, self.Np)
+			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-1, self.Np)
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
 			   
@@ -340,12 +344,12 @@ class activeFilament:
 			elif value == 'clamped':
 				# @@@ Test: Clamped BC, the bending stiffness for the first link is order of magnitude higher to impose tangent condition at the filament base.
 				if key==0:
-					self.kappa_array[1] = self.clamping_bc_scalefactor*self.kappa_hat
+					self.kappa_array[0] = self.clamping_bc_scalefactor*self.kappa_hat
 				elif key==-1:
-					self.kappa_array[-2] = self.clamping_bc_scalefactor*self.kappa_hat
+					self.kappa_array[-1] = self.clamping_bc_scalefactor*self.kappa_hat
 
 
-		# print(self.kappa_array)
+		print(self.kappa_array)
 
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 2.1*self.radius, ljeps = 1.0)
 
@@ -369,6 +373,9 @@ class activeFilament:
 
 		# Orientation vectors of particles depend on local tangent vector
 		self.p0 = self.p
+
+		print('separation distances', self.dr)
+		print('separation vectors', self.dr_hat)
 		
 	def apply_BC_position(self):
 		'''
@@ -395,7 +402,6 @@ class activeFilament:
 				pos_end_1 = ((self.Np - 2)*self.b0,0,0)
 				pos_end = ((self.Np - 1)*self.b0,0,0)
 				
-
 			if(bc_value == 'fixed'):
 				
 				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
@@ -431,10 +437,9 @@ class activeFilament:
 			if(bc_value == 'fixed'):
 				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
 			elif(bc_value == 'clamped'):
-				# Apply velocity bc to the farthermost particle
+				# Apply velocity bc to the dummy particle (used to specify eqbrm orientation for clamped BC).
 				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
-				# Apply velocity bc to the next to the farthermost particle
-				self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
+				# self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
 
 	def apply_BC_force(self):
 		'''
@@ -447,17 +452,13 @@ class activeFilament:
 				# Index correspond to end particle and next nearest particle (proximal end)
 				end = 0 
 				end_1 = 1
-
 				force_dummy = (0,0,0)
-				vel_dummy = (0,0,0)
 			# Distal end
 			elif(key == -1 or key == self.Np-1):
 				# Index correspond to end particle and next nearest particle (distal end)
 				end = self.Np - 1
 				end_1 = self.Np - 2
-
 				force_dummy = (0,0,0)
-				vel_dummy = (0,0,0)
 
 			if(bc_value == 'fixed'):
 				# Calculate velocity at the colloids without constraints
@@ -474,6 +475,11 @@ class activeFilament:
 
 			elif(bc_value == 'clamped'):
 				
+				# The "dummy" particle used to specify the orientation for clamping, 
+				# does not interact hydrodynamically with the "real" particles
+				# This can be modified if we want this dummy particle to be replaced by the "fence" or the "cell body"
+				self.F[end], self.F[end + self.Np], self.F[end + self.xx] = force_dummy
+
 				# Calculate velocity at the colloids without constraints
 				vel_no_constraint_end_1 = np.zeros(self.dim, dtype = np.double)
 
@@ -481,17 +487,13 @@ class activeFilament:
 				self.rm.potDipoleV_i(end_1, vel_no_constraint_end_1, self.r, self.D)
 
 
-				constraint_force += -6*np.pi*self.mu*self.radius*vel_no_constraint_end_1
+				constraint_force = -6*np.pi*self.mu*self.radius*vel_no_constraint_end_1
 
 				self.F[end_1] += constraint_force[0]
 				self.F[end_1 + self.Np] += constraint_force[1]
 				self.F[end_1 + self.xx] += constraint_force[2]
 
-				# # Apply force bc the "dummy/ghost" particle used for implementing the clamped BC
-				# self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_dummy
-
-				# # Apply a velocity BC to the "dummy/ghost" particle used for implementing the clamped BC
-				# self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_dummy
+				
 
 	def set_filament_activity(self, t):
 
@@ -549,13 +551,15 @@ class activeFilament:
 		# self.filament.self_contact_forces(self.r, self.dr, self.dr_hat, self.F_sc)
 		# if(np.max(self.F_sc)>1E-6 and int(t)%100 == 0):
 		# 	print('Contact forces \n', np.max(self.F_sc))
+		# print('Bending force on colloid: {}, {}'.format(self.Np-2,self.F_bending[:,self.Np-2]))
+		# print('Bending force on colloid: {}, {}'.format(self.Np-1,self.F_bending[:,self.Np-1]))
 
 		self.F_bending_array = self.reshape_to_array(self.F_bending)  
 		self.F += self.F_conn + self.F_bending_array + self.F_sc	# Add all the intrinsic forces together
 		self.F += self.F_mag	# external forces
 
-		# Apply the appropriate force BC for tethered particles such that the Hydrodynamics + BC are satisfied.
-		self.apply_BC_force()
+		# Apply the appropriate force BC for tethered particles such that the Hydrodynamics + velocity BC are satisfied.
+		# self.apply_BC_force()
 		# Stokeslet contribution to Rigid-Body-Motion
 		# This is equivalent to calculating the RBM due to a stokeslet component of the active colloid.
 		self.rm.stokesletV(self.drdt, self.r, self.F)
@@ -566,13 +570,13 @@ class activeFilament:
 			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 		# Apply the kinematic boundary conditions as a velocity condition
-		# self.apply_BC_velocity()
+		self.apply_BC_velocity()
 		
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0):
 		
-		np.random.seed(pid)
+		np.random.seed(0)
 		#---------------------------------------------------------------------------------
 		def rhs0(r, t):
 			''' 
