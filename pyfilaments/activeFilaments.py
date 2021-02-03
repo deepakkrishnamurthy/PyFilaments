@@ -267,7 +267,7 @@ class activeFilament:
 				# self.r0[ii + self.Np] = ii*(self.b0)
 			# Add random fluctuations in the other two directions
 			# y-axis
-			self.r0[self.Np:2*self.Np] = np.random.normal(0, 1E-4, self.Np)
+			self.r0[self.Np+2:2*self.Np] = np.random.normal(0, 1E-1, self.Np-2)
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
 			   
@@ -434,7 +434,7 @@ class activeFilament:
 				# Apply velocity bc to the farthermost particle
 				self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_end
 				# Apply velocity bc to the next to the farthermost particle
-				self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
+				# self.drdt[end_1], self.drdt[end_1 + self.Np], self.drdt[end_1 + self.xx]  = vel_end_1
 
 	def apply_BC_force(self):
 		'''
@@ -473,7 +473,9 @@ class activeFilament:
 				self.F[end + self.xx] += constraint_force[2]
 
 			elif(bc_value == 'clamped'):
-				
+				# # Apply force bc the "dummy/ghost" particle used for implementing the clamped BC
+				self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_dummy
+
 				# Calculate velocity at the colloids without constraints
 				vel_no_constraint_end_1 = np.zeros(self.dim, dtype = np.double)
 
@@ -481,15 +483,13 @@ class activeFilament:
 				self.rm.potDipoleV_i(end_1, vel_no_constraint_end_1, self.r, self.D)
 
 
-				constraint_force += -6*np.pi*self.mu*self.radius*vel_no_constraint_end_1
+				constraint_force = -6*np.pi*self.mu*self.radius*vel_no_constraint_end_1
 
 				self.F[end_1] += constraint_force[0]
 				self.F[end_1 + self.Np] += constraint_force[1]
 				self.F[end_1 + self.xx] += constraint_force[2]
 
-				# # Apply force bc the "dummy/ghost" particle used for implementing the clamped BC
-				# self.F[end], self.F[end + self.Np], self.F[end + self.xx]  = force_dummy
-
+				
 				# # Apply a velocity BC to the "dummy/ghost" particle used for implementing the clamped BC
 				# self.drdt[end], self.drdt[end + self.Np], self.drdt[end + self.xx]  = vel_dummy
 
@@ -566,13 +566,13 @@ class activeFilament:
 			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 		# Apply the kinematic boundary conditions as a velocity condition
-		# self.apply_BC_velocity()
+		self.apply_BC_velocity()
 		
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0):
 		
-		np.random.seed(pid)
+		np.random.seed(0)
 		#---------------------------------------------------------------------------------
 		def rhs0(r, t):
 			''' 
