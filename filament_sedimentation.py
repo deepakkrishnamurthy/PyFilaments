@@ -32,7 +32,7 @@ bc = {0:'free', -1:'free'}
 F_mag = -1			# Force on each particle. 
 
 
-def run_parametric_sweep(k):
+def run_parametric_sweep(pid, k):
 	
 	def elasto_gravitational_number():
 
@@ -65,7 +65,7 @@ def run_parametric_sweep(k):
 		print("OSX system")
 		root_path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/BenchmarkingResults'
 
-	filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = root_path)
+	filament.simulate(Tf, Npts, sim_type = 'sedimentation', save = True, overwrite = False, path = root_path, pid = pid)
 
 num_cores = multiprocessing.cpu_count()
-results = Parallel(n_jobs=num_cores)(delayed(run_parametric_sweep)(parameter) for parameter in k_array)
+results = Parallel(n_jobs=num_cores)(delayed(run_parametric_sweep)(pid, parameter) for pid, parameter in enumerate(k_array))

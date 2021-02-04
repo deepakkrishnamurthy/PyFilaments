@@ -46,69 +46,45 @@ class activeFilament:
 		#-----------------------------------------------------------------------------
 		# Filament parameters
 		#-----------------------------------------------------------------------------
-		self.dim = dim
+		self.Np = Np 	# No:of particles/colloids
+		self.xx = 2*self.Np
+		self.dim = dim 	# Spatial dimensions
+		self.radius = radius # Particle radius
+		self.b0 = b0 # Equlibrium bond-length
+		self.L = self.b0*(self.Np-1) # Filament rest-length
+		self.k = k 		# Connective spring stiffness
 		self.plane = 'xy' 	# default plane
 		# BC: Boundary conditions:
 		self.bc = bc
-		self.clamping_vector = clamping_vector
-		# Sets particle number based on BC. Each Clamped BC increase particle number by 1.
-		self.set_particle_number(Np = Np)
-		# Particle radius
-		self.radius = radius
-		# Equlibrium bond-length
-		self.b0 = b0
-		# Filament arc-length
-		self.L = self.b0*(self.Np-1)
-		# Connective spring stiffness
-		self.k = k
-		# Bending stiffness
-		self.bending_axial_scalefactor = bending_axial_scalefactor
-	
-		# 30 May 2020: Important change. The bending stiffness and axial stiffness now are for a homogeneous elastic rod.
-		# self.kappa_hat = ((self.radius**2)/4)*self.k
-
+		self.clamping_vector = clamping_vector 		# Clamping vector direction for clamped boundary condition.
+		self.bending_axial_scalefactor = bending_axial_scalefactor			# Bending stiffness
 		# 10 Sept 2020: Important: Generalizing the relationship between axial and bending stiffness. scale_factor = 0.25 will be the special-case of homogeneous elastic rod. 
 		self.kappa_hat = self.bending_axial_scalefactor*(self.radius**2)*self.k
-
 		self.kappa_array = self.kappa_hat*np.ones(self.Np)
-
-		print(self.kappa_array)
-		# Clamped BC scale-factor
-		self.clamping_bc_scalefactor = 1
-		
-		# Fluid viscosity
-		self.mu = mu
-		
+		self.clamping_bc_scalefactor = 1 		# Clamped BC scale-factor
+		self.mu = mu 		# Fluid viscosity
 		# Parameters for the near-field Lennard-Jones potential
 		self.ljeps = 1.0
 		self.ljrmin = 2.1*self.radius
-		
-
 		# Body-force strength
 		self.F0 = F0
 		# Stresslet strength
 		self.S0 = S0
 		# Potential-Dipole strength
 		self.D0 = D0
-
 		# Simulation type
 		self.sim_type = None
-
 		# Instantiate the pystokes class
 		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.mu)   # instantiate the classes
 		# Instantiate the pyforces class
 		self.ff = pyforces.forceFields.Forces(self.Np)
-
 		# Initialize arrays for storing particle positions, activity strengths etc.
 		self.allocate_arrays()
-
 		# Other parameters
 		self.cpu_time = 0
-
 		# Initialize the filament
 		self.shape = 'line'
 		self.initialize_filament_shape()
-
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 
 	def allocate_arrays(self):
@@ -147,20 +123,6 @@ class activeFilament:
 		self.R = None 
 		self.Time = None
    
-	def set_particle_number(self, Np = 3):
-		# Sets the number of simulated particles based on BC. 
-		# For clamped BC the number of particles is one extra for each clamped BC to implement the BC using a dummy particle.
-		count = 0
-		for key in self.bc:
-			if(self.bc[key] == 'clamped'):
-				# count += 1
-				pass
-
-		self.Np = Np + count
-
-		self.xx = 2*self.Np
-
-
 	# Set the colors of the particles based on their activity
 	def set_particle_colors(self):
 		self.particle_colors = []
@@ -174,19 +136,21 @@ class activeFilament:
 			else:
 				self.particle_colors.append('b')
 				
-		
 	def reshape_to_array(self, Matrix):
-		# Takes a matrix of shape (dim, Np) and reshapes to an array (dim*Np, 1) 
-		# where the convention is [x1, x2 , x3 ... X_Np, y1, y2, .... y_Np, z1, z2, .... z_Np]
+		"""
+			Takes a matrix of shape (dim, Np) and reshapes to an array (dim*Np, 1) 
+			where the convention is [x1, x2 , x3 ... X_Np, y1, y2, .... y_Np, z1, z2, .... z_Np]
+		"""
 		nrows, ncols = np.shape(Matrix)
 		return np.squeeze(np.reshape(Matrix, (nrows*ncols,1), order = 'C'))
 	
 	def reshape_to_matrix(self, Array):
-		# Takes an array of shape (dim*N, 1) and reshapes to a Matrix  of shape (dim, N) and 
-		# where the array convention is [x1, x2 , x3 ... X_Np, y1, y2, .... y_Np, z1, z2, .... z_Np]
-		# and matrix convention is |x1 x2 ...  |
-		#                          |y1 y2 ...  |
-		#                          |z1 z2 ...  |
+		"""Takes an array of shape (dim*N, 1) and reshapes to a Matrix  of shape (dim, N) and 
+			where the array convention is [x1, x2 , x3 ... X_Np, y1, y2, .... y_Np, z1, z2, .... z_Np]
+			and matrix convention is |x1 x2 ...  |
+		                          	 |y1 y2 ...  |
+		                             |z1 z2 ...  |
+		"""
 		array_len = len(Array)
 		ncols = int(array_len/self.dim)
 		return np.reshape(Array, (self.dim, ncols), order = 'C')
@@ -197,38 +161,27 @@ class activeFilament:
 		self.dx = self.r[1:self.Np] - self.r[0:self.Np-1]
 		self.dy = self.r[self.Np+1:2*self.Np] - self.r[self.Np:2*self.Np-1]
 		self.dz = self.r[2*self.Np+1:3*self.Np] - self.r[2*self.Np:3*self.Np-1]
-		
-		
 		# length Np-1
 		# Lengths of the separation vectors
 		self.dr = (self.dx**2 + self.dy**2 + self.dz**2)**(1/2)
-
-		# print('separation distances', self.dr)
-		
 		# length Np-1
 		self.dx_hat = self.dx/self.dr
 		self.dy_hat = self.dy/self.dr
 		self.dz_hat = self.dz/self.dr
-		
 		# rows: dimensions, columns : particles
 		# Shape : dim x Np-1
 		# Unit separation vectors 
 		self.dr_hat = np.vstack((self.dx_hat, self.dy_hat, self.dz_hat))
-		
 		self.dr_hat = np.array(self.dr_hat, dtype = np.double)
-		# print('Separation unit vectors', self.dr_hat)
-		
+
 	# (vectorized) Find the local tangent vector of the filament at the position of each particle
 	def get_tangent_vectors(self):
 		
 		# Unit tangent vector at the particle locations
 		self.t_hat = np.ones((self.dim,self.Np))
-		
 		self.t_hat[:,1:self.Np-1] = (self.dr_hat[:,0:self.Np-2] + self.dr_hat[:,1:self.Np-1])/2
-
 		self.t_hat[:,0] = self.dr_hat[:,0]
 		self.t_hat[:,-1] = self.dr_hat[:,-1]
-
 		t_hat_mag = np.zeros(self.Np)
 
 		for jj in range(self.dim):
@@ -241,8 +194,9 @@ class activeFilament:
 	
 
 	def set_stresslet(self):
-		# Specifies the stresslet on each active particle
-		
+		"""
+			Specifies the stresslet on each active particle
+		"""
 		self.S[:self.Np]            = self.S_mag*(self.p[:self.Np]*self.p[:self.Np] - 1./3)
 		self.S[self.Np:2*self.Np]   = self.S_mag*(self.p[self.Np:2*self.Np]*self.p[self.Np:2*self.Np] - 1./3)
 		self.S[2*self.Np:3*self.Np] = self.S_mag*(self.p[:self.Np]*self.p[self.Np:2*self.Np])
@@ -250,8 +204,9 @@ class activeFilament:
 		self.S[4*self.Np:5*self.Np] = self.S_mag*(self.p[self.Np:2*self.Np]*self.p[2*self.Np:3*self.Np])
 	
 	def set_potDipole(self):
-		# Specifies the potential dipole on each active particle
-		
+		"""
+			Specifies the potential dipole on each active particle
+		"""
 		# Potential dipole axis is along the local orientation vector of the particles
 		self.D[:self.Np] = self.D_mag*self.p[:self.Np]
 		self.D[self.Np:2*self.Np] = self.D_mag*self.p[self.Np:2*self.Np]
@@ -319,17 +274,12 @@ class activeFilament:
 				else:
 					self.r0[ii + first_index] = ii*(self.b0)
 					self.r0[ii + second_index] = self.amplitude*np.sin(self.r0[ii]*2*np.pi/(self.wavelength))
-				
-
 		elif(self.shape == 'helix'):
 			nWaves = 1
 			Amp = 1e-4
 
-		
 		# Apply the kinematic boundary conditions to the filament ends
-
 		self.apply_BC_position()
-
 		self.r = self.r0
 
 
@@ -356,54 +306,37 @@ class activeFilament:
 	  
 	def initialize_filament(self):
 		
-		
 		self.initialize_filament_shape()
-		
 		# Initialize the bending-stiffness array
 		self.initialize_bending_stiffness()
 		self.get_separation_vectors()
 		self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
-		
 		self.get_tangent_vectors()
-
 		self.t_hat_array = self.reshape_to_array(self.t_hat)
 		# Initialize the particle orientations to be along the local tangent vector
 		self.p = self.t_hat_array
-
 		# Orientation vectors of particles depend on local tangent vector
 		self.p0 = self.p
-
-		print('separation distances', self.dr)
-		print('separation vectors', self.dr_hat)
 		
 	def apply_BC_position(self):
 		'''
 		Apply the kinematic boundary conditions:
 		'''
 		for key in self.bc:
-
 			bc_value = self.bc[key]
-
 			# Proximal end
 			if(key == 0):
 				# Index corresponding to end particle and next nearest particle (proximal end)
 				end = 0
-			
 				pos_end = (0,0,0)
-				
-				
 			# Distal end
 			elif(key == -1 or key == self.Np-1):
 				# Index correspond to end particle and next nearest particle (distal end)
 				end = self.Np - 1
 				pos_end = ((self.Np - 1)*self.b0,0,0)
-				
 			if(bc_value == 'fixed'):
-				
 				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
-
 			elif(bc_value == 'clamped'):
-
 				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
 
 	def apply_BC_force(self):
@@ -422,10 +355,9 @@ class activeFilament:
 			if(bc_value == 'fixed'):
 				# Calculate velocity at the colloids without constraints
 				vel_no_constraint = np.zeros(self.dim, dtype = np.double)
-
 				self.rm.stokesletV_i(end, vel_no_constraint, self.r, self.F) 
 				self.rm.potDipoleV_i(end, vel_no_constraint, self.r, self.D)
-
+				# Constraint force of the tethered colloid such that the velocity is zero (fixed or clamped BC).
 				constraint_force = -6*np.pi*self.mu*self.radius*vel_no_constraint
 
 				self.F[end] += constraint_force[0]
@@ -433,13 +365,11 @@ class activeFilament:
 				self.F[end + self.xx] += constraint_force[2]
 
 			elif(bc_value == 'clamped'):
-
 				# Calculate velocity at the colloids without constraints
 				vel_no_constraint_end = np.zeros(self.dim, dtype = np.double)
-
 				self.rm.stokesletV_i(end, vel_no_constraint_end, self.r, self.F) 
 				self.rm.potDipoleV_i(end, vel_no_constraint_end, self.r, self.D)
-
+				# Constraint force of the tethered colloid such that the velocity is zero (fixed or clamped BC).
 				constraint_force = -6*np.pi*self.mu*self.radius*vel_no_constraint_end
         
 				self.F[end] += constraint_force[0]
@@ -466,17 +396,13 @@ class activeFilament:
 			Scale factor: 
 				Quantifies the relative strengths of the Distal particle vs Other particles activity.
 			'''
-
 			if(self.activity_profile(t)==1):
-		
 				# self.D_mag[:self.Np-1] = self.D0/self.scale_factor
 				self.D_mag[-1] = self.D0
-
 			elif(self.activity_profile(t)==-1):
 				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
 				self.D_mag[-1] = 0
 
-	
 	# @profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
 	def rhs_cython(self, r, t):
 
@@ -523,7 +449,10 @@ class activeFilament:
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0):
 		
-		np.random.seed(0)
+		# Set the seed for the random number generator
+		np.random.seed(pid)
+		self.save = save
+		self.overwrite = overwrite
 		#---------------------------------------------------------------------------------
 		def rhs0(r, t):
 			''' 
@@ -546,30 +475,16 @@ class activeFilament:
 		# 		return False
 
 		def terminate(u, t, step):
-
 			# Termination criterion based on bond-angle
-			if(step >0 and np.any(self.cosAngle<0)):
+			if(step >0 and np.any(self.cosAngle[1:-1] < 0)):
 				return True
 			else:
 				return False
-
-		# Termination based on self contact
-		# def terminate(u, t, step):
-
-		# 	# Termination criterion based on bond-angle
-		# 	if(step >0 and np.sum(self.F_sc)>1E-6):
-		# 		return True
-		# 	else:
-		# 		return False
-
-		self.save = save
-		self.overwrite = overwrite
 
 		if(init_condition is not None):
 			if('shape' in init_condition.keys()):
 				self.shape = init_condition['shape']
 			if(self.shape=='line'):
-
 				if('angle' in init_condition.keys()):
 					self.init_angle = init_condition['angle']
 				else:
@@ -579,7 +494,6 @@ class activeFilament:
 					self.plane = init_condition['plane']
 				else:
 					self.plane = 'xy'
-
 				if('amplitude' in init_condition.keys()):
 					self.amplitude = init_condition['amplitude']
 				else:
@@ -611,13 +525,9 @@ class activeFilament:
 		self.set_particle_colors()
 
 		print(self.shape)
-		# Plot the initial filament shape
-		# self.plotFilament(r = self.r0)
 		# Set the simulation type
 		self.sim_type = sim_type
-
 		self.activity_timescale = activity_timescale
-
 		# Set the scale-factor
 		self.scale_factor = scale_factor
 		#---------------------------------------------------------------------------------
@@ -827,20 +737,15 @@ class activeFilament:
 
 	########################################################################################################
 	# Plotting
-	########################################################################################################
-
-				   
+	########################################################################################################  
 	def plotFilament(self, r = None):
 
-		
 		self.set_particle_colors()
-		
 		plt.style.use('dark_background')
 	
 		ax1 = plt.gca()
 		
 #        1ax = fig.add_subplot(1,1,1)
-		
 		if(self.plane =='xy'):
 			first_index = 0
 			second_index = self.Np
@@ -856,8 +761,6 @@ class activeFilament:
 			second_index = self.xx
 			xlabel = 'Y'
 			ylabel = 'Z'
-
-
 		ax1.scatter(r[first_index:first_index+self.Np], r[second_index:second_index+self.Np], 20, c = self.particle_colors, alpha = 0.75, zorder = 20, cmap = cmocean.cm.curl)
 
 		ax1.plot(r[first_index:first_index+self.Np], r[second_index:second_index+self.Np], color = 'k', alpha = 0.5, zorder = 10)
@@ -870,7 +773,7 @@ class activeFilament:
 #        ax.set_xlim([-0.1, self.Np*self.b0])
 #        ax.set_ylim([-self.Np*self.b0/2, self.Np*self.b0/2])
 		
-#        fig.canvas.draw()
+
 
 			
 		
