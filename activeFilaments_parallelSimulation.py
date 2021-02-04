@@ -18,7 +18,7 @@ elif platform == 'darwin':
 	print("OSX system")
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
-activity_timescale = 750
+activity_timescale = 1000
 activityFreq = 1.0/activity_timescale
 
 print('Activity frequency: {}'.format(activityFreq))
@@ -47,8 +47,8 @@ def run_parametric_simulation(pid, parameter):
 			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'}, pid = pid)
 
 
-parameter_list = np.array([30, 40, 50])
-num_initial_conditions = 6
+parameter_list = np.array([15, 20, 25, 30, 35, 40, 45, 50])
+num_initial_conditions = 3
 
 parameter_list_full = []
 
