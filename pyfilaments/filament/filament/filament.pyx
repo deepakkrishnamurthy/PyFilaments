@@ -10,7 +10,7 @@ cdef double PI = 3.14159265359
 @cython.nonecheck(False)
 cdef class filament_operations:
 	
-	def __init__(self, Np, dim, radius, b0, k, kappa_array, ljrmin = 3, ljeps = 0.01): 
+	def __init__(self, Np, dim, radius, b0, k, kappa_array, unit_vector = [1,0,0], ljrmin = 3, ljeps = 0.01): 
 		self.radius = radius
 		self.b0 = b0 
 		self.Np = Np
@@ -18,6 +18,7 @@ cdef class filament_operations:
 		self.k = k
 		self.kappa_array = kappa_array
 		self.k_sc = 1000
+		self.unit_vector = np.array(unit_vector, dtype = np.double)
 		self.kappa_array_view = np.array(self.kappa_array, dtype = np.double)
 		self.ljrmin = ljrmin
 		self.ljeps = ljeps
@@ -26,7 +27,7 @@ cdef class filament_operations:
 	cpdef get_bond_angles(self, double[:, :] dr_hat, double [:] cosAngle):
 		
 		cdef int ii, jj, Np = self.Np, dim = self.dim
-		cdef double unit_vector_x = 1.0, unit_vector_y = 0.0, unit_vector_z = 0.0 
+		cdef double unit_vector_x = self.unit_vector[0], unit_vector_y = self.unit_vector[1], unit_vector_z = self.unit_vector[2] 
 
 		for ii in range(Np):
 			if(ii==0):
@@ -45,7 +46,7 @@ cdef class filament_operations:
 		cdef double term_1_x, term_1_y, term_1_z, term_2_x, term_2_y, term_2_z, term_3_x, term_3_y, term_3_z
 		cdef double	prefactor_1, prefactor_2_1, prefactor_2_2, prefactor_3
 		cdef double b0 = self.b0
-		cdef double unit_vector_x = 1.0, unit_vector_y = 0.0, unit_vector_z = 0.0 
+		cdef double unit_vector_x = self.unit_vector[0], unit_vector_y = self.unit_vector[1], unit_vector_z = self.unit_vector[2] 
 
 
 		for ii in range(Np):

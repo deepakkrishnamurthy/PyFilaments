@@ -41,7 +41,7 @@ class activeFilament:
 		for solving hydrodynamic and steric interactions.
 	'''
 	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 10, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
-					 scale_factor = None, bending_axial_scalefactor = 0.25, bc = {0:'clamped', -1:'free'}):
+					 scale_factor = None, bending_axial_scalefactor = 0.25, bc = {0:'clamped', -1:'free'}, clamping_vector = [1,0,0]):
 		
 		#-----------------------------------------------------------------------------
 		# Filament parameters
@@ -50,6 +50,7 @@ class activeFilament:
 		self.plane = 'xy' 	# default plane
 		# BC: Boundary conditions:
 		self.bc = bc
+		self.clamping_vector = clamping_vector
 		# Sets particle number based on BC. Each Clamped BC increase particle number by 1.
 		self.set_particle_number(Np = Np)
 		# Particle radius
@@ -350,13 +351,9 @@ class activeFilament:
 				elif key==-1:
 					self.kappa_array[-1] = self.clamping_bc_scalefactor*self.kappa_hat
 
+		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, unit_vector = self.clamping_vector, ljrmin = 2.1*self.radius, ljeps = 1.0)
 
-		print(self.kappa_array)
-
-		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 2.1*self.radius, ljeps = 1.0)
-
-
-			  
+	  
 	def initialize_filament(self):
 		
 		
