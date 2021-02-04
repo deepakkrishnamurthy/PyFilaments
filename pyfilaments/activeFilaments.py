@@ -73,7 +73,7 @@ class activeFilament:
 
 		print(self.kappa_array)
 		# Clamped BC scale-factor
-		self.clamping_bc_scalefactor = 10
+		self.clamping_bc_scalefactor = 1
 		
 		# Fluid viscosity
 		self.mu = mu
