@@ -271,7 +271,9 @@ class activeFilament:
 				# self.r0[ii + self.Np] = ii*(self.b0)
 			# Add random fluctuations in the other two directions
 			# y-axis
-			self.r0[self.Np+2:2*self.Np] = np.random.normal(0, 1E-1, self.Np-2)
+
+			self.r0[self.Np+2:2*self.Np] = np.random.normal(0, 1E-4, self.Np-2)
+
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
 			   
@@ -417,15 +419,9 @@ class activeFilament:
 			if(key==0):
 				# Index correspond to end particle and next nearest particle (proximal end)
 				end = 0 
-				end_1 = 1
-				force_dummy = (0,0,0)
-			# Distal end
 			elif(key == -1 or key == self.Np-1):
 				# Index correspond to end particle and next nearest particle (distal end)
 				end = self.Np - 1
-				end_1 = self.Np - 2
-				force_dummy = (0,0,0)
-
 			if(bc_value == 'fixed'):
 				# Calculate velocity at the colloids without constraints
 				vel_no_constraint = np.zeros(self.dim, dtype = np.double)
@@ -440,6 +436,7 @@ class activeFilament:
 				self.F[end + self.xx] += constraint_force[2]
 
 			elif(bc_value == 'clamped'):
+
 				# Calculate velocity at the colloids without constraints
 				vel_no_constraint_end = np.zeros(self.dim, dtype = np.double)
 
@@ -447,12 +444,10 @@ class activeFilament:
 				self.rm.potDipoleV_i(end, vel_no_constraint_end, self.r, self.D)
 
 				constraint_force = -6*np.pi*self.mu*self.radius*vel_no_constraint_end
-
+        
 				self.F[end] += constraint_force[0]
 				self.F[end + self.Np] += constraint_force[1]
 				self.F[end + self.xx] += constraint_force[2]
-
-				
 
 	def set_filament_activity(self, t):
 
@@ -526,6 +521,7 @@ class activeFilament:
 			# For sedimentation the stresslet and potDipole contribution is zero.
 			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
+
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
 				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0):

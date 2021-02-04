@@ -2,7 +2,10 @@
 import os
 import numpy as np
 from pyfilaments.activeFilaments import activeFilament
-import matplotlib.pyplot as plt 
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import pandas as pd
+
 import cmocean
 
 # Figure parameters
@@ -42,6 +45,12 @@ class analysisTools(activeFilament):
 		elif(file is not None):
 			self.load_data(file)
 
+		# Get the root path for the saved data
+		self.rootFolder, self.dataName = os.path.split(file)
+
+		print('Root path: ', self.rootFolder)
+		print('Data file', self.dataName)
+
 		self.find_num_time_points()
 
 		print('No:of particles : {}'.format(self.Np))
@@ -56,6 +65,18 @@ class analysisTools(activeFilament):
 
 		# Sub-folder in which to save analysis data and plots
 		self.sub_folder = 'Analysis'
+
+		# Create a sub-folder to save Analysis results
+		self.analysis_folder = os.path.join(self.rootFolder, self.sub_folder)
+
+		
+	
+	def create_analysis_folder(self):
+		if(not os.path.exists(self.analysis_folder)):
+			os.makedirs(self.analysis_folder)
+
+
+            
 
 	def dotProduct(self, a, b):
 		''' 
@@ -87,11 +108,7 @@ class analysisTools(activeFilament):
 	def compute_axial_strain(self, R = None):
 
 		if(R is not None):
-
-
 			strain_vector = np.zeros((self.Nt, self.Np - 1))
-
-			
 			for ii in range(self.Nt):
 
 				# Set the current filament positions to those from the simulation result at time point ii
@@ -99,9 +116,6 @@ class analysisTools(activeFilament):
 				self.r = R[ii,:]
 
 				self.get_separation_vectors()
-
-				
-
 				strain_vector[ii,:] = link_distance/self.b0
 
 		# Size (Nt, self.Np - 1)
@@ -182,8 +196,8 @@ class analysisTools(activeFilament):
 
 
 
-	def filament_tip_coverage(self):
-		'''
+	def filament_tip_coverage(self, save = False):
+		"""
 		calculates the no:of unique areas covered by the tip of the filament (head). This serves as a metric for 
 		search coverage. 
 		Pseudocode:
@@ -196,16 +210,18 @@ class analysisTools(activeFilament):
 				- Increment unique_counter by 1. 
 			- Else if the distance to all previous unique locations is < particle_diameter
 				- Increment the hit_counter for the point nearest to the current location by 1. 
-		'''
+		"""
+		analysis_type = 'SearchCoverage'
 		self.unique_counter = 0
 		self.unique_positions = []
+		self.unique_position_times = []
 		self.hits_counter = {}
 
 		self.unique_counter_time = np.zeros(self.Nt)
 
 		for ii in range(self.Nt):
 
-			# Particle positions at time ii
+			# Particle positions (head/filament-tip position) at time ii
 			self.r = [self.R[ii, self.Np-1], self.R[ii, 2*self.Np-1], self.R[ii, 3*self.Np-1] ]
 
 			# print(self.r)
@@ -213,6 +229,7 @@ class analysisTools(activeFilament):
 			if(not self.unique_positions):
 				# If list is empty
 				self.unique_positions.append(self.r)
+				self.unique_position_times.append(self.Time[ii])
 				self.unique_counter+=1
 				self.hits_counter[self.unique_counter-1]=1
 			else:
@@ -222,6 +239,7 @@ class analysisTools(activeFilament):
 
 				if(not np.any(distance<=2*self.radius)):
 					self.unique_positions.append(self.r)
+					self.unique_position_times.append(self.Time[ii])
 					self.unique_counter+=1
 					self.hits_counter[self.unique_counter-1]=1
 				else:
@@ -234,8 +252,29 @@ class analysisTools(activeFilament):
 
 
 		self.unique_positions = np.array(self.unique_positions)
+		self.unique_position_times = np.array(self.unique_position_times)
 
+		
 
+		# Save the data
+		if(save == True):
+
+			hits_counter_keys = np.array(list(self.hits_counter.keys()))
+			hits_counter_values = np.array(list(self.hits_counter.values()))
+
+			self.create_analysis_folder()
+			analysis_sub_folder = os.path.join(self.analysis_folder, analysis_type)
+			if(not os.path.exists(analysis_sub_folder)):
+				os.makedirs(analysis_sub_folder)
+
+			df_unique_count = pd.DataFrame({'Time':self.Time, 'Unique positions count':self.unique_counter_time})
+			df_unique_positions = pd.DataFrame({'ID': hits_counter_keys, 
+				'Time': self.unique_position_times, 'Hits': hits_counter_values,
+				'Position X':self.unique_positions[:,0], 'Position Y':self.unique_positions[:,1], 
+				'Position Z':self.unique_positions[:,2]})
+
+			df_unique_count.to_csv(os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_counts_timeseries.csv'))
+			df_unique_positions.to_csv(os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_positions.csv'))
 
 	# Energy based metrics:
 
@@ -478,7 +517,7 @@ class analysisTools(activeFilament):
 	# Plotting tools
 #-------------------------------------
 
-	def plot_timeseries(self, var, data = None, save_folder = None, title = '', colors = None):
+	def plot_timeseries(self, var, data = None, save = False, save_folder = None, title = '', colors = None):
 
 		x_data = self.Time
 		y_data = {}
@@ -512,23 +551,27 @@ class analysisTools(activeFilament):
 				plt.ylabel(key)
 		
 		plt.legend()
+		plt.xlabel('Time')
 
-		if(save_folder is not None):
+		if(save):
+			if(save_folder is not None):
 
-			file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
 
-			file_name = title + '_TimeSeries'
+			file_name = self.dataName[:-5] +'_' + '_TimeSeries'
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 			
-		plt.xlabel('Time')
+		
 		plt.show()
 		
 
-	def plot_scatter(self, var_x, var_y,data_x = None, data_y = None, color_by = 'Time', save_folder = None):
+	def plot_scatter(self, var_x, var_y,data_x = None, data_y = None, color_by = 'Time', save_folder = None, save = False):
 
 		title = var_y + ' vs ' + var_x
 
@@ -553,20 +596,24 @@ class analysisTools(activeFilament):
 		cbar = plt.colorbar(ax1)
 		cbar.ax.set_ylabel(color_by)
 
-		if(save_folder is not None):
+		if(save):
+			if(save_folder is not None):
 
-			file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
 
-			file_name = title + '_ScatterPlot'
+			file_name = self.dataName[:-5] +'_' + title + '_ScatterPlot'
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 
 		plt.show()
 
-	def plot_phase_portrait(self, var_x, var_y,data_x = None, data_y = None, color_by = 'Time', save_folder = None, title = []):
+	def plot_phase_portrait(self, var_x, var_y,data_x = None, data_y = None, color_by = 'Time', 
+		save_folder = None, save = False, title = []):
 
 		title = var_y + ' vs ' + var_x
 
@@ -575,8 +622,6 @@ class analysisTools(activeFilament):
 
 		if(data_y is None):
 			data_y = self.derived_data[var_y]
-
-
 
 		if(color_by == 'Time'):
 			color = self.Time
@@ -593,7 +638,7 @@ class analysisTools(activeFilament):
 		u[mask], v[mask] = 0,0
 
 		plt.figure(figsize = (8,6))
-		ax1 = plt.quiver(data_x[:-1],data_y[:-1],u,v, color[:clip_point], scale_units='xy', angles='xy', scale=1, headwidth = 5)
+		ax1 = plt.quiver(data_x[:-1],data_y[:-1],u,v, color[:clip_point-1], scale_units='xy', angles='xy', scale=1, headwidth = 5)
 		ax2 = plt.scatter(data_x[0], data_y[0], 50, marker = 'o', color = 'r')
 
 		plt.xlabel(var_x)
@@ -602,14 +647,17 @@ class analysisTools(activeFilament):
 		cbar = plt.colorbar(ax1)
 		cbar.ax.set_ylabel(color_by)
 
-		if(save_folder is not None):
+		if(save):
+			if(save_folder is not None):
 
-			file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
 
-			file_name = title + '_PhasePortrait'
+			file_name = self.dataName[:-5] +'_'+title + '_PhasePortrait'
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 
@@ -635,7 +683,8 @@ class analysisTools(activeFilament):
 		plt.show()
 
 
-	def plot_unique_tip_locations(self):
+	def plot_unique_tip_locations(self, color_by = 'count', save = False, save_folder = None):
+
 
 		hits_total = np.sum(list(self.hits_counter.values()))
 
@@ -648,7 +697,11 @@ class analysisTools(activeFilament):
 		plt.figure()
 		# ax1 = plt.scatter(unique_positions[:,0], unique_positions[:,1], 40, c = position_prob_density, cmap=cmocean.cm.matter)
 		
-		ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = hits_counter_list, cmap=cmocean.cm.matter)
+		if(color_by == 'count'):
+			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = hits_counter_list, cmap=cmocean.cm.matter)
+		elif (color_by == 'probability'):
+			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = position_prob_density, cmap=cmocean.cm.matter)
+
 		ax2 = plt.scatter(self.R[:, 0], self.R[:, self.Np], 20, color ='b')
 
 		plt.xlabel('Filament tip (x)')
@@ -658,8 +711,22 @@ class analysisTools(activeFilament):
 		plt.xlim([-1*self.Np*self.b0, 1.5*self.Np*self.b0])
 		plt.ylim([-1*self.Np*self.b0, 1*self.Np*self.b0])
 		cbar = plt.colorbar(ax1)
-		cbar.ax.set_ylabel('Count')
+		cbar.ax.set_ylabel(color_by)
 		# cbar.ax.set_ylabel('Probability density')
+		if(save):
+			if(save_folder is not None):
+
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = self.dataName[:-5] +'_' + '_UniqueTipLocations'
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+
 		plt.show()
 
 	def plot_energy_timeseries(self, save_folder = None):
@@ -694,6 +761,50 @@ class analysisTools(activeFilament):
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300)
 
 		plt.show()
+
+	def plot_filament_centerlines(self, save_folder = None, save = False):
+
+		title = 'Overlay of filament shapes'
+		stride = 50
+		cmap = cm.get_cmap('viridis', 255)
+		colors = [cmap(ii) for ii in np.linspace(0,1,self.Nt)]
+		norm = mpl.colors.Normalize(vmin=np.min(self.Time), vmax=np.max(self.Time))
+
+		# cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap,
+  #                               norm=norm,
+  #                               orientation='horizontal')
+
+		fig, ax1 = plt.subplots(figsize = (8,8))
+		for ii in range(self.Nt):			
+			self.r = self.R[ii,:]
+			if(ii%stride==0):
+				cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = colors[ii], linewidth=2.0, alpha = 0.5)
+
+		ax1.set_xlabel('X position')
+		ax1.set_ylabel('Y position')
+		ax1.set_title(title)
+		fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+             ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
+		plt.axis('equal')
+
+		if(save):
+			if(save_folder is not None):
+
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = self.dataName[:-5] +'_'+title 
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+	
+
+		plt.show()
+
+
 
 
 
