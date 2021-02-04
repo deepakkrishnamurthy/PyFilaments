@@ -86,6 +86,7 @@ class activeFilament:
 		self.shape = 'line'
 		self.initialize_filament_shape()
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
+		self.simFile = ''
 
 	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
@@ -596,7 +597,9 @@ class activeFilament:
 
 		print('Loading Simulation data from disk ...')
 
+
 		if(file is not None):
+			folder, self.simFile = os.path.split(file)
 			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
 
 				with h5py.File(file, "r") as f:

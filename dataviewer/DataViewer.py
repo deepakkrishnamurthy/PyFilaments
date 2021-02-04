@@ -27,27 +27,16 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		super().__init__(parent)
 
 		self.plot = self.addPlot()
-
 		self.plot.setAspectLocked(True)
-
-
 		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=False)
-
 		self.filament = filament
 
-		
-
 		self.current_index = 0
-
-
 		if(self.filament.R is None):
 			n = 1
 
 			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120))
-
 			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120))
-
-
 			pos = np.random.normal(size = (2,n))
 
 			# spots = [{'pos': pos[:,i], 'data': 1} for i in range(n)] + [{'pos': [0,0], 'data': 1}]
@@ -58,30 +47,20 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 
 		else:
 			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
-
 			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
-
-
 			x_pos = self.filament.R[self.current_index,:self.filament.Np]
 			y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
 
 			# spots = [{'pos': pos[:,i], 'data': 1} for i in range(n)] + [{'pos': [0,0], 'data': 1}]
-			
 			# s1.addPoints(spots)
-
 			self.s1.setData(x = x_pos, y = y_pos)
-
 			self.s1.setBrush(self.particle_colors)
 
-		
 		self.plot.addItem(self.s1)
 		self.plot.addItem(self.s2)
-
 		self.text = pg.TextItem(color = 'w', anchor=(0,0), angle=0)
-		
 		self.plot.addItem(self.text)
 		self.text.setPos(-10, 0)
-
 		self.text.setText('{:0.1f}'.format(0))
 
 
@@ -127,12 +106,9 @@ class VideoPlayer(QWidget):
 	def __init__(self, filament = None, plotFilamentWidget = None, parent=None):
 		
 		super().__init__(parent)
-
 		# Data used for displaying the sequence of plots. 
 		self.filament = filament
-
 		self.plotFilamentWidget = plotFilamentWidget
-
 		# Playback indices
 		self.timer = QTimer()
 		self.timer.setInterval(0) #in ms
@@ -152,9 +128,6 @@ class VideoPlayer(QWidget):
 		#Gui Component
 
 		self.add_components()
-
-
-		
 
 	def add_components(self):
 
@@ -312,13 +285,6 @@ class VideoPlayer(QWidget):
 				self.prev_track_index = 0
 
 
-
-
-
-
-
-
-
 class simParamsDisplayWidget(QWidget):
 
 	update_main_window = Signal()
@@ -330,11 +296,11 @@ class simParamsDisplayWidget(QWidget):
 		self.filament = filament
 
 		self.displayed_parameters = ['N particles', 'radius', 'bond length', 'spring constant', 'kappa_hat', 'simulation type', 'force strength', 'stresslet strength',
-									'potDipole strength']
+									'potDipole strength', 'sim file']
 
 		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 'bond length':self.filament.b0, 'spring constant':self.filament.k, 
 								'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 'force strength':self.filament.F0, 
-								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0}
+								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0, 'sim file':self.filament.simFile}
 
 		assert(list(self.variable_mapping.keys()) == self.displayed_parameters)
 
@@ -391,7 +357,7 @@ class simParamsDisplayWidget(QWidget):
 
 		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 'bond length':self.filament.b0, 'spring constant':self.filament.k, 
 								'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 'force strength':self.filament.F0, 
-								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0}
+								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0, 'sim file':self.filament.simFile}
 
 		for parameter in self.displayed_parameters:
 
@@ -425,27 +391,19 @@ class CentralWidget(QWidget):
 
 		
 		self.filament = activeFilament()
-
 		self.newData = False
-
 		# Widget for displaying the filament as a scatter plot
 		self.plotFilamentWidget = AnimatePlotWidget(filament = self.filament)
-
 		# Widget for displaying the simulation parameters
 		self.sim_parameters_display = simParamsDisplayWidget(filament = self.filament)
-
 		# Widget for sequentially displaying data
 		self.video_player = VideoPlayer(filament = self.filament, plotFilamentWidget = self.plotFilamentWidget)
 
-	
 		# Add widgets to the central widget
-
 		window_layout = QVBoxLayout()
-
 		window_layout.addWidget(self.plotFilamentWidget)
 		window_layout.addWidget(self.video_player)
 		window_layout.addWidget(self.sim_parameters_display)
-
 		self.setLayout(window_layout)
 
 		# if(self.newData is True):
@@ -457,17 +415,12 @@ class CentralWidget(QWidget):
 		# 	self.sim_parameters_display.update_param_values()
 
 			
-
 	def open_dataset(self, fileName):
 
 		print(self.filament.Np)
-
 		self.fileName = fileName
-		
 		self.filament.load_data(self.fileName)
-
 		print('Loaded data successfully!')
-
 
 		if(self.filament.R is not None):
 			self.newData = True
@@ -476,14 +429,8 @@ class CentralWidget(QWidget):
 			self.video_player.initialize_data(self.filament.Time)
 			self.video_player.initialize_parameters()
 			self.sim_parameters_display.update_param_values()
-
-		
 		else:
 			self.newData = False
-
-
-
-	
 '''
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #                            Main Window
@@ -500,13 +447,9 @@ class MainWindow(QMainWindow):
 		# self.setWindowIcon(QtGui.QIcon('icon/icon.png'))
 		self.statusBar().showMessage('Ready')
 		
-
-		
-		
 		#WIDGETS
 		self.central_widget = CentralWidget()  
 		self.setCentralWidget(self.central_widget)
-
 
 		# File and Folder
 		self.dataFile = None
@@ -517,7 +460,6 @@ class MainWindow(QMainWindow):
 		menuBar = self.menuBar()
 		fileMenu = menuBar.addMenu('&File')
 	 
-		
 		# Create new action
 		openAction = QAction(QIcon('open.png'), '&Open', self)        
 		openAction.setShortcut('Ctrl+O')
@@ -525,7 +467,6 @@ class MainWindow(QMainWindow):
 		openAction.triggered.connect(self.openFile)
 
 		fileMenu.addAction(openAction)
-
 
 	def openFile(self):
 		print('Opening dataset ...')
@@ -539,8 +480,6 @@ class MainWindow(QMainWindow):
 		self.dataFile, *rest = QFileDialog.getOpenFileName(self, 'Open file',self.directory,"data files (*.pkl *.hdf5)")
 
 		self.central_widget.open_dataset(self.dataFile)
-
-
 
 '''
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
