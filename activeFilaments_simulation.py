@@ -48,7 +48,7 @@ plt.figure()
 plt.plot(t_array, activity_profile)
 plt.show()
 
-bc = {0:'clamped', -1:'free'}
+bc = {0:'fixed', -1:'free'}
 
 fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2.1, k = 20, F0 = 0, S0 = 0, D0 = 0, bc = bc)
 
