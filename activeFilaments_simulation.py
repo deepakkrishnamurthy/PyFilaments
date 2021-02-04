@@ -50,7 +50,8 @@ plt.show()
 
 bc = {0:'fixed', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2.1, k = 20, S0 = 0, D0 = 0, bc = bc)
+
+fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2.1, k = 25, F0 = 0, S0 = 0, D0 = 1.5, bc = bc)
 
 
 fil.plotFilament(r = fil.r0)
@@ -58,5 +59,6 @@ fil.plotFilament(r = fil.r0)
 
 fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
   activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'})
+
 
 fil.plotFilament(r = fil.r)
