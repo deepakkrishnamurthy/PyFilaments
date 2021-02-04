@@ -32,7 +32,8 @@ cdef class filament_operations:
 			if(ii==0):
 				cosAngle[ii] = unit_vector_x*dr_hat[0,ii] + unit_vector_y*dr_hat[1,ii] + unit_vector_z*dr_hat[2,ii]  # Clamped end
 			elif(ii == Np-1):
-				cosAngle[ii] = unit_vector_x*dr_hat[0,ii-1] + unit_vector_y*dr_hat[1,ii-1] + unit_vector_z*dr_hat[2,ii-1] 	# Dummy value for free-end
+				# cosAngle[ii] = dr_hat[0,ii-1]*unit_vector_x + dr_hat[1,ii-1]*unit_vector_y + dr_hat[2,ii-1]*unit_vector_z 	# Dummy value for free-end
+				cosAngle[ii] = 1.0
 			else:
 				cosAngle[ii] = 0
 				for jj in range(dim):
@@ -54,16 +55,8 @@ cdef class filament_operations:
 			prefactor_1 = 0.0; prefactor_2_1 = 0.0; prefactor_2_2 = 0.0; prefactor_3 = 0.0;
 
 			# End points
-			# if(ii==0):
-			# 	prefactor_3 = self.kappa_array_view[ii+1]/dr[ii]
-
-			# 	term_3_x = prefactor_3*(dr_hat[0, ii]*cosAngle[ii+1] - dr_hat[0, ii+1])
-			# 	term_3_y = prefactor_3*(dr_hat[1, ii]*cosAngle[ii+1] - dr_hat[1, ii+1])
-			# 	term_3_z = prefactor_3*(dr_hat[2, ii]*cosAngle[ii+1] - dr_hat[2, ii+1])
-
 			if(ii == 0):
 				# Terminal colloid:0
-
 				prefactor_2_1 = self.kappa_array_view[ii]*(1/b0 + cosAngle[ii]/dr[ii])
 				prefactor_2_2 = self.kappa_array_view[ii]*(1/dr[ii] + cosAngle[ii]/b0)
 				prefactor_3 = self.kappa_array_view[ii+1]/dr[ii]
@@ -78,7 +71,6 @@ cdef class filament_operations:
 
 			elif(ii == 1):
 				# Next to terminal colloid: 1
-
 				prefactor_1 = self.kappa_array_view[ii-1]/(dr[ii-1])
 				prefactor_2_1 = self.kappa_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
 				prefactor_2_2 = self.kappa_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
@@ -132,7 +124,6 @@ cdef class filament_operations:
 		
 			else:
 				# Interior colloids
-
 				prefactor_1 = self.kappa_array_view[ii-1]/(dr[ii-1])
 				prefactor_2_1 = self.kappa_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
 				prefactor_2_2 = self.kappa_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
