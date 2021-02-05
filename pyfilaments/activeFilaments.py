@@ -74,6 +74,7 @@ class activeFilament:
 		self.D0 = D0
 		# Simulation type
 		self.sim_type = None
+		self.activity_timescale = ''
 		# Instantiate the pystokes class
 		self.rm = pystokes.unbounded.Rbm(self.radius, self.Np, self.mu)   # instantiate the classes
 		# Instantiate the pyforces class

@@ -765,8 +765,8 @@ class analysisTools(activeFilament):
 	def plot_filament_centerlines(self, save_folder = None, save = False):
 
 		title = 'Overlay of filament shapes'
-		stride = 50
-		cmap = cm.get_cmap('viridis', 255)
+		stride = 500
+		cmap = cm.get_cmap('rainbow', 255)
 		colors = [cmap(ii) for ii in np.linspace(0,1,self.Nt)]
 		norm = mpl.colors.Normalize(vmin=np.min(self.Time), vmax=np.max(self.Time))
 
@@ -778,7 +778,7 @@ class analysisTools(activeFilament):
 		for ii in range(self.Nt):			
 			self.r = self.R[ii,:]
 			if(ii%stride==0):
-				cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = colors[ii], linewidth=2.0, alpha = 0.5)
+				cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = colors[ii], linewidth=3.0, alpha = 0.5)
 
 		ax1.set_xlabel('X position')
 		ax1.set_ylabel('Y position')

@@ -1,10 +1,13 @@
-# Script to playback and interact with PyFilaments Data
+# Data-viewer and analyzer for PyFilaments Data
+# - Deepak Krishnamurthy
+
 import numpy as np
-# from pyqtgraph.Qt import QtWidgets,QtCore, QtGui
 import pyqtgraph as pg
 pg.setConfigOptions(antialias=True)
 import time as time
 import os
+from pathlib import Path
+
 import sys
 import cmocean
 import context
@@ -295,14 +298,15 @@ class simParamsDisplayWidget(QWidget):
 
 		self.filament = filament
 
-		self.displayed_parameters = ['N particles', 'radius', 'bond length', 'spring constant', 'kappa_hat', 'simulation type', 'force strength', 'stresslet strength',
-									'potDipole strength', 'sim file']
+		self.displayed_parameters = ['N particles', 'radius', 'bond length', 'spring constant', 
+			'kappa_hat', 'potDipole strength', 'activity time','simulation type']
 
-		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 'bond length':self.filament.b0, 'spring constant':self.filament.k, 
-								'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 'force strength':self.filament.F0, 
-								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0, 'sim file':self.filament.simFile}
+		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 
+			'bond length':self.filament.b0, 'spring constant':self.filament.k, 
+			'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 
+			'potDipole strength':self.filament.D0, 'activity time': self.filament.activity_timescale}
 
-		assert(list(self.variable_mapping.keys()) == self.displayed_parameters)
+		# assert(list(self.variable_mapping.keys()) == self.displayed_parameters)
 
 		self.add_components()
 		
@@ -323,21 +327,20 @@ class simParamsDisplayWidget(QWidget):
 			else:
 				self.value_labels[parameter].setText('')
 
-
-
-
 		sim_params_display = QGridLayout()
-
-		first_row = self.displayed_parameters[:6]
-		second_row = self.displayed_parameters[7:]
+		row_wrap_index = 4
+		first_row = self.displayed_parameters[:row_wrap_index]
+		second_row = self.displayed_parameters[row_wrap_index:]
 
 		col_counter=0
+		row_counter = 0
 		for col_no, parameter in enumerate(first_row):
 
 			sim_params_display.addWidget(self.labels[parameter], 0, col_counter)
 			col_counter+=1
 			sim_params_display.addWidget(self.value_labels[parameter], 0, col_counter)
 			col_counter+=1
+			row_counter+=1
 
 		col_counter=0
 		for col_no, parameter in enumerate(second_row):
@@ -349,30 +352,81 @@ class simParamsDisplayWidget(QWidget):
 
 		self.setLayout(sim_params_display)
 
-		
- 
 	def update_param_values(self):
 
 		print('Updating parameter values...')
-
-		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 'bond length':self.filament.b0, 'spring constant':self.filament.k, 
-								'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 'force strength':self.filament.F0, 
-								'stresslet strength':self.filament.S0, 'potDipole strength':self.filament.D0, 'sim file':self.filament.simFile}
+		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 
+			'bond length':self.filament.b0, 'spring constant':self.filament.k, 
+			'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 
+			'potDipole strength':self.filament.D0, 'activity time':self.filament.activity_timescale}
 
 		for parameter in self.displayed_parameters:
-
-
 			if(self.variable_mapping[parameter] is not None):
-				
 				print(str(self.variable_mapping[parameter]))
-
 				self.value_labels[parameter].setText(str(self.variable_mapping[parameter]))
 			else:
-
 				self.value_labels[parameter].setText('')
-
-
 		QApplication.processEvents()
+
+class DataInteractionWidget(QMainWindow):
+	close_widget = Signal(int)
+
+	def __init__(self, filament = None, widget_id = None):
+		super().__init__()
+
+		self.widget_id = widget_id
+		self.filament = activeFilament()
+		self.newData = False
+		self.setWindowTitle('Data viewer')
+		# Widget for displaying the filament as a scatter plot
+		self.plotFilamentWidget = AnimatePlotWidget(filament = self.filament)
+
+		# Widget for displaying the simulation parameters
+		self.sim_parameters_display = simParamsDisplayWidget(filament = self.filament)
+		# Widget for sequentially displaying data
+		self.video_player = VideoPlayer(filament = self.filament, plotFilamentWidget = self.plotFilamentWidget)
+
+		self.add_components()
+
+	def add_components(self):
+
+		# Add widgets to the central widget
+		video_player_layout = QVBoxLayout()
+		video_player_layout.addWidget(self.plotFilamentWidget)
+		video_player_layout.addWidget(self.video_player)
+		# window_layout = QHBoxLayout()
+		# window_layout.addLayout(video_player_layout)
+		# window_layout.addWidget(self.sim_parameters_display)
+
+		self.centralWidget = QWidget()
+		self.centralWidget.setLayout(video_player_layout)
+		self.setCentralWidget(self.centralWidget)
+
+		self.statusBar = QStatusBar()
+		self.statusBar.addWidget(self.sim_parameters_display)
+		self.setStatusBar(self.statusBar)
+
+	def open_dataset(self, fileName):
+
+		self.fileName = fileName
+		self.filament.load_data(self.fileName)
+		print('Loaded data successfully!')
+
+		if(self.filament.R is not None):
+			self.newData = True
+			self.setWindowTitle(self.filament.simFile)
+			self.plotFilamentWidget.set_colors()
+			self.video_player.initialize_data(self.filament.Time)
+			self.video_player.initialize_parameters()
+			self.sim_parameters_display.update_param_values()
+		else:
+			self.newData = False
+
+	def closeEvent(self, event):
+		# send a signal to the MainWindow to keep track of datasets that are open.
+		self.close_widget.emit(self.widget_id)
+		print('Sent close widget signal')
+		
 
 
 '''
@@ -400,9 +454,11 @@ class CentralWidget(QWidget):
 		self.video_player = VideoPlayer(filament = self.filament, plotFilamentWidget = self.plotFilamentWidget)
 
 		# Add widgets to the central widget
-		window_layout = QVBoxLayout()
-		window_layout.addWidget(self.plotFilamentWidget)
-		window_layout.addWidget(self.video_player)
+		video_player_layout = QVBoxLayout()
+		video_player_layout.addWidget(self.plotFilamentWidget)
+		video_player_layout.addWidget(self.video_player)
+		window_layout = QHBoxLayout()
+		window_layout.addLayout(video_player_layout)
 		window_layout.addWidget(self.sim_parameters_display)
 		self.setLayout(window_layout)
 
@@ -414,10 +470,11 @@ class CentralWidget(QWidget):
 
 		# 	self.sim_parameters_display.update_param_values()
 
+		
+
 			
 	def open_dataset(self, fileName):
 
-		print(self.filament.Np)
 		self.fileName = fileName
 		self.filament.load_data(self.fileName)
 		print('Loaded data successfully!')
@@ -443,18 +500,23 @@ class MainWindow(QMainWindow):
 	def __init__(self):
 		super().__init__()
 		
-		self.setWindowTitle('Active filaments data analyzer')
+		self.setWindowTitle('pyfilaments data analyzer')
 		# self.setWindowIcon(QtGui.QIcon('icon/icon.png'))
 		self.statusBar().showMessage('Ready')
 		
 		#WIDGETS
-		self.central_widget = CentralWidget()  
+		self.widget_count = 0
+		self.active_widgets = []
+		self.data_widgets = {}
+
+		self.central_widget = QWidget()  
 		self.setCentralWidget(self.central_widget)
 
 		# File and Folder
 		self.dataFile = None
 		# self.dataFile = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1/SimResults_Tmax_5000_Np_32_Shape_sinusoid_S_0_D_-1.pkl'
-		self.directory = '/Users/deepak/Dropbox/LacryModeling/ModellingResults'
+		self.home = str(Path.home())
+		self.directory = os.path.join(self.home, 'LacryModelling_Local/ModellingResults')
 
 		# Create menu bar and add action
 		menuBar = self.menuBar()
@@ -464,22 +526,38 @@ class MainWindow(QMainWindow):
 		openAction = QAction(QIcon('open.png'), '&Open', self)        
 		openAction.setShortcut('Ctrl+O')
 		openAction.setStatusTip('Open File')
-		openAction.triggered.connect(self.openFile)
+		openAction.triggered.connect(self.open_file)
 
 		fileMenu.addAction(openAction)
 
-	def openFile(self):
-		print('Opening dataset ...')
-
-		# if(self.dataFile is None):
-			# self.directory = QtGui.QFileDialog.getExistingDirectory(self)
-
-		# file_type = "pkl files (*.pkl)"
-		
+	def open_file(self):
 
 		self.dataFile, *rest = QFileDialog.getOpenFileName(self, 'Open file',self.directory,"data files (*.pkl *.hdf5)")
 
-		self.central_widget.open_dataset(self.dataFile)
+		if(self.dataFile is not None and self.dataFile != ''):
+			print('Opening dataset ...')
+			self.data_widgets[self.widget_count] = DataInteractionWidget(widget_id = self.widget_count)
+			self.data_widgets[self.widget_count].open_dataset(self.dataFile)
+			self.data_widgets[self.widget_count].show()
+			self.data_widgets[self.widget_count].close_widget.connect(self.close_dataset)
+			self.active_widgets.append(self.widget_count)	
+			self.widget_count+=1	
+			# self.central_widget.open_dataset(self.dataFile)
+		else:
+			print('No file chosen')
+			pass
+
+	def close_dataset(self, widget_id):
+		self.data_widgets[widget_id].disconnect()
+		self.data_widgets[widget_id].close()
+		self.active_widgets.remove(widget_id)
+		self.widget_count-=1
+
+	def closeEvent(self, event):
+		for key in self.data_widgets.keys():
+			self.data_widgets[key].close()
+		event.accept()
+		pass
 
 '''
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -495,15 +573,21 @@ if __name__ == '__main__':
 	if app is None:
 		app = QApplication(sys.argv)
 	
-	win= MainWindow()
+	# splash_pix = QPixmap(icon/logo.png)
+	# splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+	# splash.show()
+
+	win = MainWindow()
 	# qss = QSSHelper.open_qss(os.path.join('aqua', 'aqua.qss'))
 	# win.setStyleSheet(qss)
 
 
 		
 	win.show()
+	# splash.finish(win)
 
 	app.exec_() #
+	sys.exit()
 
 	
 	# if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
