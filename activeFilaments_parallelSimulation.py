@@ -18,7 +18,7 @@ elif platform == 'darwin':
 	print("OSX system")
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
-activity_timescale = 1000
+activity_timescale = 1250
 activityFreq = 1.0/activity_timescale
 
 print('Activity frequency: {}'.format(activityFreq))

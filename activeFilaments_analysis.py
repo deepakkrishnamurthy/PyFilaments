@@ -44,7 +44,8 @@ import pyfilaments.analysisutils as analysis
 
 # file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_6.25_k_25_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_02.hdf5'
 
-file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_3.75_k_15_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_03.hdf5'
+file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-02-04/SimResults_Np_32_Shape_line_kappa_hat_10.0_k_40_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_01.hdf5'
+# file = '/home/deepak/LacryModelling_Local/ModellingResults/2021-01-28/SimResults_Np_33_Shape_line_kappa_hat_3.75_k_15_b0_2.1_F_0_S_0_D_1.5_activityTime_750_simType_point/SimResults_03.hdf5'
 # file = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/2020-09-07/GoodSearch_SimResults_Np_33_Shape_line_k_25_b0_2_F_0_S_0_D_1.5_scalefactor_500_1/SimResults_00.hdf5'
 
 folder, *rest = os.path.split(file)
@@ -60,15 +61,17 @@ filament = analysis.analysisTools(file = file)
 
 # Calculate the filament length vs time
 
-# filament.compute_arc_length()
-# filament.plot_arclength_timeseries()
+filament.compute_arc_length()
 
 # # filament.plotFilament(r = filament.R[-1,:])
 
 # filament.plot_tip_position()
 
-filament.filament_tip_coverage(save = True)
+filament.filament_tip_coverage(save = False)
 
+filament.plot_unique_tip_locations(save = True)
+
+filament.plot_timeseries(var = ['unique position count'])
 
 # filament.plot_timeseries(var = ['Filament arc length'])
 
@@ -104,9 +107,9 @@ filament.filament_tip_coverage(save = True)
 # plt.show()
 
 
-filament.compute_head_orientation()
-filament.compute_arc_length()
-filament.plot_timeseries(var =['Tip cosine angle','Filament arc length'], save = True)
+# filament.compute_head_orientation()
+# filament.compute_arc_length()
+# filament.plot_timeseries(var =['Tip cosine angle','Filament arc length'], save = True)
 
 filament.plot_filament_centerlines(save = True)
 
@@ -116,7 +119,6 @@ filament.compute_axial_bending_energy()
 filament.plot_phase_portrait(var_x = 'Axial energy', var_y = 'Bending energy', save_folder = None, save = True)
 
 # filament.plot_phase_portrait(var_x = 'Filament arc length', var_y = 'Tip cosine angle', save_folder = folder)
-filament.plot_unique_tip_locations(save = True)
 
 # filament.plot_coverage_vs_time()
 
