@@ -59,11 +59,15 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 			self.s1.setData(x = x_pos, y = y_pos)
 			self.s1.setBrush(self.particle_colors)
 
+
+
 		self.plot.addItem(self.s1)
 		self.plot.addItem(self.s2)
+
+
 		self.text = pg.TextItem(color = 'w', anchor=(0,0), angle=0)
 		self.plot.addItem(self.text)
-		self.text.setPos(-10, 0)
+		self.text.setPos(-20, 0)
 		self.text.setText('{:0.1f}'.format(0))
 
 
@@ -105,7 +109,6 @@ class VideoPlayer(QWidget):
 	A general class for displaying sequential data such as plots, images etc.
 
 	'''
-
 	def __init__(self, filament = None, plotFilamentWidget = None, parent=None):
 		
 		super().__init__(parent)
@@ -125,7 +128,7 @@ class VideoPlayer(QWidget):
 		# If true then plays the data in real-time
 		self.real_time = False
 		# No:of frames to advance for recording purposes
-		self.frames = 1
+		self.frames = 10
 		# This gives playback_speed x normal speed
 		self.playback_speed = 200
 		#Gui Component
@@ -182,17 +185,9 @@ class VideoPlayer(QWidget):
 			self.positionSlider.setValue(newvalue)
 			self.positionSpinBox.setValue(self.Time[newvalue])
 			self.positionSpinBox_prevValue=self.Time[newvalue]
-			
-#            self.prev_track_index = newvalue
-#            self.prev_track_index = self.Image_Index[newvalue]
-			
 			self.positionSlider_prevValue=newvalue
-			# self.refreshImage(self.Image_Names[newvalue])
 			self.plotFilamentWidget.current_index = newvalue
-
-			# print(self.plotFilamentWidget.current_index)
 			self.plotFilamentWidget.update_plot()
-			# self.update_3Dplot.emit(self.Image_Time[newvalue])
 
 	def find_slider_index(self, value):
 		#
@@ -425,7 +420,7 @@ class DataInteractionWidget(QMainWindow):
 	def closeEvent(self, event):
 		# send a signal to the MainWindow to keep track of datasets that are open.
 		self.close_widget.emit(self.widget_id)
-		print('Sent close widget signal')
+		# print('Sent close widget signal')
 		
 
 
@@ -435,59 +430,32 @@ class DataInteractionWidget(QMainWindow):
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 '''
 class CentralWidget(QWidget):
-	
-	update_plot = Signal(float)
 
-	index = Signal(int)
-   
 	def __init__(self):
 		super().__init__()
 
-		
-		self.filament = activeFilament()
-		self.newData = False
-		# Widget for displaying the filament as a scatter plot
-		self.plotFilamentWidget = AnimatePlotWidget(filament = self.filament)
-		# Widget for displaying the simulation parameters
-		self.sim_parameters_display = simParamsDisplayWidget(filament = self.filament)
-		# Widget for sequentially displaying data
-		self.video_player = VideoPlayer(filament = self.filament, plotFilamentWidget = self.plotFilamentWidget)
+		self.add_components()
 
-		# Add widgets to the central widget
-		video_player_layout = QVBoxLayout()
-		video_player_layout.addWidget(self.plotFilamentWidget)
-		video_player_layout.addWidget(self.video_player)
+
+	def add_components(self):
+
+		self.label = QLabel('pyfilament interactive data-viewer')
+
+		self.load_button = QPushButton('Load new data')
+		self.load_button.setCheckable(False)
+		self.load_button.setChecked(False)
+
+
+		
 		window_layout = QHBoxLayout()
-		window_layout.addLayout(video_player_layout)
-		window_layout.addWidget(self.sim_parameters_display)
+		window_layout.addWidget(self.label)
+		window_layout.addWidget(self.load_button)
 		self.setLayout(window_layout)
 
-		# if(self.newData is True):
 
-		# 	self.video_player.initialize_data(self.filament.Time)
-
-		# 	self.video_player.initialize_parameters()
-
-		# 	self.sim_parameters_display.update_param_values()
-
-		
 
 			
-	def open_dataset(self, fileName):
 
-		self.fileName = fileName
-		self.filament.load_data(self.fileName)
-		print('Loaded data successfully!')
-
-		if(self.filament.R is not None):
-			self.newData = True
-
-			self.plotFilamentWidget.set_colors()
-			self.video_player.initialize_data(self.filament.Time)
-			self.video_player.initialize_parameters()
-			self.sim_parameters_display.update_param_values()
-		else:
-			self.newData = False
 '''
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 #                            Main Window
@@ -501,7 +469,7 @@ class MainWindow(QMainWindow):
 		super().__init__()
 		
 		self.setWindowTitle('pyfilaments data analyzer')
-		# self.setWindowIcon(QtGui.QIcon('icon/icon.png'))
+		self.setWindowIcon(QIcon('icons/logo.png'))
 		self.statusBar().showMessage('Ready')
 		
 		#WIDGETS
@@ -509,7 +477,7 @@ class MainWindow(QMainWindow):
 		self.active_widgets = []
 		self.data_widgets = {}
 
-		self.central_widget = QWidget()  
+		self.central_widget = CentralWidget() 
 		self.setCentralWidget(self.central_widget)
 
 		# File and Folder
@@ -529,6 +497,9 @@ class MainWindow(QMainWindow):
 		openAction.triggered.connect(self.open_file)
 
 		fileMenu.addAction(openAction)
+
+		# Connections
+		self.central_widget.load_button.clicked.connect(self.open_file)
 
 	def open_file(self):
 
@@ -573,18 +544,18 @@ if __name__ == '__main__':
 	if app is None:
 		app = QApplication(sys.argv)
 	
-	# splash_pix = QPixmap(icon/logo.png)
-	# splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-	# splash.show()
+	splash_pix = QPixmap('icons/logo.png')
+	splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+	splash.show()
 
 	win = MainWindow()
 	# qss = QSSHelper.open_qss(os.path.join('aqua', 'aqua.qss'))
 	# win.setStyleSheet(qss)
-
+	win.resize(800,200)
 
 		
 	win.show()
-	# splash.finish(win)
+	splash.finish(win)
 
 	app.exec_() #
 	sys.exit()
