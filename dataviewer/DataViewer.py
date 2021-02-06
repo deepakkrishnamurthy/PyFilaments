@@ -282,6 +282,17 @@ class VideoPlayer(QWidget):
 				self.current_track_index = 0
 				self.prev_track_index = 0
 
+	def update_playback_speed(self, value):
+
+		if self.real_time:
+
+			self.playback_speed = value
+		else:
+
+			self.frames = value
+			print(self.frames)
+
+
 
 class simParamsDisplayWidget(QWidget):
 
@@ -431,6 +442,8 @@ class DataInteractionWidget(QMainWindow):
 '''
 class CentralWidget(QWidget):
 
+	playback_speed = Signal(int)
+
 	def __init__(self):
 		super().__init__()
 
@@ -439,19 +452,48 @@ class CentralWidget(QWidget):
 
 	def add_components(self):
 
-		self.label = QLabel('pyfilament interactive data-viewer')
+		self.label = QLabel('pyfilaments interactive data-viewer')
 
 		self.load_button = QPushButton('Load new data')
 		self.load_button.setCheckable(False)
 		self.load_button.setChecked(False)
 
+		self.speedSlider = QSlider(Qt.Horizontal)
+		self.speedSlider.setRange(1, 100)
+		self.speedSlider.setEnabled(True)
+		self.speedSlider_prevValue=1
+		
+		self.speedSpinBox = QDoubleSpinBox()
+		self.speedSpinBox.setRange(1, 100)
+		self.speedSpinBox.setSingleStep(1)
+		self.speedSpinBox.setEnabled(True)
+		self.speedSpinBox_prevValue=1
+
+		speed_control_layout = QHBoxLayout()
+		speed_control_layout.addWidget(self.speedSlider)
+		speed_control_layout.addWidget(self.speedSpinBox)
 
 		
-		window_layout = QHBoxLayout()
-		window_layout.addWidget(self.label)
-		window_layout.addWidget(self.load_button)
+		window_layout = QGridLayout()
+		window_layout.addWidget(self.label,0,0,1,1)
+		window_layout.addWidget(self.load_button,0,1,1,1)
+		window_layout.addWidget(QLabel('Playback speed'),1,0,1,1)
+		window_layout.addLayout(speed_control_layout,1,1,1,1)
 		self.setLayout(window_layout)
 
+		# Connections
+		self.speedSlider.valueChanged.connect(self.speedSpinBox_setValue)
+		self.speedSpinBox.valueChanged.connect(self.speedSlider_setValue)
+
+	def speedSpinBox_setValue(self, value):
+
+		self.speedSpinBox.setValue(value)
+
+	def speedSlider_setValue(self, value):
+
+		self.speedSlider.setValue(value)
+		self.playback_speed.emit(value)
+		print(value)
 
 
 			
@@ -511,6 +553,7 @@ class MainWindow(QMainWindow):
 			self.data_widgets[self.widget_count].open_dataset(self.dataFile)
 			self.data_widgets[self.widget_count].show()
 			self.data_widgets[self.widget_count].close_widget.connect(self.close_dataset)
+			self.central_widget.playback_speed.connect(self.data_widgets[self.widget_count].video_player.update_playback_speed)
 			self.active_widgets.append(self.widget_count)	
 			self.widget_count+=1	
 			# self.central_widget.open_dataset(self.dataFile)
