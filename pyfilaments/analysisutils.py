@@ -254,7 +254,7 @@ class analysisTools(activeFilament):
 		self.unique_positions = np.array(self.unique_positions)
 		self.unique_position_times = np.array(self.unique_position_times)
 
-		
+		self.derived_data['unique position count'] = self.unique_counter_time
 
 		# Save the data
 		if(save == True):
