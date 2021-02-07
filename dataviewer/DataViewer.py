@@ -128,7 +128,7 @@ class VideoPlayer(QWidget):
 		# If true then plays the data in real-time
 		self.real_time = False
 		# No:of frames to advance for recording purposes
-		self.frames = 10
+		self.frames = 1
 		# This gives playback_speed x normal speed
 		self.playback_speed = 200
 		#Gui Component

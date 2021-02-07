@@ -60,7 +60,7 @@ class activeFilament:
 		self.bending_axial_scalefactor = bending_axial_scalefactor			# Bending stiffness
 		# 10 Sept 2020: Important: Generalizing the relationship between axial and bending stiffness. scale_factor = 0.25 will be the special-case of homogeneous elastic rod. 
 		self.kappa_hat = self.bending_axial_scalefactor*(self.radius**2)*self.k
-		self.kappa_array = self.kappa_hat*np.ones(self.Np)
+		self.kappa_hat_array = self.kappa_hat*np.ones(self.Np)
 		self.clamping_bc_scalefactor = 1 		# Clamped BC scale-factor
 		self.mu = mu 		# Fluid viscosity
 		# Parameters for the near-field Lennard-Jones potential
@@ -86,7 +86,7 @@ class activeFilament:
 		# Initialize the filament
 		self.shape = 'line'
 		self.initialize_filament_shape()
-		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
+		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 		self.simFile = ''
 
 	def allocate_arrays(self):
@@ -295,15 +295,15 @@ class activeFilament:
 			if value=='free' or value == 'fixed':
 				# The bending stiffness is set to zero only for 'free' or 'fixed' boundary conditions
 				# print('Assigning {} BC to filament end {}'.format(value, key))
-				self.kappa_array[key] = 0 
+				self.kappa_hat_array[key] = 0 
 			elif value == 'clamped':
 				# @@@ Test: Clamped BC, the bending stiffness for the first link is order of magnitude higher to impose tangent condition at the filament base.
 				if key==0:
-					self.kappa_array[0] = self.clamping_bc_scalefactor*self.kappa_hat
+					self.kappa_hat_array[0] = self.clamping_bc_scalefactor*self.kappa_hat
 				elif key==-1:
-					self.kappa_array[-1] = self.clamping_bc_scalefactor*self.kappa_hat
+					self.kappa_hat_array[-1] = self.clamping_bc_scalefactor*self.kappa_hat
 
-		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_array, unit_vector = self.clamping_vector, ljrmin = 2.1*self.radius, ljeps = 1.0)
+		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_hat_array, unit_vector = self.clamping_vector, ljrmin = 2.1*self.radius, ljeps = 1.0)
 
 	  
 	def initialize_filament(self):
@@ -612,6 +612,11 @@ class activeFilament:
 						self.F_mag = dset["particle forces"][:]
 						self.S_mag = dset["particle stresslets"][:]
 						self.D_mag = dset["particle potDipoles"][:]
+						try:
+							self.kappa_hat_array = dset["kappa_hat_array"][:]
+						except:
+							self.kappa_hat_array = dset["kappa_array"][:]
+
 						# Load the metadata:
 						self.Np = dset.attrs['N particles']
 						self.radius = dset.attrs['radius']
@@ -684,7 +689,7 @@ class activeFilament:
 			dset.create_dataset("Time", data = self.Time)
 			dset.create_dataset("Position", data = self.R)  # Position contains the 3D positions of the Np particles over time. 
 			# Array of bending stiffnesses
-			dset.create_dataset("kappa_array", data = self.kappa_array)
+			dset.create_dataset("kappa_hat_array", data = self.kappa_hat_array)
 			dset.attrs['N particles'] = self.Np
 			dset.attrs['radius'] = self.radius
 			dset.attrs['bond length'] = self.b0

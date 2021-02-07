@@ -2,6 +2,7 @@
 import os
 import numpy as np
 from pyfilaments.activeFilaments import activeFilament
+import filament.filament as filament_operations
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pandas as pd
@@ -31,52 +32,81 @@ class analysisTools(activeFilament):
 		# Dict to store derived datasets
 		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [], 'Tip cosine angle':[],'Activity phase':[],'Axial energy':[],'Bending energy':[]}
 
-
 		# Set the attributes to those of the filament on which we are doing analysis. 
 		if(filament is not None):
-			
 			fil_attr = filament.__dict__
-
 			for key in fil_attr.keys():
-
 				setattr(self, key, getattr(filament, key))
 
+			print(self.kappa_hat_array)
+			# Reload the cython sub-modules using the loaded parameters
+			self.filament_operations = filament_operations.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, 
+				self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 		# If a saved file is supplied, then load it into memory.
 		elif(file is not None):
 			self.load_data(file)
+			# Reload the cython sub-modules using the loaded parameters
+			self.filament_operations = filament_operations.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, 
+				self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 
-		# Get the root path for the saved data
-		self.rootFolder, self.dataName = os.path.split(file)
+			self.find_num_time_points()
 
-		print('Root path: ', self.rootFolder)
-		print('Data file', self.dataName)
+			print('No:of particles : {}'.format(self.Np))
+			print('No:of time points : {}'.format(self.Nt))
 
-		self.find_num_time_points()
+			# Find time points corresponding to activity phase =0 and activity phase = pi
+			self.derived_data['Phase'] = 2*np.pi*(self.Time%self.activity_timescale)/self.activity_timescale
 
-		print('No:of particles : {}'.format(self.Np))
-		print('No:of time points : {}'.format(self.Nt))
+			self.derived_data['head pos x'] = self.R[:, self.Np-1]
+			self.derived_data['head pos y'] = self.R[:, 2*self.Np-1]
+			self.derived_data['head pos z'] = self.R[:, 3*self.Np-1]
 
-		# Find time points corresponding to activity phase =0 and activity phase = pi
-		self.derived_data['Phase'] = 2*np.pi*(self.Time%self.activity_timescale)/self.activity_timescale
+			# Get the root path for the saved data
+			self.rootFolder, self.dataName = os.path.split(file)
 
-		self.derived_data['head pos x'] = self.R[:, self.Np-1]
-		self.derived_data['head pos y'] = self.R[:, 2*self.Np-1]
-		self.derived_data['head pos z'] = self.R[:, 3*self.Np-1]
+			print('Root path: ', self.rootFolder)
+			print('Data file', self.dataName)
+			# Sub-folder in which to save analysis data and plots
+			self.sub_folder = 'Analysis'
 
-		# Sub-folder in which to save analysis data and plots
-		self.sub_folder = 'Analysis'
-
-		# Create a sub-folder to save Analysis results
-		self.analysis_folder = os.path.join(self.rootFolder, self.sub_folder)
+			# Create a sub-folder to save Analysis results
+			self.analysis_folder = os.path.join(self.rootFolder, self.sub_folder)
 
 		
-	
+	def relaxation_time_scales(self):
+		self.L = (self.Np - 1)*self.b0
+		self.kappa = self.kappa_hat*self.b0
+		self.tau_stretch = self.mu*self.L/self.k
+		self.tau_bend = self.mu*self.L**4/(self.kappa)
+		if(self.D0 != 0):
+			self.tau_swim = 1/(self.radius*self.D0)	# Time-scale for an active colloid to swim its own length.
+		else:
+			self.tau_swim = np.nan
+		
+		print(50*'*')
+		print('Time-scales')
+		print(50*'*')
+		print('Stretch relzation time: {}'.format(round(self.tau_stretch, 2)))
+		print('Bend relaxation time: {}'.format(round(self.tau_bend, 2)))
+		print('Active motility time-scale: {}'.format(round(self.tau_swim, 2)))
+		print(50*'*')
+
+	def compute_dimensionless_groups(self):
+
+		self.f_a = self.mu*self.D0*(self.radius**3)/self.L
+		self.activity_number = (self.mu*self.radius**3*self.L**2*self.D0/self.kappa)
+
+		print(50*'*')
+		print('Dimensionless numbers')
+		print(50*'*')
+		print('Force per unit lenth due to activity: {}'.format(round(self.f_a, 5)))
+		print('Activity number: {}'.format(round(self.activity_number, 5)))
+		print(50*'*')
+
+
 	def create_analysis_folder(self):
 		if(not os.path.exists(self.analysis_folder)):
-			os.makedirs(self.analysis_folder)
-
-
-            
+			os.makedirs(self.analysis_folder)    
 
 	def dotProduct(self, a, b):
 		''' 
@@ -121,20 +151,24 @@ class analysisTools(activeFilament):
 		# Size (Nt, self.Np - 1)
 		return strain_vector
 
+	def compute_bond_angles(self):
+		"""
+			Compute the angle between adjacent bonds
+		"""
+		self.cosAngle = np.zeros_like(self.R)
+
+		for ii in range(self.Nt):
+
+			self.r = self.R[ii, :]
+			self.get_separation_vectors()
 
 
-	def compute_bend_angles(self):
-		'''
-		K = |ˆr01 − ˆrN−1N|/2=sin(θ)
-		'''
-		bendAngle = np.zeros((self.Nt))
 
-		for ii in range(self.Nt):			
-			self.r = self.R[ii,:]  # Set the current filament positions to those from the simulation result at time point ii			
-			self.get_separation_vectors()  # Get the separation vector based on this position
-			bendAngle[ii] = (0.5)*np.dot(self.dr_hat[:,0] - self.dr_hat[:,-1], self.dr_hat[:,0] - self.dr_hat[:,-1])**(1/2) 
+	def compute_tangent_angles(self):
 
-		return bendAngle
+		self.tangent_angles = np.zeros_like(self.R)
+
+
 
 	def compute_alignment_parameter(self, field_vector = [1,0,0]):
 
@@ -256,6 +290,7 @@ class analysisTools(activeFilament):
 
 		self.derived_data['unique position count'] = self.unique_counter_time
 
+		print('Total unique positions sampled by tip: {}'.format(self.unique_counter_time[-1]))
 		# Save the data
 		if(save == True):
 
@@ -762,13 +797,16 @@ class analysisTools(activeFilament):
 
 		plt.show()
 
-	def plot_filament_centerlines(self, save_folder = None, save = False):
+	def plot_filament_centerlines(self, save_folder = None, save = False, stride = 100, color_by = 'Time'):
 
 		title = 'Overlay of filament shapes'
-		stride = 500
-		cmap = cm.get_cmap('rainbow', 255)
-		colors = [cmap(ii) for ii in np.linspace(0,1,self.Nt)]
-		norm = mpl.colors.Normalize(vmin=np.min(self.Time), vmax=np.max(self.Time))
+		stride = stride
+		cmap = cm.get_cmap('viridis', 255)
+		if(color_by == 'Time'):
+			colors = [cmap(ii) for ii in np.linspace(0,1,self.Nt)]
+			norm = mpl.colors.Normalize(vmin=np.min(self.Time), vmax=np.max(self.Time))
+		elif(color_by == 'Phase'):
+			norm = mpl.colors.Normalize(vmin=np.min(self.derived_data['Phase']), vmax=np.max(self.derived_data['Phase']))
 
 		# cb1 = mpl.colorbar.ColorbarBase(ax, cmap=cmap,
   #                               norm=norm,
@@ -785,6 +823,8 @@ class analysisTools(activeFilament):
 		ax1.set_title(title)
 		fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
              ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
+		ax1.set_xlim(-self.L/4, self.L)
+		ax1.set_ylim(-self.L/2, self.L/2)
 		plt.axis('equal')
 
 		if(save):

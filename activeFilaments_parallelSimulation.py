@@ -11,14 +11,14 @@ import multiprocessing
 # Check which platform
 if platform == "linux" or platform == "linux2":
 	print("linux system")
-	root_path = '/home/deepak/LacryModelling_Local/ModellingResults'
+	root_path = '/home/deepak/LacryModelling_Local/SimulationData'
 	
 
 elif platform == 'darwin':
 	print("OSX system")
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
-activity_timescale = 1250
+activity_timescale = 2000
 activityFreq = 1.0/activity_timescale
 
 print('Activity frequency: {}'.format(activityFreq))
@@ -41,13 +41,13 @@ bc = {0:'clamped', -1:'free'}
 
 def run_parametric_simulation(pid, parameter):
 	radius = 1
-	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
+	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 4*radius, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
 
 	fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
 			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'}, pid = pid)
 
 
-parameter_list = np.array([15, 20, 25, 30, 35, 40, 45, 50])
+parameter_list = np.array([20, 30, 40, 50, 70, 100])
 num_initial_conditions = 3
 
 parameter_list_full = []

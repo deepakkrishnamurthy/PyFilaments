@@ -10,16 +10,16 @@ cdef double PI = 3.14159265359
 @cython.nonecheck(False)
 cdef class filament_operations:
 	
-	def __init__(self, Np, dim, radius, b0, k, kappa_array, unit_vector = [1,0,0], ljrmin = 3, ljeps = 0.01): 
+	def __init__(self, Np, dim, radius, b0, k, kappa_hat_array, unit_vector = [1,0,0], ljrmin = 3, ljeps = 0.01): 
 		self.radius = radius
 		self.b0 = b0 
 		self.Np = Np
 		self.dim = dim
 		self.k = k
-		self.kappa_array = kappa_array
+		self.kappa_hat_array = kappa_hat_array
 		self.k_sc = 1000
 		self.unit_vector = np.array(unit_vector, dtype = np.double)
-		self.kappa_array_view = np.array(self.kappa_array, dtype = np.double)
+		self.kappa_hat_array_view = np.array(self.kappa_hat_array, dtype = np.double)
 		self.ljrmin = ljrmin
 		self.ljeps = ljeps
 
@@ -58,9 +58,9 @@ cdef class filament_operations:
 			# End points
 			if(ii == 0):
 				# Terminal colloid:0
-				prefactor_2_1 = self.kappa_array_view[ii]*(1/b0 + cosAngle[ii]/dr[ii])
-				prefactor_2_2 = self.kappa_array_view[ii]*(1/dr[ii] + cosAngle[ii]/b0)
-				prefactor_3 = self.kappa_array_view[ii+1]/dr[ii]
+				prefactor_2_1 = self.kappa_hat_array_view[ii]*(1/b0 + cosAngle[ii]/dr[ii])
+				prefactor_2_2 = self.kappa_hat_array_view[ii]*(1/dr[ii] + cosAngle[ii]/b0)
+				prefactor_3 = self.kappa_hat_array_view[ii+1]/dr[ii]
 
 				term_2_x = prefactor_2_1*dr_hat[0, ii] - prefactor_2_2*unit_vector_x
 				term_2_y = prefactor_2_1*dr_hat[1, ii] - prefactor_2_2*unit_vector_y
@@ -72,10 +72,10 @@ cdef class filament_operations:
 
 			elif(ii == 1):
 				# Next to terminal colloid: 1
-				prefactor_1 = self.kappa_array_view[ii-1]/(dr[ii-1])
-				prefactor_2_1 = self.kappa_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
-				prefactor_2_2 = self.kappa_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
-				prefactor_3 = self.kappa_array_view[ii+1]/dr[ii]
+				prefactor_1 = self.kappa_hat_array_view[ii-1]/(dr[ii-1])
+				prefactor_2_1 = self.kappa_hat_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
+				prefactor_2_2 = self.kappa_hat_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
+				prefactor_3 = self.kappa_hat_array_view[ii+1]/dr[ii]
 
 				term_1_x = prefactor_1*(unit_vector_x - dr_hat[0, ii-1]*cosAngle[ii-1])
 				term_1_y = prefactor_1*(unit_vector_y - dr_hat[1, ii-1]*cosAngle[ii-1])
@@ -91,10 +91,10 @@ cdef class filament_operations:
 
 			elif(ii == Np-2):
 				# Next to terminal colloid: Np-2
-				prefactor_1 = self.kappa_array_view[ii-1]/(dr[ii-1])
-				prefactor_2_1 = self.kappa_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
-				prefactor_2_2 = self.kappa_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
-				prefactor_3 = self.kappa_array_view[ii+1]/dr[ii]
+				prefactor_1 = self.kappa_hat_array_view[ii-1]/(dr[ii-1])
+				prefactor_2_1 = self.kappa_hat_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
+				prefactor_2_2 = self.kappa_hat_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
+				prefactor_3 = self.kappa_hat_array_view[ii+1]/dr[ii]
 
 				term_1_x = prefactor_1*(dr_hat[0, ii-2] - dr_hat[0, ii-1]*cosAngle[ii-1])
 				term_1_y = prefactor_1*(dr_hat[1, ii-2] - dr_hat[1, ii-1]*cosAngle[ii-1])
@@ -111,9 +111,9 @@ cdef class filament_operations:
 			elif(ii == Np-1):
 				# Terminal colloid: Np-1
 
-				prefactor_1 = self.kappa_array_view[ii-1]/(dr[ii-1])
-				prefactor_2_1 = self.kappa_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/b0)
-				prefactor_2_2 = self.kappa_array_view[ii]*(1/b0 + cosAngle[ii]/dr[ii-1])
+				prefactor_1 = self.kappa_hat_array_view[ii-1]/(dr[ii-1])
+				prefactor_2_1 = self.kappa_hat_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/b0)
+				prefactor_2_2 = self.kappa_hat_array_view[ii]*(1/b0 + cosAngle[ii]/dr[ii-1])
 
 				term_1_x = prefactor_1*(dr_hat[0, ii-2] - dr_hat[0, ii-1]*cosAngle[ii-1])
 				term_1_y = prefactor_1*(dr_hat[1, ii-2] - dr_hat[1, ii-1]*cosAngle[ii-1])
@@ -125,10 +125,10 @@ cdef class filament_operations:
 		
 			else:
 				# Interior colloids
-				prefactor_1 = self.kappa_array_view[ii-1]/(dr[ii-1])
-				prefactor_2_1 = self.kappa_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
-				prefactor_2_2 = self.kappa_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
-				prefactor_3 = self.kappa_array_view[ii+1]/dr[ii]
+				prefactor_1 = self.kappa_hat_array_view[ii-1]/(dr[ii-1])
+				prefactor_2_1 = self.kappa_hat_array_view[ii]*(1/dr[ii-1] + cosAngle[ii]/dr[ii])
+				prefactor_2_2 = self.kappa_hat_array_view[ii]*(1/dr[ii] + cosAngle[ii]/dr[ii-1])
+				prefactor_3 = self.kappa_hat_array_view[ii+1]/dr[ii]
 
 				term_1_x = prefactor_1*(dr_hat[0, ii-2] - dr_hat[0, ii-1]*cosAngle[ii-1])
 				term_1_y = prefactor_1*(dr_hat[1, ii-2] - dr_hat[1, ii-1]*cosAngle[ii-1])

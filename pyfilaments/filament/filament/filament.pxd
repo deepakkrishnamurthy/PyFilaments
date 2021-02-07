@@ -17,7 +17,7 @@ cdef class filament_operations:
 	cdef double radius
 	cdef double k_sc
 	cdef double[:] kappa_array
-	cdef double [:] kappa_array_view
+	cdef double [:] kappa_hat_array_view
 	cdef double [:] unit_vector
 	cdef double ljrmin
 	cdef double ljeps
