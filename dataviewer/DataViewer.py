@@ -448,6 +448,8 @@ class CentralWidget(QWidget):
 		super().__init__()
 
 		self.add_components()
+		self.speed_slider_value = 1
+
 
 
 	def add_components(self):
@@ -492,8 +494,8 @@ class CentralWidget(QWidget):
 	def speedSlider_setValue(self, value):
 
 		self.speedSlider.setValue(value)
+		self.speed_slider_value = value
 		self.playback_speed.emit(value)
-		print(value)
 
 
 			
@@ -554,6 +556,7 @@ class MainWindow(QMainWindow):
 			self.data_widgets[self.widget_count].show()
 			self.data_widgets[self.widget_count].close_widget.connect(self.close_dataset)
 			self.central_widget.playback_speed.connect(self.data_widgets[self.widget_count].video_player.update_playback_speed)
+			self.central_widget.speedSlider_setValue(self.central_widget.speed_slider_value)
 			self.active_widgets.append(self.widget_count)	
 			self.widget_count+=1	
 			# self.central_widget.open_dataset(self.dataFile)
