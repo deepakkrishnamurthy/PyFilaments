@@ -6,6 +6,8 @@ import filament.filament as filament_operations
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pandas as pd
+from scipy import interpolate
+import seaborn as sns
 
 import cmocean
 
@@ -130,6 +132,7 @@ class analysisTools(activeFilament):
 	def find_num_time_points(self):
 
 		self.Nt, *rest  = np.shape(self.R)
+		self.avg_time_step = np.max(self.Time)/self.Nt
 		print('Time step: {}'.format(np.max(self.Time)/self.Nt))
 			
 	def filament_com(self, r):
@@ -175,10 +178,34 @@ class analysisTools(activeFilament):
 
 	def compute_tangent_angles(self):
 		""" Calculate the local tangent angle of the filament relative to the unit cartesian axis fixed to the lab reference frame. 
-			@@@ TO DO @@@
+			Assumes tangent vectors have already been computed for the current filament shape.
 		"""
-		n_points = 100 # No:of points used for interpolating the filament shape.
-		self.tangent_angles = np.zeros_like(self.R)
+		# self.tangent_angles = np.zeros_like(self.R) # First calculate tangent angles at the sphere locations.
+		self.get_tangent_vectors()
+
+		
+		tangent_angles = np.arctan2(self.t_hat[1,:], self.t_hat[0,:])
+
+		return tangent_angles
+
+	def compute_tangent_angle_matrix(self):
+		""" Compute the tangent angles of the filament both over length (columns) and time (rows)
+		"""
+		n_points = 100 # No:of points used for interpolating the tangent angle representation of the filament shape.
+		particles_array = np.linspace(0, 1, self.Np)
+		points_array = np.linspace(0, 1, n_points)
+		
+		n_time = int(self.Nt/5)
+		self.tangent_angles_matrix = np.zeros((n_time, n_points))
+
+		for ii in range(n_time):
+			self.r = self.R[ii, :]
+			self.get_separation_vectors()
+			tangent_angles = self.compute_tangent_angles()
+			tangent_angles_fun = interpolate.interp1d(particles_array, tangent_angles, kind = 'linear')
+
+			self.tangent_angles_matrix[ii, :] = tangent_angles_fun(points_array)
+
 
 	def compute_arc_length(self):
 
@@ -630,11 +657,15 @@ class analysisTools(activeFilament):
 
 		plt.show()
 
-	def plot_filament_centerlines(self, save_folder = None, save = False, stride = 100, color_by = 'Time'):
+	def plot_filament_centerlines(self, save_folder = None, save = False, stride = 100, color_by = None):
 
 		title = 'Overlay of filament shapes'
+
+		# calculate the mean filament shape
+		self.mean_filament_shape = np.nanmean(self.R, axis = 0)
+
 		stride = stride
-		cmap = cm.get_cmap('viridis', 255)
+		cmap = cm.get_cmap('GnBu', 200)
 		if(color_by == 'Time'):
 			colors = [cmap(ii) for ii in np.linspace(0,1,self.Nt)]
 			norm = mpl.colors.Normalize(vmin=np.min(self.Time), vmax=np.max(self.Time))
@@ -649,13 +680,18 @@ class analysisTools(activeFilament):
 		for ii in range(self.Nt):			
 			self.r = self.R[ii,:]
 			if(ii%stride==0):
-				cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = colors[ii], linewidth=3.0, alpha = 0.5)
-
+				if(color_by is None):
+					cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = 'w', linewidth=2.0, alpha = 0.5)
+				else:
+					cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = colors[ii], linewidth=2.0, alpha = 0.5)
+		# Plot the mean filament shape
+		ax1.plot(self.mean_filament_shape[0:self.Np], self.mean_filament_shape[self.Np:2*self.Np], color = 'r', linewidth=2.0, alpha = 0.75)
 		ax1.set_xlabel('X position')
 		ax1.set_ylabel('Y position')
 		ax1.set_title(title)
-		fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-             ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
+		if(color_by is not None):
+			fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
+            	 ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
 		ax1.set_xlim(-self.L/4, self.L)
 		ax1.set_ylim(-self.L/2, self.L/2)
 		plt.axis('equal')
@@ -676,6 +712,51 @@ class analysisTools(activeFilament):
 	
 
 		plt.show()
+
+	def plot_tangent_angle_matrix(self, save = False, save_folder = None):
+
+		title = 'tangent_angles'
+		grid_kws = {"width_ratios": (.9, 0.05), "wspace": .1}
+		
+		fig, (ax, cbar_ax) = plt.subplots(figsize = (10,10), nrows=1, ncols = 2, gridspec_kw = grid_kws)
+		
+		ax = sns.heatmap(self.tangent_angles_matrix, ax=ax,
+                 cbar_ax=cbar_ax,
+                 cbar_kws={"orientation": "vertical"}, cmap = cmocean.cm.thermal)
+		
+		# Customize the X and Y ticks and labels
+		x_ticks = np.array(range(0, 100, 10))
+		x_tick_labels = [str(x_tick/100) for x_tick in x_ticks]
+		y_ticks = np.array(range(0, int(self.Nt/5), 10*int(self.activity_timescale/self.avg_time_step)))
+		y_tick_labels = [str(round(self.Time[ii]/self.activity_timescale)) for ii in y_ticks]
+
+		ax.set_xticks(x_ticks)
+		ax.set_xticklabels(x_tick_labels)
+		ax.set_yticks(y_ticks)
+		ax.set_yticklabels(y_tick_labels)
+
+		ax.set_xlabel('Normalized arc length')
+		ax.set_ylabel('Activity cycles')
+		ax.set_title('Tangent angles')
+		cbar_ax.set_ylabel('Tangent angle')
+
+		if(save):
+			if(save_folder is not None):
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = self.dataName[:-5] +'_'+title 
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			# plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+
+		plt.show()
+
+
+
 
 
 

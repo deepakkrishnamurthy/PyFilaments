@@ -747,7 +747,7 @@ class activeFilament:
 	########################################################################################################
 	# Plotting
 	########################################################################################################  
-	def plotFilament(self, r = None):
+	def plotFilament(self, r = None, axis = None):
 
 		self.set_particle_colors()
 		plt.style.use('dark_background')
@@ -777,7 +777,8 @@ class activeFilament:
 		plt.xlabel(xlabel)
 		plt.ylabel(ylabel)
 		plt.title('Filament shape '+ self.plane)
-
+		if(axis == 'equal'):
+			plt.axis(axis)
 		plt.show()
 #        ax.set_xlim([-0.1, self.Np*self.b0])
 #        ax.set_ylim([-self.Np*self.b0/2, self.Np*self.b0/2])
