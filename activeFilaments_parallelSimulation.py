@@ -18,12 +18,12 @@ elif platform == 'darwin':
 	print("OSX system")
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
-activity_timescale = 750
+activity_timescale = 2000
 activityFreq = 1.0/activity_timescale
 
 print('Activity frequency: {}'.format(activityFreq))
 # Total simulation time
-Tf = activity_timescale*1000
+Tf = activity_timescale*500
 print('Total simulation time: {}'.format(Tf))
 # No:of time points saved
 Npts = int(Tf/10)
@@ -41,13 +41,13 @@ bc = {0:'clamped', -1:'free'}
 
 def run_parametric_simulation(pid, parameter):
 	radius = 1
-	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
+	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 4*radius, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
 
 	fil.simulate(Tf, Npts, activity_profile = activity_Function, save = True, overwrite = False, path = root_path ,
 			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'}, pid = pid)
 
 
-parameter_list = np.array([20, 25, 30])
+parameter_list = np.array([65, 75])
 num_initial_conditions = 3
 
 parameter_list_full = []

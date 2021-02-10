@@ -206,6 +206,26 @@ class analysisTools(activeFilament):
 
 			self.tangent_angles_matrix[ii, :] = tangent_angles_fun(points_array)
 
+	def compute_shape_covariance_matrix(self):
+		""" Calculates the shape covariance matrix for a list of filament shapes.
+
+		Rows: time points
+		Columns: Arc length 
+	
+		"""
+		self.phi_0 = np.nanmean(self.tangent_angles_matrix, axis = 0)
+
+		n_times, n_points = np.shape(self.tangent_angles_matrix)
+		print('No:of spatial points: {}'.format(n_points))
+		print('No:of time points: {}'.format(n_times))
+		print(np.shape(np.tile(self.phi_0, (n_times, 1))))
+		variance_matrix = self.tangent_angles_matrix - np.tile(self.phi_0, (n_times, 1))
+		print(np.shape(variance_matrix))
+		assert(np.shape(variance_matrix) == (n_times, n_points))
+		self.covariance_matrix = np.matmul(variance_matrix.T, variance_matrix)
+
+
+
 
 	def compute_arc_length(self):
 
@@ -754,6 +774,45 @@ class analysisTools(activeFilament):
 			# plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 
 		plt.show()
+
+	def plot_shape_covariance_matrix(self, save = False, save_folder = None):
+
+		title = 'ShapeCovarianceMatrix'
+		grid_kws = {"width_ratios": (.9, 0.05), "wspace": .1}
+		
+		fig, (ax, cbar_ax) = plt.subplots(figsize = (10,10), nrows=1, ncols = 2, gridspec_kw = grid_kws)
+		
+		ax = sns.heatmap(self.covariance_matrix, ax=ax,
+                 cbar_ax=cbar_ax,
+                 cbar_kws={"orientation": "vertical"}, cmap = cmocean.cm.haline)
+		
+		# Customize the X and Y ticks and labels
+		x_ticks = np.array(range(0, 100, 10))
+		x_tick_labels = [str(x_tick/100) for x_tick in x_ticks]
+		y_ticks = np.array(range(0, 100, 10))
+		y_tick_labels = [str(y_tick/100) for y_tick in y_ticks]
+
+		ax.set_xticks(x_ticks)
+		ax.set_xticklabels(x_tick_labels)
+		ax.set_yticks(y_ticks)
+		ax.set_yticklabels(y_tick_labels)
+
+		ax.set_xlabel('Arc length (s)')
+		ax.set_ylabel('Arc length (s`)')
+		ax.set_title(title)
+
+		if(save):
+			if(save_folder is not None):
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = self.dataName[:-5] +'_'+title 
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			# plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 
 
 
