@@ -230,7 +230,7 @@ class activeFilament:
 			# Add random fluctuations in the other two directions
 			# y-axis
 
-			self.r0[self.Np+2:2*self.Np] = np.random.normal(0, 1E-4, self.Np-2)
+			self.r0[self.Np+1:2*self.Np] = np.random.normal(0, 1E-4, self.Np-1)
 
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
@@ -543,7 +543,7 @@ class activeFilament:
 			os.makedirs(self.path)
 
 		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-							(self.Np, self.shape, self.kappa_hat, self.k, self.b0, self.F0, self.S0, self.D0, 
+							(self.Np, self.shape, round(self.kappa_hat), round(self.k), self.b0, self.F0, self.S0, self.D0, 
 							int(self.activity_timescale), sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)
@@ -750,10 +750,7 @@ class activeFilament:
 	def plotFilament(self, r = None, axis = None):
 
 		self.set_particle_colors()
-		plt.style.use('dark_background')
-	
 		ax1 = plt.gca()
-		
 #        1ax = fig.add_subplot(1,1,1)
 		if(self.plane =='xy'):
 			first_index = 0

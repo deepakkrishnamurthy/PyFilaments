@@ -46,7 +46,7 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 			
 			# s1.addPoints(spots)
 
-			self.s1.setData(x = pos[0,:], y = pos[1,:], brush = pg.mkBrush(255, 0, 255, 200))
+			self.s1.setData(x = pos[1,:], y = pos[0,:], brush = pg.mkBrush(255, 0, 255, 200))
 
 		else:
 			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
@@ -56,7 +56,7 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 
 			# spots = [{'pos': pos[:,i], 'data': 1} for i in range(n)] + [{'pos': [0,0], 'data': 1}]
 			# s1.addPoints(spots)
-			self.s1.setData(x = x_pos, y = y_pos)
+			self.s1.setData(x = y_pos, y = x_pos)
 			self.s1.setBrush(self.particle_colors)
 
 
@@ -77,7 +77,7 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 		y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
 		z_pos = self.filament.R[self.current_index, 2*self.filament.Np : 3*self.filament.Np]
 
-		self.s1.setData(x = x_pos, y = y_pos)
+		self.s1.setData(x = y_pos, y = x_pos)
 		self.s1.setBrush(self.particle_colors)
 		self.text.setPos(x_pos[0] -10, y_pos[0] + 0)
 		self.text.setText('{:0.1f}'.format(self.filament.Time[self.current_index]))
@@ -335,26 +335,26 @@ class simParamsDisplayWidget(QWidget):
 
 		sim_params_display = QGridLayout()
 		row_wrap_index = 4
-		first_row = self.displayed_parameters[:row_wrap_index]
-		second_row = self.displayed_parameters[row_wrap_index:]
+		first_row = self.displayed_parameters[:]
+		# second_row = self.displayed_parameters[row_wrap_index:]
 
 		col_counter=0
 		row_counter = 0
 		for col_no, parameter in enumerate(first_row):
 
-			sim_params_display.addWidget(self.labels[parameter], 0, col_counter)
+			sim_params_display.addWidget(self.labels[parameter], row_counter, 0)
 			col_counter+=1
-			sim_params_display.addWidget(self.value_labels[parameter], 0, col_counter)
+			sim_params_display.addWidget(self.value_labels[parameter], row_counter, 1)
 			col_counter+=1
 			row_counter+=1
 
-		col_counter=0
-		for col_no, parameter in enumerate(second_row):
+		# col_counter=0
+		# for col_no, parameter in enumerate(second_row):
 
-			sim_params_display.addWidget(self.labels[parameter], 1, col_counter)
-			col_counter+=1
-			sim_params_display.addWidget(self.value_labels[parameter], 1, col_counter)
-			col_counter+=1
+		# 	sim_params_display.addWidget(self.labels[parameter], 1, col_counter)
+		# 	col_counter+=1
+		# 	sim_params_display.addWidget(self.value_labels[parameter], 1, col_counter)
+		# 	col_counter+=1
 
 		self.setLayout(sim_params_display)
 
@@ -400,17 +400,19 @@ class DataInteractionWidget(QMainWindow):
 		video_player_layout = QVBoxLayout()
 		video_player_layout.addWidget(self.plotFilamentWidget)
 		video_player_layout.addWidget(self.video_player)
-		# window_layout = QHBoxLayout()
-		# window_layout.addLayout(video_player_layout)
-		# window_layout.addWidget(self.sim_parameters_display)
+		
+		window_layout = QHBoxLayout()
+		window_layout.addLayout(video_player_layout)
+		window_layout.addWidget(self.sim_parameters_display)
 
 		self.centralWidget = QWidget()
-		self.centralWidget.setLayout(video_player_layout)
+		# self.centralWidget.setLayout(video_player_layout)
+		self.centralWidget.setLayout(window_layout)
 		self.setCentralWidget(self.centralWidget)
 
-		self.statusBar = QStatusBar()
-		self.statusBar.addWidget(self.sim_parameters_display)
-		self.setStatusBar(self.statusBar)
+		# self.statusBar = QStatusBar()
+		# self.statusBar.addWidget(self.sim_parameters_display)
+		# self.setStatusBar(self.statusBar)
 
 	def open_dataset(self, fileName):
 

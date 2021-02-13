@@ -78,6 +78,13 @@ class analysisTools(activeFilament):
 
 			# Create a sub-folder to save Analysis results
 			self.analysis_folder = os.path.join(self.rootFolder, self.sub_folder)
+			self.allocate_variables()
+
+	def allocate_variables(self):
+		self.tangent_angles_matrix = None
+		self.covariance_matrix = None
+		self.eigenvectors_sig = None
+		self.d_sig = None
 
 	def create_analysis_folder(self):
 		"""	Create a sub-folder to store analysis data and plots
@@ -195,7 +202,7 @@ class analysisTools(activeFilament):
 		particles_array = np.linspace(0, 1, self.Np)
 		points_array = np.linspace(0, 1, n_points)
 		
-		n_time = int(self.Nt/5)
+		n_time = int(self.Nt)
 		self.tangent_angles_matrix = np.zeros((n_time, n_points))
 
 		for ii in range(n_time):
@@ -219,12 +226,44 @@ class analysisTools(activeFilament):
 		print('No:of spatial points: {}'.format(n_points))
 		print('No:of time points: {}'.format(n_times))
 		print(np.shape(np.tile(self.phi_0, (n_times, 1))))
-		variance_matrix = self.tangent_angles_matrix - np.tile(self.phi_0, (n_times, 1))
-		print(np.shape(variance_matrix))
-		assert(np.shape(variance_matrix) == (n_times, n_points))
-		self.covariance_matrix = np.matmul(variance_matrix.T, variance_matrix)
+		self.variance_matrix = self.tangent_angles_matrix - np.tile(self.phi_0, (n_times, 1))
+		print(np.shape(self.variance_matrix))
+		assert(np.shape(self.variance_matrix) == (n_times, n_points))
+		self.covariance_matrix = np.matmul(self.variance_matrix.T, self.variance_matrix)
 
+	def matrix_eigen_decomposition(self, matrix = None):
 
+		if(matrix is not None):
+			d, v = np.linalg.eigh(matrix)
+			idx_sorted = np.argsort(-np.real(d))
+			d_sorted = np.real(d[idx_sorted])
+			d_normalized = d_sorted/np.sum(d_sorted)
+			self.n_sig_eigenvalues = 3
+			eigenvectors_sorted = v[:, idx_sorted]
+			# Chop the eigenvectors to only keep the ones with the most contribution to the variance
+			self.eigenvectors_sig = eigenvectors_sorted[:,0:self.n_sig_eigenvalues]
+			self.d_sig = d_sorted[0:self.n_sig_eigenvalues]
+
+			return self.d_sig, self.eigenvectors_sig
+		else:
+			print('Compute/Suppy covariance matrix first!')
+			return
+
+		
+	def project_filament_shapes(self):
+		""" Projects a give filament shape onto the shape modes computed using PCA.
+			For a time series of shapes, returns a time-series of mode amplitudes for each shape mode.
+
+		"""
+		self.mode_amplitudes = {ii: [] for ii in range(self.n_sig_eigenvalues)}
+		n_times, n_points = np.shape(self.tangent_angles_matrix)
+
+		matrix_A = self.eigenvectors_sig # n_points x n_eigvalues
+		
+		for ii in range(n_times):
+
+			rhs = self.variance_matrix[ii, :]
+		pass
 
 
 	def compute_arc_length(self):
@@ -613,9 +652,9 @@ class analysisTools(activeFilament):
 		# ax1 = plt.scatter(unique_positions[:,0], unique_positions[:,1], 40, c = position_prob_density, cmap=cmocean.cm.matter)
 		
 		if(color_by == 'count'):
-			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = hits_counter_list, cmap=cmocean.cm.matter)
+			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = hits_counter_list, cmap=cmocean.cm.matter, alpha = 0.75)
 		elif (color_by == 'probability'):
-			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = position_prob_density, cmap=cmocean.cm.matter)
+			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = position_prob_density, cmap=cmocean.cm.matter, alpha = 0.75)
 
 		ax2 = plt.scatter(self.R[:, 0], self.R[:, self.Np], 20, color ='b')
 
@@ -733,22 +772,29 @@ class analysisTools(activeFilament):
 
 		plt.show()
 
-	def plot_tangent_angle_matrix(self, save = False, save_folder = None):
+	def plot_tangent_angle_matrix(self, save = False, save_folder = None, start_time = 0, end_time = 1000):
+		
+		start_index = next((i for i,x in enumerate(self.Time) if x>= start_time), 0)
+		end_index = next((i for i,x in enumerate(self.Time) if x>= end_time), len(self.Time))
+
+		print(start_index)
+		print(end_index)
 
 		title = 'tangent_angles'
 		grid_kws = {"width_ratios": (.9, 0.05), "wspace": .1}
 		
 		fig, (ax, cbar_ax) = plt.subplots(figsize = (10,10), nrows=1, ncols = 2, gridspec_kw = grid_kws)
 		
-		ax = sns.heatmap(self.tangent_angles_matrix, ax=ax,
+		ax = sns.heatmap(self.tangent_angles_matrix[start_index:end_index, :], ax=ax,
                  cbar_ax=cbar_ax,
                  cbar_kws={"orientation": "vertical"}, cmap = cmocean.cm.thermal)
-		
+	
 		# Customize the X and Y ticks and labels
 		x_ticks = np.array(range(0, 100, 10))
 		x_tick_labels = [str(x_tick/100) for x_tick in x_ticks]
-		y_ticks = np.array(range(0, int(self.Nt/5), 10*int(self.activity_timescale/self.avg_time_step)))
-		y_tick_labels = [str(round(self.Time[ii]/self.activity_timescale)) for ii in y_ticks]
+		max_ticks = 20
+		y_ticks = np.array(range(start_index, end_index, int((end_index - start_index)/max_ticks)))
+		y_tick_labels = [str(round(self.Time[ii]/self.activity_timescale, 1)) for ii in y_ticks]
 
 		ax.set_xticks(x_ticks)
 		ax.set_xticklabels(x_tick_labels)
@@ -769,7 +815,7 @@ class analysisTools(activeFilament):
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
 
-			file_name = self.dataName[:-5] +'_'+title 
+			file_name = self.dataName[:-5] +'_'+title+'_'+str(start_time)+'_'+str(end_time) 
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			# plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 
