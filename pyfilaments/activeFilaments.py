@@ -597,10 +597,8 @@ class activeFilament:
 	def load_data(self, file = None):
 
 		print('Loading Simulation data from disk ...')
-
-
 		if(file is not None):
-			folder, self.simFile = os.path.split(file)
+			self.simFolder, self.simFile = os.path.split(file)
 			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
 
 				with h5py.File(file, "r") as f:
