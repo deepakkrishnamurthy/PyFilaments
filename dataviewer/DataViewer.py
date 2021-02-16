@@ -3,6 +3,7 @@
 
 import numpy as np
 import pyqtgraph as pg
+import pyqtgraph.opengl as gl
 pg.setConfigOptions(antialias=True)
 import time as time
 import os
@@ -12,7 +13,7 @@ import sys
 import cmocean
 import context
 from pyfilaments.activeFilaments import activeFilament
-
+import pandas as pd
 
 os.environ["QT_API"] = "pyqt5"
 import qtpy
@@ -22,8 +23,7 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
-
-class AnimatePlotWidget(pg.GraphicsLayoutWidget):
+class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 
 	def __init__(self, filament = None, parent=None):
 		
@@ -103,12 +103,113 @@ class AnimatePlotWidget(pg.GraphicsLayoutWidget):
 			else:
 				self.particle_colors.append(pg.mkBrush(0, 255, 0, 200))
 
+class PlotWidget3D(gl.GLViewWidget):
+	""" Widget for displaying 3D plots
+		Input:
+		Time series of (x, y, z) data.
+	"""
+
+	def __init__(self, data = None, parent = None):
+		super().__init__(parent)
+		# Data for 3D plot: Time series of (x, y, z). 
+		self.data = data # Rows : Time, Columns 0,1,2: x, y, z
+
+		self.marker_size = 0.5
+		self.marker_color = pg.glColor((255, 0, 0))
+		self.marker_start_color = pg.glColor((0, 0, 255))
+		self.linewidth = 1.5
+		self.linecolor = pg.glColor((0, 255, 0, 125))
+
+		self.current_index = 0 # Current time index of the data
+		self.add_components()
+		self.initialize_plot()
+
+	def add_components(self):
+
+		# Add lineplot item
+		pts = np.vstack([0, 0, 0]).transpose()
+		self.plt = gl.GLLinePlotItem(pos=pts, color = self.linecolor, width = self.linewidth, antialias=True)
+		self.addItem(self.plt)
+
+		# Add a scatter-plot to have a comet marker.
+		self.marker = gl.GLScatterPlotItem(pos = (0,0,0),  pxMode=False)
+		self.addItem(self.marker)
+
+		# Add a scatter-plot to have a comet marker.
+		self.marker_start = gl.GLScatterPlotItem(pos = (0,0,0),  pxMode=False)
+		self.addItem(self.marker_start)
+
+	def initialize_plot(self):
+
+		self.current_index = 0
+		self.opts['distance'] = 20
+		self.show()
+
+	def update_index(self, index):
+		self.current_index = index
+		self.update_marker()
+
+	def update_marker(self):
+		pos = np.empty((1, 3))
+		pos[0] = self.data[self.current_index,0], self.data[self.current_index,1], self.data[self.current_index,2]
+		self.marker.setData(pos = pos)
+
+	def update_plot(self, data):
+		self.data = data
+		pts = np.vstack([self.data[:,0], self.data[:,1], self.data[:,2]]).transpose()
+		self.plt.setData(pos = pts, color = self.linecolor, width = self.linewidth, antialias=True)
+
+		pos = np.empty((1, 3))
+		size = np.empty((1))
+		color = np.empty((1, 4))
+		pos[0] = self.data[self.current_index,0], self.data[self.current_index,1], self.data[self.current_index,2]
+		size[0] = self.marker_size
+		color[0] = self.marker_color
+		self.marker.setData(pos = pos, size = size, color = color)
+
+		pos[0] = self.data[0,0], self.data[0,1], self.data[0,2]
+		size[0] = self.marker_size
+		
+		self.marker_start.setData(pos = pos, size = size, color = (0,0,1.0,1.0))
+		self.marker_start.setGLOptions('opaque')
+		self.update_grid_extents()
+	def update_grid_extents(self):
+		x_extent = abs(np.max(self.data[:,0]) - np.min(self.data[:,0]))
+		y_extent = abs(np.max(self.data[:,1]) - np.min(self.data[:,1]))
+		z_extent = abs(np.max(self.data[:,2]) - np.min(self.data[:,2]))
+
+		print(x_extent)
+		print(y_extent)
+		print(z_extent)
+
+		self.gx = gl.GLGridItem()
+		self.gy = gl.GLGridItem()
+		self.gz = gl.GLGridItem()
+
+		self.gx.setSize(z_extent, y_extent)
+		self.gy.setSize(x_extent, z_extent)
+		self.gz.setSize(x_extent, y_extent)
+		# Add grids
+		self.gx.rotate(90, 0, 1, 0)
+		# gx.translate(-10, 0, 0)
+		self.gy.rotate(90, 1, 0, 0)
+		# gy.translate(0, -10, 0)
+		# gz.translate(0, 0, -10)
+		
+		self.gx.translate(np.min(self.data[:,0]), 0, 0)
+		self.gy.translate(0, np.min(self.data[:,1]), 0)
+		self.gz.translate(0, 0, np.min(self.data[:,2]))
+
+		self.addItem(self.gx)
+		self.addItem(self.gy)
+		self.addItem(self.gz)
 
 class VideoPlayer(QWidget):
-	'''
-	A general class for displaying sequential data such as plots, images etc.
+	""" A general class for controlling the display of sequential data such as plots, images etc.
 
-	'''
+	"""
+	current_index = Signal(int)
+
 	def __init__(self, filament = None, plotFilamentWidget = None, parent=None):
 		
 		super().__init__(parent)
@@ -117,7 +218,7 @@ class VideoPlayer(QWidget):
 		self.plotFilamentWidget = plotFilamentWidget
 		# Playback indices
 		self.timer = QTimer()
-		self.timer.setInterval(0) #in ms
+		self.timer.setInterval(1) #in ms
 		self.timer.timeout.connect(self.play_refresh)
 		self.current_track_time=0
 		self.current_computer_time=0
@@ -188,6 +289,7 @@ class VideoPlayer(QWidget):
 			self.positionSlider_prevValue=newvalue
 			self.plotFilamentWidget.current_index = newvalue
 			self.plotFilamentWidget.update_plot()
+			self.current_index.emit(newvalue)
 
 	def find_slider_index(self, value):
 		#
@@ -257,42 +359,29 @@ class VideoPlayer(QWidget):
 		
 		if self.real_time:
 			timediff = time.time()-self.current_computer_time
-
-
 			timediff_scaled = self.playback_speed*timediff
-			
 			index = np.argmin(abs(self.Time-(timediff_scaled+self.current_track_time)))
 
-			
 			if index>self.positionSlider_prevValue:
 				self.current_computer_time += timediff
 				self.current_track_time += timediff_scaled
 				self.positionSlider.setValue(index)
-				
 		else:
-			
 			self.current_track_index = self.prev_track_index + self.frames
-		
 			self.positionSlider.setValue(self.current_track_index)
-			
 			self.prev_track_index = self.current_track_index
-
 			# Loop the timer if the end is reached.
 			if(self.current_track_index == len(self.Time)):
 				self.current_track_index = 0
 				self.prev_track_index = 0
 
 	def update_playback_speed(self, value):
-
 		if self.real_time:
-
 			self.playback_speed = value
 		else:
 
 			self.frames = value
 			print(self.frames)
-
-
 
 class simParamsDisplayWidget(QWidget):
 
@@ -382,19 +471,31 @@ class DataInteractionWidget(QMainWindow):
 
 		self.widget_id = widget_id
 		self.filament = activeFilament()
+		self.analysis_data = None
 		self.newData = False
 		self.setWindowTitle('Data viewer')
-		# Widget for displaying the filament as a scatter plot
-		self.plotFilamentWidget = AnimatePlotWidget(filament = self.filament)
+	
+		self.add_components()
 
+	def add_components(self):
+		# Widget for displaying the filament as a scatter plot
+		self.plotFilamentWidget = ScatterPlotWidget(filament = self.filament)
 		# Widget for displaying the simulation parameters
 		self.sim_parameters_display = simParamsDisplayWidget(filament = self.filament)
 		# Widget for sequentially displaying data
 		self.video_player = VideoPlayer(filament = self.filament, plotFilamentWidget = self.plotFilamentWidget)
 
-		self.add_components()
+		# Data analysis widgets
+		self.button_open_analysis = QPushButton('Open analysis data')
+		self.button_open_analysis.setCheckable(True)
+		self.button_open_analysis.setChecked(False)
 
-	def add_components(self):
+		# Widget for displaying the analysis data
+		self.analysis_widget = None
+
+		layout_right = QVBoxLayout()
+		layout_right.addWidget(self.sim_parameters_display)
+		layout_right.addWidget(self.button_open_analysis)
 
 		# Add widgets to the central widget
 		video_player_layout = QVBoxLayout()
@@ -403,16 +504,16 @@ class DataInteractionWidget(QMainWindow):
 		
 		window_layout = QHBoxLayout()
 		window_layout.addLayout(video_player_layout)
-		window_layout.addWidget(self.sim_parameters_display)
+		window_layout.addLayout(layout_right)
 
 		self.centralWidget = QWidget()
-		# self.centralWidget.setLayout(video_player_layout)
 		self.centralWidget.setLayout(window_layout)
 		self.setCentralWidget(self.centralWidget)
 
-		# self.statusBar = QStatusBar()
-		# self.statusBar.addWidget(self.sim_parameters_display)
-		# self.setStatusBar(self.statusBar)
+
+		# Connections
+		self.button_open_analysis.clicked.connect(self.open_analysis_data)
+
 
 	def open_dataset(self, fileName):
 
@@ -430,8 +531,39 @@ class DataInteractionWidget(QMainWindow):
 		else:
 			self.newData = False
 
+	def open_analysis_data(self):
+		""" Opens analysis data derived from the raw filament simulation data. 
+			Currently used for displaying mode amplitude data. 
+		"""
+		if(self.button_open_analysis.isChecked() == True):
+			if(self.analysis_widget is None):
+				self.analysis_data_file, *rest = QFileDialog.getOpenFileName(self, 'Open analysis data',self.filament.simFolder,"analysis files (*.csv)")
+
+				if(self.analysis_data_file is not None and self.analysis_data_file != ''):
+					# Read the data
+					self.analysis_data = pd.read_csv(self.analysis_data_file)
+					data_array = np.zeros((len(self.analysis_data),3))
+					data_array[:,0] = self.analysis_data['Mode 1 amplitude']
+					data_array[:,1] = self.analysis_data['Mode 2 amplitude']
+					data_array[:,2] = self.analysis_data['Mode 3 amplitude']
+					self.analysis_widget = PlotWidget3D()
+					self.analysis_widget.update_plot(data = data_array)
+					# Connections
+					self.video_player.current_index.connect(self.analysis_widget.update_index)
+			else:
+				self.analysis_widget.show()
+		else:
+			if(self.analysis_widget is not None):
+				self.analysis_widget.hide()
+			else:
+				pass
+
+
 	def closeEvent(self, event):
 		# send a signal to the MainWindow to keep track of datasets that are open.
+		if(self.analysis_widget is not None):
+			self.analysis_widget.close()
+			self.analysis_widget = None
 		self.close_widget.emit(self.widget_id)
 		# print('Sent close widget signal')
 		
@@ -522,6 +654,7 @@ class MainWindow(QMainWindow):
 		self.widget_count = 0
 		self.active_widgets = []
 		self.data_widgets = {}
+		self.analysis_data_widgets = {}
 
 		self.central_widget = CentralWidget() 
 		self.setCentralWidget(self.central_widget)

@@ -597,12 +597,10 @@ class activeFilament:
 	def load_data(self, file = None):
 
 		print('Loading Simulation data from disk ...')
-
-
 		if(file is not None):
-			folder, self.simFile = os.path.split(file)
+			self.simFolder, self.simFile = os.path.split(file)
 			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
-
+				print('Loading hdf5 file')
 				with h5py.File(file, "r") as f:
 					if('simulation data' in f.keys()): # Load the simulation data (newer method)
 						
@@ -663,8 +661,8 @@ class activeFilament:
 						else:
 							self.activity_profile = None
 			else:
+				print('Loading pkl file')
 				with open(file, 'rb') as f:
-			
 					self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
 
 	# Implement a save module based on HDF5 format:
