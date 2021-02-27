@@ -11,7 +11,8 @@ import multiprocessing
 # Check which platform
 if platform == "linux" or platform == "linux2":
 	print("linux system")
-	root_path = '/home/deepak/LacryModelling_Local/SimulationData'
+	# root_path = '/home/deepak/LacryModelling_Local/SimulationData'
+	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
 	
 
 elif platform == 'darwin':
@@ -47,7 +48,7 @@ def run_parametric_simulation(pid, parameter):
 			activity_timescale = activity_timescale, sim_type = 'point', init_condition = {'shape':'line'}, pid = pid)
 
 
-parameter_list = np.array([22*np.pi, 23*np.pi, 24*np.pi])
+parameter_list = np.array([25, 35, 45, 55, 62.5, 67.5, 72.5, 77.5, 85])
 num_initial_conditions = 3
 
 parameter_list_full = []
