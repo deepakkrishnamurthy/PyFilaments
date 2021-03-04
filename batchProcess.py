@@ -11,22 +11,25 @@ from joblib import Parallel, delayed
 import multiprocessing
 
 # Folder containing data
-data_folder = '/home/deepak/LacryModelling_Local/SimulationData_ForAnalysis/2021-02-05'
+# data_folder = '/home/deepak/LacryModelling_Local/SimulationData_ForAnalysis/2021-02-05'
 # data_folder = '/home/deepak/LacryModelling_Local/SimulationData/2021-02-09'
-
+data_folder = '/Volumes/DEEPAK-1TB/ActiveFilaments_Simulations_Backup/BendingStiffnessSweeps/b0_4_activity_time_2000/2021-02-27'
+print(os.listdir(data_folder))
 
 # Find all simulation data files and create a list
 files_list = []
  # Walk through the folders and identify the simulation data files
 for dirs, subdirs, files in os.walk(data_folder, topdown=False):
-   
+	
+	print(dirs)
 	root, subFolderName = os.path.split(dirs)
-	  
+
 	for fileNames in files:
+		print(fileNames)
 		if(fileNames.endswith('.hdf5')):
 			files_list.append(os.path.join(dirs,fileNames))
 
-print(files_list)
+print('Simulation files: ', files_list)
 
 	
 def run_filament_analysis(file):
