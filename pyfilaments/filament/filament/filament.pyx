@@ -16,10 +16,9 @@ cdef class filament_operations:
 		self.Np = Np
 		self.dim = dim
 		self.k = k
-		self.kappa_hat_array = kappa_hat_array
 		self.k_sc = 1000
 		self.unit_vector = np.array(unit_vector, dtype = np.double)
-		self.kappa_hat_array_view = np.array(self.kappa_hat_array, dtype = np.double)
+		self.kappa_hat_array_view = np.array(kappa_hat_array, dtype = np.double)
 		self.ljrmin = ljrmin
 		self.ljeps = ljeps
 
