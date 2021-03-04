@@ -3,17 +3,17 @@ Pyfilaments installation
 1. Open terminal
 2. Install a package manager (conda)
   Follow instruction at https://docs.conda.io/projects/conda/en/latest/user-guide/install/ based on your operating system
-3. Create a python virtual environment
+3. Create a python virtual environment.
 
 ```bash
-  conda create -n myenv python=3.6`
+  conda create -n myenv python=3.6
 ```
-4. Enter the conda virtual environment 
+4. Enter the conda virtual environment
 
 ```bash
 conda activate myenv 
 ```
-5. Install the following packages 
+5. Install the required packages using:
 
 ```bash
   pip install -r requirements.txt
@@ -24,13 +24,13 @@ Download odespy repo from https://github.com/rajeshrinet/odespy and follow insta
 
 7. Install pystokes
 
-Navigate to the pystokes folder within the pyfilaments repo.
+Navigate to the pystokes folder within the pyfilaments repo and then run.
 ```bash
   python setup.py install
 ```
 8. Install pyforces
 
-Navigate to the pyforces folder within the pyfilaments repo.
+Navigate to the pyforces folder within the pyfilaments repo and then run.
 ```bash
   python setup.py install
 ```
