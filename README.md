@@ -4,8 +4,6 @@
 
 ## Installation
 
-### Open terminal
-
 ### Install a package manager (conda)
   Follow instruction at https://docs.conda.io/projects/conda/en/latest/user-guide/install/ based on your operating system
   
