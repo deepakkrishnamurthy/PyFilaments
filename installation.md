@@ -6,7 +6,7 @@ Pyfilaments installation
 3. Create a python virtual environment.
 
 ```bash
-  conda create -n myenv python=3.6
+conda create -n myenv python=3.6
 ```
 4. Enter the conda virtual environment
 
@@ -16,7 +16,7 @@ conda activate myenv
 5. Install the required packages using:
 
 ```bash
-  pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 6. Install odespy for numerical integration
 
@@ -26,13 +26,13 @@ conda activate myenv
 
 Navigate to the pystokes folder within the pyfilaments repo and then run.
 ```bash
-  python setup.py install
+python setup.py install
 ```
 8. Install pyforces
 
 Navigate to the pyforces folder within the pyfilaments repo and then run.
 ```bash
-  python setup.py install
+python setup.py install
 ```
 
 ## OSX only: 
@@ -40,11 +40,11 @@ If openMP is not detected while installing pystokes and pyforces. Then follow th
 
 We need to reinstall gcc with openMP for which we first need to set permissions
 ```bash
-  sudo chown -R $(whoami) $(brew --prefix)/*
+sudo chown -R $(whoami) $(brew --prefix)/*
 ```
 Now install gcc
-```
-  brew reinstall gcc --without-multilib
+```bash
+brew reinstall gcc --without-multilib
 ```
 
 
