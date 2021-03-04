@@ -20,7 +20,7 @@ conda activate myenv
 ```
 6. Install odespy for numerical integration
 
-Download odespy repo from https://github.com/rajeshrinet/odespy and follow install instructions.
+- Download odespy repo from https://github.com/rajeshrinet/odespy and follow install instructions.
 
 7. Install pystokes
 
