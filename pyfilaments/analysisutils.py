@@ -812,7 +812,7 @@ class analysisTools(activeFilament):
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 	
 
-		plt.show()
+		plt.show(block = False)
 
 	def plot_tangent_angle_matrix(self, save = False, save_folder = None, start_time = 0, end_time = 1000):
 		
