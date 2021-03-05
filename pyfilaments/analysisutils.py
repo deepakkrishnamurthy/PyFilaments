@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import pandas as pd
 from scipy import interpolate
+from scipy.stats import gaussian_kde
 import seaborn as sns
 
 import cmocean
@@ -683,6 +684,42 @@ class analysisTools(activeFilament):
 
 		plt.show()
 
+	def plot_tip_scatter_density(self, save = False, save_folder = None):
+		plt.style.use('dark_background')
+
+		x = np.array(self.derived_data['head pos x'])
+		y = np.array(self.derived_data['head pos y'])
+		xy = np.vstack([x, y])
+		z = gaussian_kde(xy)(xy)
+
+		idx = z.argsort()
+		x, y, z = x[idx], y[idx], z[idx]
+
+		fig, ax = plt.subplots()
+		ax1 = plt.scatter(y, x, c = z[::1], s = 20, edgecolor = '')
+		ax2 = plt.scatter(0, 0, c = 'r', s = 40, edgecolor = '')
+		plt.axis('equal')
+		cbar = plt.colorbar(ax1)
+		cbar.ax.set_ylabel('Density')
+		plt.title('Tip locations colored by local density')
+
+		if(save):
+			if(save_folder is not None):
+
+				file_path = os.path.join(save_folder, self.sub_folder)
+			else:
+				file_path = self.analysis_folder
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = self.dataName[:-5] +'_' + '_TipLocationScatterDensity'
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+		
+		plt.show()
+
+
 	def plot_energy_timeseries(self, save_folder = None):
 
 		self.compute_axial_bending_energy()
@@ -738,13 +775,18 @@ class analysisTools(activeFilament):
 		fig, ax1 = plt.subplots(figsize = (8,8))
 		for ii in range(self.Nt):			
 			self.r = self.R[ii,:]
+			x = self.r[0:self.Np]
+			y = self.r[self.Np:2*self.Np]
+
 			if(ii%stride==0):
 				if(color_by is None):
-					cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = 'w', linewidth=2.0, alpha = 0.5)
+					cf = ax1.plot(y, x, color = 'w', linewidth = 2.0, alpha = 0.5)
 				else:
-					cf = ax1.plot(self.r[0:self.Np], self.r[self.Np:2*self.Np], color = colors[ii], linewidth=2.0, alpha = 0.5)
+					cf = ax1.plot(y, x, color = colors[ii], linewidth = 2.0, alpha = 0.5)
 		# Plot the mean filament shape
-		ax1.plot(self.mean_filament_shape[0:self.Np], self.mean_filament_shape[self.Np:2*self.Np], color = 'r', linewidth=2.0, alpha = 0.75)
+		x_mean = self.mean_filament_shape[0:self.Np]
+		y_mean = self.mean_filament_shape[self.Np:2*self.Np]
+		ax1.plot(y_mean, x_mean, color = 'r', linewidth=2.0, alpha = 0.75)
 		ax1.set_xlabel('X position')
 		ax1.set_ylabel('Y position')
 		ax1.set_title(title)
