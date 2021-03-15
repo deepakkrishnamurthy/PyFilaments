@@ -153,6 +153,7 @@ class PlotWidget3D(gl.GLViewWidget):
 		pos = np.empty((1, 3))
 		pos[0] = self.data[self.current_index,0], self.data[self.current_index,1], self.data[self.current_index,2]
 		self.marker.setData(pos = pos)
+		self.orbit(0.2, 0.05)
 
 	def update_plot(self, data):
 		self.data = data
@@ -173,6 +174,9 @@ class PlotWidget3D(gl.GLViewWidget):
 		self.marker_start.setData(pos = pos, size = size, color = (0,0,1.0,1.0))
 		self.marker_start.setGLOptions('opaque')
 		self.update_grid_extents()
+
+		
+
 	def update_grid_extents(self):
 		x_extent = abs(np.max(self.data[:,0]) - np.min(self.data[:,0]))
 		y_extent = abs(np.max(self.data[:,1]) - np.min(self.data[:,1]))

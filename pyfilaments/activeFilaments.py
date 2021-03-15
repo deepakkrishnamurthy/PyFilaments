@@ -596,7 +596,7 @@ class activeFilament:
 
 	def load_data(self, file = None):
 
-		print('Loading Simulation data from disk ...')
+		print('Loading Simulation data from disk .......')
 		if(file is not None):
 			self.simFolder, self.simFile = os.path.split(file)
 			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
@@ -614,6 +614,13 @@ class activeFilament:
 							self.kappa_hat_array = dset["kappa_hat_array"][:]
 						except:
 							self.kappa_hat_array = dset["kappa_array"][:]
+
+						try:
+							self.activity_profile = dset["activity profile"][:]
+							print('Activity profile data found!')
+						except:
+							print('Activity profile not found!')
+							self.activity_profile = None
 
 						# Load the metadata:
 						self.Np = dset.attrs['N particles']
@@ -633,10 +640,7 @@ class activeFilament:
 							self.bc[-1] = dset.attrs['boundary condition 1']
 						except:
 							print('Attribute not found')
-						if('activity profile' in f.keys()):
-							self.activity_profile = f["activity profile"][:]
-						else:
-							self.activity_profile = None
+						
 
 					else:  # Load the simulation data (older method)
 						self.Time = f["Time"][:]

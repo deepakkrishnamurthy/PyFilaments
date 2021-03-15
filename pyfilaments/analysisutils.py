@@ -1,6 +1,18 @@
 # Utility functions for analyzing filament shapes and dynamics
+import sys
+if 'init_modules' in globals().keys():
+    # second or subsequent run: remove all but initially loaded modules
+    for m in sys.modules.keys():
+        if m not in init_modules:
+            del(sys.modules[m])
+else:
+    # first run: find out which modules were initially loaded
+    init_modules = sys.modules.keys()
+    print(init_modules)
+
 import os
 import numpy as np
+import imp
 from pyfilaments.activeFilaments import activeFilament
 import filament.filament as filament_operations
 import matplotlib.pyplot as plt
@@ -17,6 +29,8 @@ from matplotlib import rcParams
 from matplotlib import rc
 from matplotlib import cm
 from tqdm import tqdm
+
+
 
 rc('font', family='sans-serif') 
 rc('font', serif='Helvetica') 
@@ -38,7 +52,7 @@ class analysisTools(activeFilament):
 		print(self.Np)
 
 		# Dict to store derived datasets
-		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [], 'Tip cosine angle':[],'Activity phase':[],'Axial energy':[],'Bending energy':[]}
+		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [], 'Tip cosine angle':[],'Axial energy':[],'Bending energy':[]}
 
 		# Set the attributes to those of the filament on which we are doing analysis. 
 		if(filament is not None):
@@ -190,8 +204,6 @@ class analysisTools(activeFilament):
 		"""
 		# self.tangent_angles = np.zeros_like(self.R) # First calculate tangent angles at the sphere locations.
 		self.get_tangent_vectors()
-
-		
 		tangent_angles = np.arctan2(self.t_hat[1,:], self.t_hat[0,:])
 
 		return tangent_angles
@@ -265,6 +277,60 @@ class analysisTools(activeFilament):
 
 			rhs = self.variance_matrix[ii, :]
 		pass
+
+	def compute_base_tip_angle(self):
+		""" Compute the unit vector along the base to tip vector of the filament
+		"""
+		
+		self.derived_data['base tip angle'] = np.zeros(self.Nt)
+		self.derived_data['base tip vector'] = np.zeros((3, self.Nt))
+
+		unit_vector_lab = [1, 0, 0] # Unit vector fixed to lab reference frame
+
+		for ii in range(self.Nt):
+
+			head_pos_x = self.R[ii, self.Np-1]
+			head_pos_y = self.R[ii, 2*self.Np-1]
+			head_pos_z = self.R[ii, 3*self.Np-1]
+
+			base_pos_x = self.R[ii, 0]
+			base_pos_y = self.R[ii, self.Np]
+			base_pos_z = self.R[ii, 2*self.Np]
+
+			vec_x = head_pos_x - base_pos_x
+			vec_y = head_pos_y - base_pos_y
+			vec_z = head_pos_z - base_pos_z
+
+
+			vec_mag = (vec_x**2 + vec_y**2 + vec_z**2)**(1/2)
+
+			vec_x = vec_x/vec_mag
+			vec_y = vec_y/vec_mag
+			vec_z = vec_z/vec_mag
+
+			self.derived_data['base tip vector'][:,ii] = vec_x, vec_y, vec_z
+
+		self.derived_data['base tip angle'] = np.arctan2(self.derived_data['base tip vector'][1,:], self.derived_data['base tip vector'][0,:])
+
+	def compute_tip_angle(self):
+
+		self.derived_data['tip angle'] = np.zeros(self.Nt)
+		self.derived_data['tip unit vector'] = np.zeros((self.dim, self.Nt))
+		self.derived_data['tip cosine angle'] = np.zeros((self.Nt))
+
+		for ii in range(self.Nt):
+
+			self.r = self.R[ii, :]
+			self.get_separation_vectors()
+			tangent_angles = self.compute_tangent_angles()
+
+			self.derived_data['tip angle'][ii] = tangent_angles[-1]
+
+			# self.derived_data['Tip unit vector'][:,ii] = self.dr_hat[:,-1]
+			# self.derived_data['Tip cosine angle'][ii] = np.dot(self.dr_hat[:,-1], [1, 0 , 0])
+
+
+
 
 
 	def compute_arc_length(self):
@@ -388,26 +454,6 @@ class analysisTools(activeFilament):
 
 	# Energy based metrics:
 
-	# def filament_elastic_energy(self):
-
-	# def 
-
-	def compute_head_orientation(self):
-
-		self.derived_data['Tip unit vector'] = np.zeros((self.dim, self.Nt))
-
-		self.derived_data['Tip cosine angle'] = np.zeros((self.Nt))
-
-		# Find the tangent angle at the filament tip
-		for ii in range(self.Nt):
-
-			self.r = self.R[ii,:]
-
-			self.get_separation_vectors() 	
-
-			self.derived_data['Tip unit vector'][:,ii] = self.dr_hat[:,-1]
-			self.derived_data['Tip cosine angle'][ii] = np.dot(self.dr_hat[:,-1], [1, 0 , 0])
-
 	# Filament energies (Axial and bending)
 
 	def compute_axial_bending_energy(self):
@@ -425,7 +471,7 @@ class analysisTools(activeFilament):
 
 			self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
 
-			self.derived_data['Bending energy'][ii] = 10*self.kappa_hat*(1 - self.cosAngle[0]) + np.sum(self.kappa_hat*(1 - self.cosAngle[1:-1]))
+			self.derived_data['Bending energy'][ii] = np.sum(self.kappa_hat*(1 - self.cosAngle[0:-1]))
 
 	
 	
@@ -568,7 +614,7 @@ class analysisTools(activeFilament):
 		plt.show()
 
 	def plot_phase_portrait(self, var_x, var_y,data_x = None, data_y = None, color_by = 'Time', 
-		save_folder = None, save = False, title = []):
+		save_folder = None, save = False, title = [], start_index=0, stop_index = -1):
 
 		title = var_y + ' vs ' + var_x
 
@@ -583,17 +629,18 @@ class analysisTools(activeFilament):
 		elif color_by in self.derived_data.keys():
 			color = self.derived_data[color_by]
 
-		clip_point = int(self.Nt)
+		if(stop_index==-1):
+			stop_index = self.Nt
 		# Plot as a phase portrait
 		u = data_x[1:] - data_x[0:-1]
 		v = data_y[1:] - data_y[0:-1]
 
-		mask = (u**2 + v**2)**(1/2) > (max(data_x) - min(data_x) - 1)
+		mask = (u**2 + v**2)**(1/2) > (max(data_x) - min(data_x) - 0.1*(max(data_x) - min(data_x)))
 
 		u[mask], v[mask] = 0,0
 
 		plt.figure(figsize = (8,6))
-		ax1 = plt.quiver(data_x[:-1],data_y[:-1],u,v, color[:clip_point-1], scale_units='xy', angles='xy', scale=1, headwidth = 5)
+		ax1 = plt.quiver(data_x[start_index:stop_index-1],data_y[start_index:stop_index-1],u[start_index:stop_index],v[start_index:stop_index], color[start_index:stop_index-1], scale_units='xy', angles='xy', scale=1, headwidth = 5)
 		ax2 = plt.scatter(data_x[0], data_y[0], 50, marker = 'o', color = 'r')
 
 		plt.xlabel(var_x)
@@ -614,7 +661,7 @@ class analysisTools(activeFilament):
 
 			file_name = self.dataName[:-5] +'_'+title + '_PhasePortrait'
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
-			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+			# plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 
 		plt.show()
 
