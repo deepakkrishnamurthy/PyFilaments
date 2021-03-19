@@ -34,6 +34,8 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=False)
 		self.filament = filament
 
+		self.plot_tip_history = False
+
 		self.current_index = 0
 		if(self.filament.R is None):
 			n = 1
@@ -50,7 +52,9 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 
 		else:
 			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
+			# Scatter plot to show filament tip history
 			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
+			
 			x_pos = self.filament.R[self.current_index,:self.filament.Np]
 			y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
 
@@ -66,7 +70,7 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 
 
 		self.text = pg.TextItem(color = 'w', anchor=(0,0), angle=0)
-		self.plot.addItem(self.text)
+		# self.plot.addItem(self.text)
 		self.text.setPos(-20, 0)
 		self.text.setText('{:0.1f}'.format(0))
 
@@ -77,16 +81,17 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
 		z_pos = self.filament.R[self.current_index, 2*self.filament.Np : 3*self.filament.Np]
 
-		self.s1.setData(x = y_pos, y = x_pos)
+		self.s1.setData(x = y_pos, y = x_pos, brush = pg.mkBrush(255, 255, 255, 255))
 		self.s1.setBrush(self.particle_colors)
+		self.s1.setZValue(10)
 		self.text.setPos(x_pos[0] -10, y_pos[0] + 0)
-		self.text.setText('{:0.1f}'.format(self.filament.Time[self.current_index]))
+		# self.text.setText('{:0.1f}'.format(self.filament.Time[self.current_index]))
 
 		# Display head position
-		# x_pos_head = self.filament.R[:self.current_index,self.filament.Np-1]
-		# y_pos_head = self.filament.R[:self.current_index,2*self.filament.Np-1]
+		x_pos_head = self.filament.R[:self.current_index:5,self.filament.Np-1]
+		y_pos_head = self.filament.R[:self.current_index:5,2*self.filament.Np-1]
 
-		# self.s2.setData(x = x_pos_head, y = y_pos_head, brush = pg.mkBrush(255, 0, 0, 120))
+		self.s2.setData(x = y_pos_head, y = x_pos_head, brush = pg.mkBrush(255, 255, 255, 40))
 
 
 	def set_colors(self):
@@ -99,9 +104,13 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		for ii in range(self.filament.Np):
 			
 			if(self.filament.S_mag[ii]!=0 or self.filament.D_mag[ii]!=0):
-				self.particle_colors.append(pg.mkBrush(255, 0, 0, 200))
+				self.particle_colors.append(pg.mkBrush(255, 0, 0, 255))
 			else:
-				self.particle_colors.append(pg.mkBrush(0, 255, 0, 200))
+				self.particle_colors.append(pg.mkBrush(0, 255, 0, 255))
+
+	def update_plot_tip_history_flag(self, flag):
+		self.plot_tip_history = flag
+
 
 class PlotWidget3D(gl.GLViewWidget):
 	""" Widget for displaying 3D plots

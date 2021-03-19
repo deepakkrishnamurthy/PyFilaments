@@ -640,7 +640,12 @@ class analysisTools(activeFilament):
 		u[mask], v[mask] = 0,0
 
 		plt.figure(figsize = (8,6))
-		ax1 = plt.quiver(data_x[start_index:stop_index-1],data_y[start_index:stop_index-1],u[start_index:stop_index],v[start_index:stop_index], color[start_index:stop_index-1], scale_units='xy', angles='xy', scale=1, headwidth = 5)
+		if(color_by == 'Time'):
+			ax1 = plt.quiver(data_x[start_index:stop_index-1],data_y[start_index:stop_index-1],u[start_index:stop_index],v[start_index:stop_index], color[start_index:stop_index-1], scale_units='xy', angles='xy', scale=1, headwidth = 5)
+		else:
+			ax1 = plt.quiver(data_x[start_index:stop_index-1],data_y[start_index:stop_index-1],u[start_index:stop_index],v[start_index:stop_index], color[start_index:stop_index-1], scale_units='xy', angles='xy', scale=1, headwidth = 5, cmap = cmocean.cm.phase)
+
+
 		ax2 = plt.scatter(data_x[0], data_y[0], 50, marker = 'o', color = 'r')
 
 		plt.xlabel(var_x)
