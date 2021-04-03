@@ -554,9 +554,9 @@ class activeFilament:
 		for ii in range(len(t_array)):
 			activity_profile_array[ii] = self.square_wave_activity(t_array[ii])
 
-		plt.figure()
-		plt.plot(t_array/self.activity_timescale, activity_profile_array)
-		plt.show()
+		# plt.figure()
+		# plt.plot(t_array/self.activity_timescale, activity_profile_array)
+		# plt.show()
 
 
 		# Set the scale-factor
