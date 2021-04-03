@@ -20,7 +20,7 @@ elif platform == 'darwin':
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
 # Activity profile parameters
-activity_timescale = 700
+activity_timescale = 600
 duty_cycle = 0.5
 
 # No:of activity cycles we want to simulate
