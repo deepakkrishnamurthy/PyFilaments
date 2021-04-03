@@ -491,7 +491,7 @@ class activeFilament:
 
 		def terminate(u, t, step):
 			# Termination criterion based on bond-angle
-			if(step >0 and np.any(self.cosAngle[1:-1] < 0)):
+			if(step >0 and np.any(self.cosAngle[0:-1] < 0)):
 				return True
 			else:
 				return False
