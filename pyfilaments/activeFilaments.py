@@ -150,8 +150,8 @@ class activeFilament:
 		"""Takes an array of shape (dim*N, 1) and reshapes to a Matrix  of shape (dim, N) and 
 			where the array convention is [x1, x2 , x3 ... X_Np, y1, y2, .... y_Np, z1, z2, .... z_Np]
 			and matrix convention is |x1 x2 ...  |
-		                          	 |y1 y2 ...  |
-		                             |z1 z2 ...  |
+									 |y1 y2 ...  |
+									 |z1 z2 ...  |
 		"""
 		array_len = len(Array)
 		ncols = int(array_len/self.dim)
@@ -373,17 +373,29 @@ class activeFilament:
 				self.rm.potDipoleV_i(end, vel_no_constraint_end, self.r, self.D)
 				# Constraint force of the tethered colloid such that the velocity is zero (fixed or clamped BC).
 				constraint_force = -6*np.pi*self.mu*self.radius*vel_no_constraint_end
-        
+		
 				self.F[end] += constraint_force[0]
 				self.F[end + self.Np] += constraint_force[1]
 				self.F[end + self.xx] += constraint_force[2]
+
+	def square_wave_activity(self, t):
+		''' Output a square-wave profile based on a cycle time-scale and duty-cycle
+			
+		'''
+		phase = t%self.activity_timescale
+		if(phase > self.activity_timescale*self.duty_cycle):
+			return 1
+		elif phase < self.activity_timescale*self.duty_cycle:
+			return -1
+		else:
+			return 0
 
 	def set_filament_activity(self, t):
 
 		if(self.sim_type == 'point'):
 			'''Simulates active filament where only the distal particle has time-dependent activity.
 			'''
-			self.D_mag[-1] = self.D0*self.activity_profile(t)
+			self.D_mag[-1] = self.D0*self.square_wave_activity(t)
 
 		elif(self.sim_type == 'dist'):
 			'''
@@ -398,10 +410,10 @@ class activeFilament:
 			Scale factor: 
 				Quantifies the relative strengths of the Distal particle vs Other particles activity.
 			'''
-			if(self.activity_profile(t)==1):
+			if(self.square_wave_activity(t)==1):
 				# self.D_mag[:self.Np-1] = self.D0/self.scale_factor
 				self.D_mag[-1] = self.D0
-			elif(self.activity_profile(t)==-1):
+			elif(self.square_wave_activity(t)==-1):
 				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
 				self.D_mag[-1] = 0
 
@@ -448,8 +460,9 @@ class activeFilament:
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 
 	
-	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, activity_profile = None, scale_factor = 1, 
-				activity_timescale = 0, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0):
+	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
+		scale_factor = 1, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0, 
+		activity = None):
 		
 		# Set the seed for the random number generator
 		np.random.seed(pid)
@@ -529,7 +542,23 @@ class activeFilament:
 		print(self.shape)
 		# Set the simulation type
 		self.sim_type = sim_type
-		self.activity_timescale = activity_timescale
+		# Activity parameters
+		self.activity_type = activity['type']
+		self.activity_timescale = activity['activity_timescale']
+		self.duty_cycle = activity['duty_cycle']
+
+		# Plot the activity profile
+		t_array = np.linspace(0, Tf, Npts)
+
+		activity_profile_array = np.zeros_like(t_array)
+		for ii in range(len(t_array)):
+			activity_profile_array[ii] = self.square_wave_activity(t_array[ii])
+
+		plt.figure()
+		plt.plot(t_array/self.activity_timescale, activity_profile_array)
+		plt.show()
+
+
 		# Set the scale-factor
 		self.scale_factor = scale_factor
 		#---------------------------------------------------------------------------------
@@ -548,8 +577,7 @@ class activeFilament:
 
 		self.saveFolder = os.path.join(self.path, self.folder)
 		#---------------------------------------------------------------------------------
-		# Set the activity profile
-		self.activity_profile = activity_profile
+		
 		# if simulating constant external forces
 		if(self.sim_type == 'sedimentation'):
 			""" 
@@ -710,7 +738,7 @@ class activeFilament:
 			dset.create_dataset("particle stresslets", data = self.S_mag)
 			dset.create_dataset("particle potDipoles", data = self.D_mag)
 
-			if(self.activity_profile is not None):
+			if('activity_profile' in self.__dict__):
 				dset.create_dataset("activity profile", data = self.activity_profile(self.Time))
 
 		# Save user readable metadata in the same folder
