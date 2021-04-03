@@ -21,8 +21,10 @@ elif platform == 'darwin':
 activity_timescale = 750
 duty_cycle = 0.5
 
+# No:of activity cycles we want to simulate
+n_activity_cycles = 5
 # Total simulation time
-Tf = activity_timescale*10
+Tf = activity_timescale*n_activity_cycles
 
 # activity_timescale = 1000
 

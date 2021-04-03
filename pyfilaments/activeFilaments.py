@@ -738,7 +738,7 @@ class activeFilament:
 			dset.create_dataset("particle stresslets", data = self.S_mag)
 			dset.create_dataset("particle potDipoles", data = self.D_mag)
 
-			if(self.activity_profile is not None):
+			if('activity_profile' in self.__dict__):
 				dset.create_dataset("activity profile", data = self.activity_profile(self.Time))
 
 		# Save user readable metadata in the same folder
