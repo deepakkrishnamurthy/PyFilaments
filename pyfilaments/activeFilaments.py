@@ -223,14 +223,12 @@ class activeFilament:
 		if(self.shape == 'line'):
 			# Initial particle positions and orientations
 			for ii in range(self.Np):
-				# The filament is initially linear along x-axis with the first particle at origin
-				self.r0[ii] = ii*(self.b0)
-				# Linear filament along Y-axis
-				# self.r0[ii + self.Np] = ii*(self.b0)
+				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
+				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
+				
 			# Add random fluctuations in the other two directions
 			# y-axis
-
-			self.r0[self.Np+1:2*self.Np] = np.random.normal(0, 1E-4, self.Np-1)
+			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, 1E-4, self.Np-1)
 
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
