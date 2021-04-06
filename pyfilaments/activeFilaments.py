@@ -85,7 +85,7 @@ class activeFilament:
 		self.cpu_time = 0
 		# Initialize the filament
 		self.shape = 'line'
-		self.initialize_filament_shape()
+		# self.initialize_filament_shape()
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 		self.simFile = ''
 
@@ -279,7 +279,7 @@ class activeFilament:
 			Amp = 1e-4
 
 		# Apply the kinematic boundary conditions to the filament ends
-		self.apply_BC_position()
+		# self.apply_BC_position()
 		self.r = self.r0
 
 
@@ -304,9 +304,16 @@ class activeFilament:
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_hat_array, unit_vector = self.clamping_vector, ljrmin = 2.1*self.radius, ljeps = 1.0)
 
 	  
-	def initialize_filament(self):
+	def initialize_filament(self, r0 = None):
 		
-		self.initialize_filament_shape()
+		if(r0 is not None):
+			# If an initial filament shape is given then use that to initialize the filament.
+			self.r0 = r0
+			self.r = r0
+		else:
+			# If not then use the provided shape parameters to initialize the filament.
+			self.initialize_filament_shape()
+
 		# Initialize the bending-stiffness array
 		self.initialize_bending_stiffness()
 		self.get_separation_vectors()
@@ -318,26 +325,26 @@ class activeFilament:
 		# Orientation vectors of particles depend on local tangent vector
 		self.p0 = self.p
 		
-	def apply_BC_position(self):
-		'''
-		Apply the kinematic boundary conditions:
-		'''
-		for key in self.bc:
-			bc_value = self.bc[key]
-			# Proximal end
-			if(key == 0):
-				# Index corresponding to end particle and next nearest particle (proximal end)
-				end = 0
-				pos_end = (0,0,0)
-			# Distal end
-			elif(key == -1 or key == self.Np-1):
-				# Index correspond to end particle and next nearest particle (distal end)
-				end = self.Np - 1
-				pos_end = ((self.Np - 1)*self.b0,0,0)
-			if(bc_value == 'fixed'):
-				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
-			elif(bc_value == 'clamped'):
-				self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
+	# def apply_BC_position(self):
+	# 	'''
+	# 	Apply the kinematic boundary conditions:
+	# 	'''
+	# 	for key in self.bc:
+	# 		bc_value = self.bc[key]
+	# 		# Proximal end
+	# 		if(key == 0):
+	# 			# Index corresponding to end particle and next nearest particle (proximal end)
+	# 			end = 0
+	# 			pos_end = (0,0,0)
+	# 		# Distal end
+	# 		elif(key == -1 or key == self.Np-1):
+	# 			# Index correspond to end particle and next nearest particle (distal end)
+	# 			end = self.Np - 1
+	# 			pos_end = ((self.Np - 1)*self.b0,0,0)
+	# 		if(bc_value == 'fixed'):
+	# 			self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
+	# 		elif(bc_value == 'clamped'):
+	# 			self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
 
 	def apply_BC_force(self):
 		'''
@@ -478,63 +485,70 @@ class activeFilament:
 			self.time_prev = self.time_now
 			return self.drdt
 
-		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
+		def terminate(u, t, step_no):  # function that returns True/False to terminate solve
 			
-		# 	if(step_no>0):
-		# 		u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
-		# 		distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
-		# 		return distance < stop_tol
-		# 	else:
-		# 		return False
-
-		def terminate(u, t, step):
-			# Termination criterion based on bond-angle
-			if(step >0 and np.any(self.cosAngle[0:-1] < 0)):
-				return True
+			if(step_no>0):
+				u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
+				distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
+				return distance < stop_tol
 			else:
 				return False
 
+		# def terminate(u, t, step):
+		# 	# Termination criterion based on bond-angle
+		# 	if(step >0 and np.any(self.cosAngle[0:-1] < 0)):
+		# 		return True
+		# 	else:
+		# 		return False
+
 		if(init_condition is not None):
-			if('shape' in init_condition.keys()):
+			
+			if('filament' in init_condition.keys()):
+				# If the filament shape is provided use it to initialize the filament
+				self.initialize_filament(r0 = init_condition['filament'])
+
+			elif('shape' in init_condition.keys()):
 				self.shape = init_condition['shape']
-			if(self.shape=='line'):
-				if('angle' in init_condition.keys()):
-					self.init_angle = init_condition['angle']
-				else:
-					self.init_angle = 0
-			elif(self.shape == 'sinusoid'):
-				if('plane' in init_condition.keys()):
-					self.plane = init_condition['plane']
-				else:
-					self.plane = 'xy'
-				if('amplitude' in init_condition.keys()):
-					self.amplitude = init_condition['amplitude']
-				else:
-					self.amplitude = 1e-4
 
-				if('wavelength' in init_condition.keys()):
-					self.wavelength = init_condition['wavelength']
-				else:
-					self.wavelength = self.L
-			elif(self.shape == 'helix'):
+				if(self.shape=='line'):
+					if('angle' in init_condition.keys()):
+						self.init_angle = init_condition['angle']
+					else:
+						self.init_angle = 0
+				elif(self.shape == 'sinusoid'):
+					if('plane' in init_condition.keys()):
+						self.plane = init_condition['plane']
+					else:
+						self.plane = 'xy'
+					if('amplitude' in init_condition.keys()):
+						self.amplitude = init_condition['amplitude']
+					else:
+						self.amplitude = 1e-4
 
-				if('axis' in init_condition.keys()):
-					self.axis = init_condition['axis']
-				else:
-					self.axis = 'x'
-				if('amplitude' in init_condition.keys()):
-					self.amplitude = init_condition['amplitude']
-				else:
-					self.amplitide = 1e-4
-				if('pitch' in init_condition.keys()):
-					self.pitch = init_condition['pitch']
-				else:
-					self.pitch = self.L
+					if('wavelength' in init_condition.keys()):
+						self.wavelength = init_condition['wavelength']
+					else:
+						self.wavelength = self.L
+				elif(self.shape == 'helix'):
+
+					if('axis' in init_condition.keys()):
+						self.axis = init_condition['axis']
+					else:
+						self.axis = 'x'
+					if('amplitude' in init_condition.keys()):
+						self.amplitude = init_condition['amplitude']
+					else:
+						self.amplitide = 1e-4
+					if('pitch' in init_condition.keys()):
+						self.pitch = init_condition['pitch']
+					else:
+						self.pitch = self.L
+				self.initialize_filament()
 
 		self.time_now = 0
 		self.time_prev = 0
 
-		self.initialize_filament()
+		
 		self.set_particle_colors()
 
 		print(self.shape)
@@ -775,7 +789,7 @@ class activeFilament:
 	########################################################################################################
 	# Plotting
 	########################################################################################################  
-	def plotFilament(self, r = None, axis = None):
+	def plotFilament(self, r = None, axis = None, title = None):
 
 		self.set_particle_colors()
 		ax1 = plt.gca()
@@ -801,7 +815,11 @@ class activeFilament:
 
 		plt.xlabel(xlabel)
 		plt.ylabel(ylabel)
-		plt.title('Filament shape '+ self.plane)
+		if(title is None):
+			plt.title('Filament shape '+ self.plane)
+		else:
+			plt.title(title)
+
 		if(axis == 'equal'):
 			plt.axis(axis)
 		plt.show()
