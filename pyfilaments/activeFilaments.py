@@ -489,7 +489,7 @@ class activeFilament:
 
 		def terminate(u, t, step):
 			# Termination criterion based on bond-angle
-			if(step >0 and np.any(self.cosAngle[1:-1] < 0)):
+			if(step >0 and np.any(self.cosAngle[0:-1] < 0)):
 				return True
 			else:
 				return False
@@ -552,9 +552,9 @@ class activeFilament:
 		for ii in range(len(t_array)):
 			activity_profile_array[ii] = self.square_wave_activity(t_array[ii])
 
-		plt.figure()
-		plt.plot(t_array/self.activity_timescale, activity_profile_array)
-		plt.show()
+		# plt.figure()
+		# plt.plot(t_array/self.activity_timescale, activity_profile_array)
+		# plt.show()
 
 
 		# Set the scale-factor
