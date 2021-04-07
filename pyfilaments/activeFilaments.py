@@ -228,7 +228,7 @@ class activeFilament:
 				
 			# Add random fluctuations in the other two directions
 			# y-axis
-			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, 1E-4, self.Np-1)
+			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, 1E-2, self.Np-1)
 
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
