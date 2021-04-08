@@ -63,17 +63,21 @@ fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius,
 	k = 50, S0 = 0, D0 = 1.5, bc = bc)
 
 
-init_angle_array = np.linspace(0, np.pi/2, 10)
-bending_stiffness_array = [15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 50, 100]
-activity_timescale_array = [500, 750, 1000, 1500, 2000]
+init_angle_array = np.linspace(0, np.pi/2, 50)
+bending_stiffness_array = [20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 50, 100]
+activity_timescale_array = [750]
+# bending_stiffness_array = [15]
+# activity_timescale_array = [750]
+
 
 
 def run_parametric_simulation(pid, init_angle, stiffness, activity_timescale):
 	radius = 1
 	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius, k = stiffness, S0 = 0, D0 = 1.5, bc = bc)
 
+	print(init_angle)
 	fil.simulate(Tf, Npts, save = True, overwrite = False, path = root_path, sim_type = 'point', 
-	init_condition = {'shape':'line', 'init_angle':init_angle}, 
+	init_condition = {'shape':'line', 'angle': init_angle}, 
 	activity={'type':'square-wave','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle})
 
 

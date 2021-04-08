@@ -222,6 +222,7 @@ class activeFilament:
 	def initialize_filament_shape(self):
 		if(self.shape == 'line'):
 			# Initial particle positions and orientations
+			print('Initializing filament as a line at angle {}'.format(self.init_angle))
 			for ii in range(self.Np):
 				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
 				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
@@ -580,6 +581,9 @@ class activeFilament:
 		# Create sub-folder by date
 		self.path = os.path.join(path, subfolder)
 
+		# Stagger the start of the simulations to avoid issues with concurrent writing to disk
+		time.sleep(pid/10.0)
+
 		if(not os.path.exists(self.path)):
 			os.makedirs(self.path)
 
@@ -611,8 +615,7 @@ class activeFilament:
 		start_time = time.time()
 		tqdm_text = "Param: {} Progress: ".format(self.k).zfill(1)
 
-		# Stagger the start of the simulations to avoid issues with concurrent writing to disk
-		time.sleep(pid)
+	
 
 		with tqdm(total = 100, desc=tqdm_text, position=pid+1) as self.pbar:
 			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
