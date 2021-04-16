@@ -37,11 +37,11 @@ def run_filament_analysis(file):
 	print(file)
 
 	filament = analysis.analysisTools(file = file)
-	# filament.filament_tip_coverage(save = True)
+	filament.filament_tip_coverage(save = True)
 
 	plt.style.use('dark_background')
 	# filament.plot_filament_centerlines(stride = 100, save = True, color_by = 'Time')
-	filament.plot_tip_scatter_density(save = True)
+	# filament.plot_tip_scatter_density(save = True)
 
 # for file in tqdm(files_list):
 # 	run_filament_analysis(file)
