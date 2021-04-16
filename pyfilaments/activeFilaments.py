@@ -617,7 +617,7 @@ class activeFilament:
 
 	
 
-		with tqdm(total = 100, desc=tqdm_text, position=pid+1) as self.pbar:
+		with tqdm(total = 100, desc=tqdm_text, position=pid+1, disable = True) as self.pbar:
 			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 			# integrate the resulting equation using odespy
