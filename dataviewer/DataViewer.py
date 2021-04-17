@@ -676,7 +676,7 @@ class MainWindow(QMainWindow):
 		self.dataFile = None
 		# self.dataFile = '/Users/deepak/Dropbox/LacryModeling/ModellingResults/SimResults_Np_32_Shape_sinusoid_k_1_b0_4_S_0_D_-1/SimResults_Tmax_5000_Np_32_Shape_sinusoid_S_0_D_-1.pkl'
 		self.home = str(Path.home())
-		self.directory = os.path.join(self.home, 'LacryModelling_Local/ModellingResults')
+		self.directory = os.path.join(self.home)
 
 		# Create menu bar and add action
 		menuBar = self.menuBar()

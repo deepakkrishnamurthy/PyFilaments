@@ -1,14 +1,14 @@
 # Utility functions for analyzing filament shapes and dynamics
 import sys
 if 'init_modules' in globals().keys():
-    # second or subsequent run: remove all but initially loaded modules
-    for m in sys.modules.keys():
-        if m not in init_modules:
-            del(sys.modules[m])
+	# second or subsequent run: remove all but initially loaded modules
+	for m in sys.modules.keys():
+		if m not in init_modules:
+			del(sys.modules[m])
 else:
-    # first run: find out which modules were initially loaded
-    init_modules = sys.modules.keys()
-    print(init_modules)
+	# first run: find out which modules were initially loaded
+	init_modules = sys.modules.keys()
+	print(init_modules)
 
 import os
 import numpy as np
@@ -452,6 +452,70 @@ class analysisTools(activeFilament):
 			df_unique_count.to_csv(os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_counts_timeseries.csv'))
 			df_unique_positions.to_csv(os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_positions.csv'))
 
+	def classify_filament_dynamics(self):
+		''' Classify the filament dynamics into 1. Periodic or 2. Aperiodic
+			If periodic, find the period.
+
+			Returns:
+
+				periodic_flag: bool, with True when the dynamics is periodic, False for Aperiodic
+				period: int, Period (multiple of driving or forcing time-scale) over which the dynamics is periodic, None for aperiodic dynamics
+
+		'''
+		# Find time points at a constant phase (stroboscopic)
+		# In the current activity profile, phase = 0 is start of compression, phase = pi is start of extension
+		phase_value = np.pi/2
+		# Smallest phase difference = 2*pi*delta_T/T
+		delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
+		abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
+		constant_phase_mask = abs_val_array <= 0.5*delta_phase
+		time_points = np.array(range(0, self.Nt))
+		constant_phase_indices = time_points[constant_phase_mask]
+
+		# Compare filament shapes at two points at constant phase 
+		periodic_flag = False
+		period_array = [1, 2, 3, 4, 6, 8, 12, 16] # Number of periods over which we want to compare. period = 1 means every cycle.
+		below_threshold_array = np.zeros(len(period_array), dtype = 'bool')
+		# Threshold value for comparing shapes of filaments. Currently choosen as 10% of the sphere radius. 
+		epsilon = 0.1*self.radius
+
+		for period_index, period in enumerate(period_array):
+
+		#     period = 4 
+			pair_wise_distance = np.zeros(len(constant_phase_indices)-period)
+
+			for ii in range(len(constant_phase_indices)-period):
+
+				index_a = constant_phase_indices[ii]
+				index_b = constant_phase_indices[ii+period]
+
+				filament_a = self.R[index_a, :]
+				filament_b = self.R[index_b, :]
+
+				# Calculate the pair-wise distance between the shapes of the two filaments
+				distance = self.euclidean_distance(filament_a, filament_b)
+				pair_wise_distance[ii] = distance
+
+			# Find if the distance goes below the threshold (and stays there)
+			threshold_index = next((i for i,x in enumerate(pair_wise_distance) if pair_wise_distance[i]<=epsilon and np.all(pair_wise_distance[i:]<epsilon)), None)
+			if(threshold_index is not None):
+				below_threshold_flag = True
+				print('Does distance STAY below the threshold?: {}'.format(below_threshold_flag))
+				below_threshold_array[period_index] = below_threshold_flag
+				periodic_flag = True
+
+		# Summarize the results
+
+		print(50*'*')
+		print('Is the dynamics Periodic? :{}'.format(periodic_flag))
+		min_period = next((x for i, x in enumerate(period_array) if below_threshold_array[i]==True), None)
+		print(50*'*')
+		if(min_period is not None):
+			print('The minimum period of the system is {} times the forcing period'.format(min_period))
+			print(50*'*')
+
+		return periodic_flag, min_period
+
 	# Energy based metrics:
 
 	# Filament energies (Axial and bending)
@@ -844,7 +908,7 @@ class analysisTools(activeFilament):
 		ax1.set_title(title)
 		if(color_by is not None):
 			fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-            	 ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
+				 ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
 		ax1.set_xlim(-self.L/4, self.L)
 		ax1.set_ylim(-self.L/2, self.L/2)
 		plt.axis('equal')
@@ -880,8 +944,8 @@ class analysisTools(activeFilament):
 		fig, (ax, cbar_ax) = plt.subplots(figsize = (10,10), nrows=1, ncols = 2, gridspec_kw = grid_kws)
 		
 		ax = sns.heatmap(self.tangent_angles_matrix[start_index:end_index, :], ax=ax,
-                 cbar_ax=cbar_ax,
-                 cbar_kws={"orientation": "vertical"}, cmap = cmocean.cm.thermal)
+				 cbar_ax=cbar_ax,
+				 cbar_kws={"orientation": "vertical"}, cmap = cmocean.cm.thermal)
 	
 		# Customize the X and Y ticks and labels
 		x_ticks = np.array(range(0, 100, 10))
@@ -923,8 +987,8 @@ class analysisTools(activeFilament):
 		fig, (ax, cbar_ax) = plt.subplots(figsize = (10,10), nrows=1, ncols = 2, gridspec_kw = grid_kws)
 		
 		ax = sns.heatmap(self.covariance_matrix, ax=ax,
-                 cbar_ax=cbar_ax,
-                 cbar_kws={"orientation": "vertical"}, cmap = cmocean.cm.haline)
+				 cbar_ax=cbar_ax,
+				 cbar_kws={"orientation": "vertical"}, cmap = cmocean.cm.haline)
 		
 		# Customize the X and Y ticks and labels
 		x_ticks = np.array(range(0, 100, 10))
