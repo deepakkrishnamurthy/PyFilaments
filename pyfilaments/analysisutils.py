@@ -472,6 +472,7 @@ class analysisTools(activeFilament):
 		time_points = np.array(range(0, self.Nt))
 		constant_phase_indices = time_points[constant_phase_mask]
 
+		print(len(constant_phase_indices))
 		# Compare filament shapes at two points at constant phase 
 		periodic_flag = False
 		period_array = [1, 2, 3, 4, 6, 8, 12, 16] # Number of periods over which we want to compare. period = 1 means every cycle.
@@ -482,27 +483,29 @@ class analysisTools(activeFilament):
 		for period_index, period in enumerate(period_array):
 
 		#     period = 4 
-			pair_wise_distance = np.zeros(len(constant_phase_indices)-period)
+			if(len(constant_phase_indices)-period > 1):
+				pair_wise_distance = np.zeros(len(constant_phase_indices)-period)
 
-			for ii in range(len(constant_phase_indices)-period):
+				for ii in range(len(constant_phase_indices)-period):
 
-				index_a = constant_phase_indices[ii]
-				index_b = constant_phase_indices[ii+period]
+					index_a = constant_phase_indices[ii]
+					index_b = constant_phase_indices[ii+period]
 
-				filament_a = self.R[index_a, :]
-				filament_b = self.R[index_b, :]
+					filament_a = self.R[index_a, :]
+					filament_b = self.R[index_b, :]
 
-				# Calculate the pair-wise distance between the shapes of the two filaments
-				distance = self.euclidean_distance(filament_a, filament_b)
-				pair_wise_distance[ii] = distance
+					# Calculate the pair-wise distance between the shapes of the two filaments
+					distance = self.euclidean_distance(filament_a, filament_b)
+					pair_wise_distance[ii] = distance
 
-			# Find if the distance goes below the threshold (and stays there)
-			threshold_index = next((i for i,x in enumerate(pair_wise_distance) if pair_wise_distance[i]<=epsilon and np.all(pair_wise_distance[i:]<epsilon)), None)
-			if(threshold_index is not None):
-				below_threshold_flag = True
-				print('Does distance STAY below the threshold?: {}'.format(below_threshold_flag))
-				below_threshold_array[period_index] = below_threshold_flag
-				periodic_flag = True
+				# Find if the distance goes below the threshold (and stays there)
+				threshold_index = next((i for i,x in enumerate(pair_wise_distance) if pair_wise_distance[i]<=epsilon and np.all(pair_wise_distance[i:]<epsilon)), None)
+				if(threshold_index is not None):
+					below_threshold_flag = True
+					below_threshold_array[period_index] = below_threshold_flag
+					periodic_flag = True
+			else:
+				continue
 
 		# Summarize the results
 
