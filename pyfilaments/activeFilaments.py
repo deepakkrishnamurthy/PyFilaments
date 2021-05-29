@@ -15,25 +15,24 @@ using the PyStokes library (R Singh et al ...).
 @author: deepak
 """
 from __future__ import division
-import pystokes
-import pyforces
-import filament.filament as filament
 import numpy as np
-import odespy
 import os
 import cmocean
 import pickle
 import matplotlib.pyplot as plt 
 from scipy import signal
 from scipy import interpolate
-
 from datetime import datetime
 import time
-
 import h5py
 from tqdm import tqdm
-# from pyfilaments.profiler import profile   # Code profiling tools
 import imp
+
+import pystokes
+import pyforces
+import odespy
+
+import filament.filament as filament
 
 class activeFilament:
 	'''

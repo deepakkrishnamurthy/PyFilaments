@@ -1,20 +1,20 @@
 # Validation case 2: Bending of a clamped filament subject to a transverse force at the tip.
-
-from pyfilaments.activeFilaments import activeFilament
 import numpy as np
 from scipy import signal
 from scipy import interpolate
 import matplotlib.pyplot as plt 
-
 from sys import platform
 from joblib import Parallel, delayed
 import multiprocessing
+
+from pyfilaments.activeFilaments import activeFilament
+
 
 # Filament parameters
 Np = 64            	# number of particles
 a = 1				# radius
 b0 = 2.1*a 			# equilibrium bond length
-k_array = [5000]				# Spring stiffness
+k_array = [500]				# Spring stiffness
 mu = 1.0/6			# Fluid viscosity
 
 

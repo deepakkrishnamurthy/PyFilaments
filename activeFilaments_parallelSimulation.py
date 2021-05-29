@@ -1,12 +1,15 @@
-from pyfilaments.activeFilaments import activeFilament
+''' Setup and run an active-filament simulation parametric sweep (using parallelization) and save the data.
+
+'''
 import numpy as np
 from scipy import signal
 from scipy import interpolate
 import matplotlib.pyplot as plt 
 from sys import platform
-
 from joblib import Parallel, delayed
 import multiprocessing
+
+from pyfilaments.activeFilaments import activeFilament
 
 # Check which platform
 if platform == "linux" or platform == "linux2":

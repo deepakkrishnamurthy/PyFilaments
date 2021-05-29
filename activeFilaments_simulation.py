@@ -1,4 +1,6 @@
-from pyfilaments.activeFilaments import activeFilament
+''' Setup and run an active-filament simulation and save the data.
+
+'''
 import numpy as np
 from scipy import signal
 from scipy import interpolate
@@ -6,6 +8,8 @@ import matplotlib.pyplot as plt
 from sys import platform
 import pandas as pd
 import time
+
+from pyfilaments.activeFilaments import activeFilament
 
 # Check which platform
 if platform == "linux" or platform == "linux2":
