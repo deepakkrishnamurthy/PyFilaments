@@ -467,8 +467,21 @@ class activeFilament:
 
 	
 	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
-		scale_factor = 1, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', note = '', overwrite = False, pid = 0, 
-		activity = None):
+		scale_factor = 1, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', 
+		note = '', overwrite = False, pid = 0, activity = None):
+
+		''' Setup and run an active filament simulation.
+
+			Simulation parameters:
+			Tf: Total simulation time
+			Npts: No:of time points stored. 
+			sim_type: Simulation type:
+				'point': Activity of the most distal colloid only, activity dynamics over time specified by activity_profile
+				'dist': Distributed activity along filament length. Simulates the observed ciliary activity in Lacrymaria olor.
+				'sedimentation': External force on all the colloids.
+				'cantilever': External force on only the most distal colloid. 
+
+		'''
 		
 		# Set the seed for the random number generator
 		np.random.seed(pid)
@@ -553,23 +566,25 @@ class activeFilament:
 		self.set_particle_colors()
 
 		print(self.shape)
-		# Set the simulation type
-		self.sim_type = sim_type
-		# Activity parameters
-		self.activity_type = activity['type']
-		self.activity_timescale = activity['activity_timescale']
-		self.duty_cycle = activity['duty_cycle']
 
 		# Plot the activity profile
 		t_array = np.linspace(0, Tf, Npts)
 
-		activity_profile_array = np.zeros_like(t_array)
-		for ii in range(len(t_array)):
-			activity_profile_array[ii] = self.square_wave_activity(t_array[ii])
+		# Set the simulation type
+		self.sim_type = sim_type
+		# Activity parameters
+		if(activity is not None):
+			self.activity_type = activity['type']
+			self.activity_timescale = activity['activity_timescale']
+			self.duty_cycle = activity['duty_cycle']
 
-		# plt.figure()
-		# plt.plot(t_array/self.activity_timescale, activity_profile_array)
-		# plt.show()
+			activity_profile_array = np.zeros_like(t_array)
+			for ii in range(len(t_array)):
+				activity_profile_array[ii] = self.square_wave_activity(t_array[ii])
+
+			# plt.figure()
+			# plt.plot(t_array/self.activity_timescale, activity_profile_array)
+			# plt.show()
 
 
 		# Set the scale-factor
@@ -609,6 +624,22 @@ class activeFilament:
 
 			self.S_mag[:] = 0
 			self.D_mag[:] = 0
+		elif (self.sim_type == 'cantilever'):
+			""" 
+				Simulates a filament clamped at one end, with a constant force acting at the tip which is transverse
+				to the eqbrm orientation.
+			"""
+			Np = self.Np
+			xx = 2*Np 
+
+			# Force along -y direction on the distal colloid. 
+			self.F_mag[xx-1] += self.F0
+
+			self.S_mag[:] = 0
+			self.D_mag[:] = 0
+
+
+
 		
 		print('Running the filament simulation ....')
 
@@ -617,7 +648,7 @@ class activeFilament:
 
 	
 
-		with tqdm(total = 100, desc=tqdm_text, position=pid+1, disable = True) as self.pbar:
+		with tqdm(total = 100, desc=tqdm_text, position=pid+1, disable = False) as self.pbar:
 			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 			# integrate the resulting equation using odespy
