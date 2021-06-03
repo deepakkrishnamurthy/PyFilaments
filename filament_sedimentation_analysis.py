@@ -1,7 +1,6 @@
-# bench-marking simulations analysis
-# Compares simulated steady-state shapes of filaments with predictions from theory.
-
-from pyfilaments.activeFilaments import activeFilament
+'''	Bench-marking simulations analysis (Sedimenting filaments)
+	Compares simulated steady-state shapes of sedimenting filaments with predictions from theory.
+'''
 import numpy as np
 from scipy import signal
 from scipy import interpolate
@@ -9,10 +8,11 @@ import matplotlib.pyplot as plt
 import pyfilaments.analysisutils as analysis
 import pandas as pd
 import seaborn as sns
-
-
 from matplotlib import rcParams
 from matplotlib import rc
+
+from pyfilaments.activeFilaments import activeFilament
+
 #rcParams['axes.titlepad'] = 20 
 #rc('font',**{'family':'sans-serif','sans-serif':['Helvetica']})
 ### for Palatino and other serif fonts use:
