@@ -483,7 +483,7 @@ class activeFilament:
 		'''
 		
 		# Set the seed for the random number generator
-		np.random.seed(pid)
+		# np.random.seed(pid)
 		self.save = save
 		self.overwrite = overwrite
 		#---------------------------------------------------------------------------------
