@@ -325,27 +325,6 @@ class activeFilament:
 		# Orientation vectors of particles depend on local tangent vector
 		self.p0 = self.p
 		
-	# def apply_BC_position(self):
-	# 	'''
-	# 	Apply the kinematic boundary conditions:
-	# 	'''
-	# 	for key in self.bc:
-	# 		bc_value = self.bc[key]
-	# 		# Proximal end
-	# 		if(key == 0):
-	# 			# Index corresponding to end particle and next nearest particle (proximal end)
-	# 			end = 0
-	# 			pos_end = (0,0,0)
-	# 		# Distal end
-	# 		elif(key == -1 or key == self.Np-1):
-	# 			# Index correspond to end particle and next nearest particle (distal end)
-	# 			end = self.Np - 1
-	# 			pos_end = ((self.Np - 1)*self.b0,0,0)
-	# 		if(bc_value == 'fixed'):
-	# 			self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
-	# 		elif(bc_value == 'clamped'):
-	# 			self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
-
 	def apply_BC_force(self):
 		'''
 		Apply the kinematic boundary conditions as a velocity condition:
@@ -395,12 +374,60 @@ class activeFilament:
 		else:
 			return 0
 
+	def poisson_activity(self, t):
+		''' Output activity pattern as a Poisson process
+
+		'''
+		delta_t = t - self.t_previous
+		self.t_previous = t
+		if self.compression_in_progress:
+			rand_num = np.random.uniform()
+			
+			if(rand_num < self.lambda_comp*delta_t):
+				self.extension_in_progress = True
+				self.compression_in_progress = False
+				self.T_ext_start = t
+				# self.T_comp_poisson[current_cycle] = t - self.T_comp_start
+				
+				return 1
+
+			else:
+				return -1
+
+			
+		elif self.extension_in_progress:
+		
+			rand_num = np.random.uniform()
+			if(rand_num < self.lambda_ext*delta_t):
+				self.extension_in_progress = False
+				self.compression_in_progress = True
+				self.T_comp_start = t
+				# self.T_ext_poisson[current_cycle] = t - self.T_ext_start
+				
+				self.current_cycle += 1
+				
+				return -1
+			else:
+				return 1
+
+	def activity_function(self):
+
+		if(self.activity_type == 'square-wave'):
+			return lambda t: self.square_wave_activity(t)
+		elif(self.activity_type == 'poisson'):
+			return lambda t: self.poisson_activity(t)
+
+
+
 	def set_filament_activity(self, t):
 
 		if(self.sim_type == 'point'):
 			'''Simulates active filament where only the distal particle has time-dependent activity.
 			'''
-			self.D_mag[-1] = self.D0*self.square_wave_activity(t)
+		
+			self.D_mag[-1] = self.D0*self.filament_activity(t)
+		
+
 
 		elif(self.sim_type == 'dist'):
 			'''
@@ -415,12 +442,19 @@ class activeFilament:
 			Scale factor: 
 				Quantifies the relative strengths of the Distal particle vs Other particles activity.
 			'''
-			if(self.square_wave_activity(t)==1):
+			
+
+			if(self.filament_activity(t)==1):
 				# self.D_mag[:self.Np-1] = self.D0/self.scale_factor
 				self.D_mag[-1] = self.D0
-			elif(self.square_wave_activity(t)==-1):
+			elif(self.filament_activity(t)==-1):
 				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
 				self.D_mag[-1] = 0
+
+	
+
+
+
 
 	# @profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
 	def rhs_cython(self, r, t):
@@ -574,16 +608,47 @@ class activeFilament:
 		# Activity parameters
 		if(activity is not None):
 			self.activity_type = activity['type']
-			self.activity_timescale = activity['activity_timescale']
-			self.duty_cycle = activity['duty_cycle']
 
-			activity_profile_array = np.zeros_like(t_array)
-			for ii in range(len(t_array)):
-				activity_profile_array[ii] = self.square_wave_activity(t_array[ii])
+			self.filament_activity = self.activity_function()	# Function that holds the time dynamics of activity
 
-			# plt.figure()
-			# plt.plot(t_array/self.activity_timescale, activity_profile_array)
-			# plt.show()
+			if(self.activity_type == 'square-wave'):
+
+
+				self.activity_timescale = activity['activity_timescale']
+				self.duty_cycle = activity['duty_cycle']
+				activity_profile_array = np.zeros_like(t_array)
+				for ii in range(len(t_array)):
+					activity_profile_array[ii] = self.filament_activity(t_array[ii])
+
+			elif(self.activity_type == 'poisson'):
+				# Define variables related to simulating Poisson process
+				self.activity_timescale = activity['activity_timescale']
+
+				self.duty_cycle = activity['duty_cycle']
+
+				self.T_ext_mean = self.duty_cycle*self.activity_timescale
+				self.T_comp_mean = (1 - self.duty_cycle)*self.activity_timescale
+
+				self.lambda_ext = 1/self.T_ext_mean
+				self.lambda_comp = 1/self.T_comp_mean
+
+				self.compression_in_progress = True
+				self.extension_in_progress = False
+				self.T_ext_start = 0
+				self.T_comp_start = 0
+				self.current_cycle = 0
+
+				self.t_previous = 0
+
+				activity_profile_array = np.zeros_like(t_array)
+				for ii in range(len(t_array)):
+					activity_profile_array[ii] = self.filament_activity(t_array[ii])
+
+				
+
+			plt.figure()
+			plt.plot(t_array/self.activity_timescale, activity_profile_array)
+			plt.show()
 
 
 		# Set the scale-factor
@@ -659,8 +724,8 @@ class activeFilament:
 			if(self.sim_type == 'sedimentation'):
 				self.R, self.Time = solver.solve(time_points)
 			else:
-				self.R, self.Time = solver.solve(time_points, terminate)
-				# self.R, self.Time = solver.solve(time_points)
+				# self.R, self.Time = solver.solve(time_points, terminate)
+				self.R, self.Time = solver.solve(time_points)
 			
 			self.cpu_time = time.time() - start_time
 			if(self.save):
