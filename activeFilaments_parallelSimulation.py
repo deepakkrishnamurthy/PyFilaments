@@ -23,7 +23,7 @@ elif platform == 'darwin':
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
 # Activity profile parameters
-activity_timescale = 750
+activity_timescale = 1500
 duty_cycle = 0.5
 
 # No:of activity cycles we want to simulate
@@ -44,13 +44,13 @@ def run_parametric_simulation(pid, parameter):
 	radius = 1
 	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
 
-	fil.simulate(Tf, Npts, save = True, overwrite = False, path = root_path, sim_type = 'point', 
+	fil.simulate(Tf, Npts, n_cycles = n_activity_cycles, save = True, overwrite = False, path = root_path, sim_type = 'point', 
 	init_condition = {'shape':'line'}, 
-	activity={'type':'square-wave','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle})
+	activity={'type':'normal','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle, 'noise_scale':0.1})
 
 
 parameter_list = np.array([15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 45])
-num_initial_conditions = 3
+num_initial_conditions = 1
 
 parameter_list_full = []
 
