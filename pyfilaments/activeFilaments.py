@@ -740,8 +740,6 @@ class activeFilament:
 			self.S_mag[:] = 0
 			self.D_mag[:] = 0
 
-
-
 		
 		print('Running the filament simulation ....')
 
