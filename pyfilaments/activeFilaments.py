@@ -684,9 +684,9 @@ class activeFilament:
 				self.T_ext_start = 0
 				self.T_comp_start = 0
 				self.current_cycle = 0
-			plt.figure()
-			plt.plot(t_array/self.activity_timescale, self.activity_profile_array)
-			plt.show()
+			# plt.figure()
+			# plt.plot(t_array/self.activity_timescale, self.activity_profile_array)
+			# plt.show()
 
 
 		# Set the scale-factor
@@ -705,7 +705,7 @@ class activeFilament:
 			os.makedirs(self.path)
 
 		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-							(self.Np, self.shape, round(self.kappa_hat), round(self.k), self.b0, self.F0, self.S0, self.D0, 
+							(self.Np, self.shape, round(self.kappa_hat), round(self.k,2), self.b0, self.F0, self.S0, self.D0, 
 							int(self.activity_timescale), sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)

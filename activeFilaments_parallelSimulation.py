@@ -14,8 +14,8 @@ from pyfilaments.activeFilaments import activeFilament
 # Check which platform
 if platform == "linux" or platform == "linux2":
 	print("linux system")
-	# root_path = '/home/deepak/LacryModelling_Local/SimulationData'
-	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	root_path = '/home/deepak/ActiveFilamentsSearch_backup_3/ModellingResults'
+	# root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
 	
 
 elif platform == 'darwin':
@@ -23,7 +23,7 @@ elif platform == 'darwin':
 	root_path = '/Users/deepak/Dropbox/LacryModeling/'
 
 # Activity profile parameters
-activity_timescale = 1500
+activity_timescale = 750
 duty_cycle = 0.5
 
 # No:of activity cycles we want to simulate
@@ -46,11 +46,13 @@ def run_parametric_simulation(pid, parameter):
 
 	fil.simulate(Tf, Npts, n_cycles = n_activity_cycles, save = True, overwrite = False, path = root_path, sim_type = 'point', 
 	init_condition = {'shape':'line'}, 
-	activity={'type':'normal','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle, 'noise_scale':0.1})
+	activity={'type':'square-wave','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle, 'noise_scale':0.1})
 
 
-parameter_list = np.array([15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 45])
-num_initial_conditions = 1
+# parameter_list = np.array([15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 45])
+parameter_list = np.linspace(24, 25, 10)
+
+num_initial_conditions = 3
 
 parameter_list_full = []
 

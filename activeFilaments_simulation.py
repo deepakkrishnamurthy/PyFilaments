@@ -14,7 +14,9 @@ from pyfilaments.activeFilaments import activeFilament
 # Check which platform
 if platform == "linux" or platform == "linux2":
 	print("linux system")
-	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	# root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	root_path = '/home/deepak/ActiveFilamentsSearch_backup_3/ModellingResults'
+
 	
 
 elif platform == 'darwin':
