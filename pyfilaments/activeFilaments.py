@@ -325,27 +325,6 @@ class activeFilament:
 		# Orientation vectors of particles depend on local tangent vector
 		self.p0 = self.p
 		
-	# def apply_BC_position(self):
-	# 	'''
-	# 	Apply the kinematic boundary conditions:
-	# 	'''
-	# 	for key in self.bc:
-	# 		bc_value = self.bc[key]
-	# 		# Proximal end
-	# 		if(key == 0):
-	# 			# Index corresponding to end particle and next nearest particle (proximal end)
-	# 			end = 0
-	# 			pos_end = (0,0,0)
-	# 		# Distal end
-	# 		elif(key == -1 or key == self.Np-1):
-	# 			# Index correspond to end particle and next nearest particle (distal end)
-	# 			end = self.Np - 1
-	# 			pos_end = ((self.Np - 1)*self.b0,0,0)
-	# 		if(bc_value == 'fixed'):
-	# 			self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx]  = pos_end
-	# 		elif(bc_value == 'clamped'):
-	# 			self.r0[end], self.r0[end + self.Np], self.r0[end + self.xx] = pos_end
-
 	def apply_BC_force(self):
 		'''
 		Apply the kinematic boundary conditions as a velocity condition:
@@ -385,7 +364,6 @@ class activeFilament:
 
 	def square_wave_activity(self, t):
 		''' Output a square-wave profile based on a cycle time-scale and duty-cycle
-			
 		'''
 		phase = t%self.activity_timescale
 		if(phase > self.activity_timescale*self.duty_cycle):
@@ -395,13 +373,82 @@ class activeFilament:
 		else:
 			return 0
 
+	def poisson_activity(self, t):
+		''' Output activity pattern as a Poisson process
+		'''
+		delta_t = t - self.t_previous
+		self.t_previous = t
+		if self.compression_in_progress:
+			rand_num = np.random.uniform()
+			
+			if(rand_num < self.lambda_comp*delta_t):
+				self.extension_in_progress = True
+				self.compression_in_progress = False
+				self.T_ext_start = t
+				# self.T_comp_poisson[current_cycle] = t - self.T_comp_start
+				return 1
+			else:
+				return -1
+
+			
+		elif self.extension_in_progress:
+		
+			rand_num = np.random.uniform()
+			if(rand_num < self.lambda_ext*delta_t):
+				self.extension_in_progress = False
+				self.compression_in_progress = True
+				self.T_comp_start = t
+				# self.T_ext_poisson[current_cycle] = t - self.T_ext_start
+				self.current_cycle += 1
+				return -1
+			else:
+				return 1
+
+	def normal_activity(self, t):
+
+		if self.compression_in_progress:
+			t_elapsed = t - self.T_comp_start
+
+			if t_elapsed > self.T_comp[self.current_cycle]:
+				self.extension_in_progress = True
+				self.compression_in_progress = False
+				self.T_ext_start = t
+				return 1
+			else:
+				return -1
+			
+		elif self.extension_in_progress:
+			t_elapsed = t - self.T_ext_start
+
+			if t_elapsed > self.T_ext[self.current_cycle]:
+				self.extension_in_progress = False
+				self.compression_in_progress = True
+				self.T_comp_start = t
+				self.current_cycle += 1
+				return -1
+			else:
+				return 1
+
+
+	def activity_function(self):
+
+		if(self.activity_type == 'square-wave'):
+			return lambda t: self.square_wave_activity(t)
+		elif(self.activity_type == 'poisson'):
+			return lambda t: self.poisson_activity(t)
+		elif(self.activity_type == 'normal'):
+			return lambda t: self.normal_activity(t)
+
+
+
+
 	def set_filament_activity(self, t):
 
 		if(self.sim_type == 'point'):
 			'''Simulates active filament where only the distal particle has time-dependent activity.
 			'''
-			self.D_mag[-1] = self.D0*self.square_wave_activity(t)
-
+			self.D_mag[-1] = self.D0*self.filament_activity(t)
+	
 		elif(self.sim_type == 'dist'):
 			'''
 			Simulates active filament where the activity pattern models that in Lacrymaria olor.
@@ -415,10 +462,10 @@ class activeFilament:
 			Scale factor: 
 				Quantifies the relative strengths of the Distal particle vs Other particles activity.
 			'''
-			if(self.square_wave_activity(t)==1):
+			if(self.filament_activity(t)==1):
 				# self.D_mag[:self.Np-1] = self.D0/self.scale_factor
 				self.D_mag[-1] = self.D0
-			elif(self.square_wave_activity(t)==-1):
+			elif(self.filament_activity(t)==-1):
 				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
 				self.D_mag[-1] = 0
 
@@ -465,9 +512,9 @@ class activeFilament:
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 
 	
-	def simulate(self, Tf = 100, Npts = 10, stop_tol = 1E-5, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
+	def simulate(self, Tf = 100, Npts = 10, n_cycles = 1, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
 		scale_factor = 1, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', 
-		note = '', overwrite = False, pid = 0, activity = None):
+		note = '', overwrite = False, pid = 0, activity = None, stop_tol = 1E-5):
 
 		''' Setup and run an active filament simulation.
 
@@ -498,21 +545,21 @@ class activeFilament:
 			self.time_prev = self.time_now
 			return self.drdt
 
-		def terminate(u, t, step_no):  # function that returns True/False to terminate solve
+		# def terminate(u, t, step_no):  # function that returns True/False to terminate solve
 			
-			if(step_no>0):
-				u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
-				distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
-				return distance < stop_tol
-			else:
-				return False
-
-		# def terminate(u, t, step):
-		# 	# Termination criterion based on bond-angle
-		# 	if(step >0 and np.any(self.cosAngle[0:-1] < 0)):
-		# 		return True
+		# 	if(step_no>0):
+		# 		u_copy = np.copy(u)  # !!! Make copy to avoid potentially modifying the result.
+		# 		distance = self.euclidean_distance(u_copy[step_no-1], u_copy[step_no])
+		# 		return distance < stop_tol
 		# 	else:
 		# 		return False
+
+		def terminate(u, t, step):
+			# Termination criterion based on bond-angle
+			if(step >0 and np.any(self.cosAngle[0:-1] < 0)):
+				return True
+			else:
+				return False
 
 		if(init_condition is not None):
 			
@@ -574,15 +621,71 @@ class activeFilament:
 		# Activity parameters
 		if(activity is not None):
 			self.activity_type = activity['type']
-			self.activity_timescale = activity['activity_timescale']
-			self.duty_cycle = activity['duty_cycle']
+			self.filament_activity = self.activity_function()	# Function that holds the time dynamics of activity
 
-			activity_profile_array = np.zeros_like(t_array)
-			for ii in range(len(t_array)):
-				activity_profile_array[ii] = self.square_wave_activity(t_array[ii])
+			if(self.activity_type == 'square-wave'):
+				self.activity_timescale = activity['activity_timescale']
+				self.duty_cycle = activity['duty_cycle']
+				self.activity_profile_array = np.zeros_like(t_array)
+				for ii in range(len(t_array)):
+					self.activity_profile_array[ii] = self.filament_activity(t_array[ii])
 
+			elif(self.activity_type == 'poisson'):
+				# Define variables related to simulating Poisson process
+				self.activity_timescale = activity['activity_timescale']
+				self.duty_cycle = activity['duty_cycle']
+				self.T_ext_mean = self.duty_cycle*self.activity_timescale
+				self.T_comp_mean = (1 - self.duty_cycle)*self.activity_timescale
+				self.lambda_ext = 1/self.T_ext_mean
+				self.lambda_comp = 1/self.T_comp_mean
+				self.compression_in_progress = True
+				self.extension_in_progress = False
+				self.T_ext_start = 0
+				self.T_comp_start = 0
+				self.current_cycle = 0
+				self.t_previous = 0
+				self.activity_profile_array = np.zeros_like(t_array)
+				for ii in range(len(t_array)):
+					self.activity_profile_array[ii] = self.filament_activity(t_array[ii])
+
+				# Reset state
+				self.t_previous = 0
+				self.compression_in_progress = True
+				self.extension_in_progress = False
+				self.T_ext_start = 0
+				self.T_comp_start = 0
+				self.current_cycle = 0
+
+			elif(self.activity_type == 'normal'):
+				self.activity_timescale = activity['activity_timescale']
+				self.noise_scale = activity['noise_scale']
+				self.duty_cycle = activity['duty_cycle']
+				self.n_cycles = n_cycles
+				self.T_ext_mean = self.duty_cycle*self.activity_timescale
+				self.T_comp_mean = (1 - self.duty_cycle)*self.activity_timescale
+				self.compression_in_progress = True
+				self.extension_in_progress = False
+				self.T_ext_start = 0
+				self.T_comp_start = 0
+				self.current_cycle = 0
+
+				self.T_ext = np.random.normal(loc = self.T_ext_mean, scale = self.noise_scale*self.T_ext_mean, size = self.n_cycles)
+				self.T_comp = np.random.normal(loc = self.T_comp_mean , scale = self.noise_scale*self.T_comp_mean, size = self.n_cycles)
+				# Reset Tf based on the actual T-ext and T_comp values
+				Tf = np.sum(self.T_ext + self.T_comp)
+
+				self.activity_profile_array = np.zeros_like(t_array)
+				for ii in range(len(t_array)):
+					self.activity_profile_array[ii] = self.filament_activity(t_array[ii])
+
+				# Reset state
+				self.compression_in_progress = True
+				self.extension_in_progress = False
+				self.T_ext_start = 0
+				self.T_comp_start = 0
+				self.current_cycle = 0
 			# plt.figure()
-			# plt.plot(t_array/self.activity_timescale, activity_profile_array)
+			# plt.plot(t_array/self.activity_timescale, self.activity_profile_array)
 			# plt.show()
 
 
@@ -602,7 +705,7 @@ class activeFilament:
 			os.makedirs(self.path)
 
 		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-							(self.Np, self.shape, round(self.kappa_hat), round(self.k), self.b0, self.F0, self.S0, self.D0, 
+							(self.Np, self.shape, round(self.kappa_hat), round(self.k,2), self.b0, self.F0, self.S0, self.D0, 
 							int(self.activity_timescale), sim_type) + note
 
 		self.saveFolder = os.path.join(self.path, self.folder)
@@ -636,8 +739,6 @@ class activeFilament:
 
 			self.S_mag[:] = 0
 			self.D_mag[:] = 0
-
-
 
 		
 		print('Running the filament simulation ....')
@@ -783,13 +884,19 @@ class activeFilament:
 			dset.create_dataset("particle stresslets", data = self.S_mag)
 			dset.create_dataset("particle potDipoles", data = self.D_mag)
 
+			# Save the activity profile for the actual saved time points
+			self.activity_profile_array = np.zeros(len(self.Time))
+			for ii in range(len(self.Time)):
+				self.activity_profile_array[ii] = self.filament_activity(self.Time[ii])
+			dset.create_dataset('activity profile', data = self.activity_profile_array)
+
 			if('activity_profile' in self.__dict__):
 				dset.create_dataset("activity profile", data = self.activity_profile(self.Time))
 
 		# Save user readable metadata in the same folder
 		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
-		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale,viscosity,Simulation time,CPU time (s)\n')
-		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
+		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale, activity type, viscosity,Simulation time,CPU time (s)\n')
+		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+ self.activity_type + ',' + str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
 		self.metadata.close()
 
 

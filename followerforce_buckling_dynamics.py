@@ -27,21 +27,22 @@ elif platform == 'darwin':
 
 
 # Bond length
-b0 = 4
+b0 = 2.1
 
 # Activity profile parameters
-duty_cycle = 0.5
+duty_cycle = 1
 
 # No:of activity cycles we want to simulate
-n_activity_cycles = 1
+n_activity_cycles = 100
 
 
-init_angle_array = np.linspace(0, np.pi/2, 50)
-bending_stiffness_array = [90, 95, 100]
-# bending_stiffness_array = [15, 20, 25, 30, 35, 40, 50, 75, 100, 200]
-activity_timescale_array = [2000]
+# init_angle_array = np.linspace(0, np.pi/2, 50)
+init_angle_array = [0]
+# bending_stiffness_array = [90, 95, 100]
+bending_stiffness_array = [15, 20, 25, 30, 35, 40, 50, 75, 100, 200]
+# activity_timescale_array = [2000]
 # bending_stiffness_array = [15]
-# activity_timescale_array = [750]
+activity_timescale_array = [750]
 
 
 
@@ -65,10 +66,13 @@ num_cores = multiprocessing.cpu_count()
 num_cores = 12
 
 
-for stiffness in bending_stiffness_array:
-	for activity_timescale in activity_timescale_array:
+# for stiffness in bending_stiffness_array:
+# 	for activity_timescale in activity_timescale_array:
 
-		results = Parallel(n_jobs=num_cores,  verbose=10)(delayed(run_parametric_simulation)(pid, init_angle, stiffness, activity_timescale) for pid, init_angle in enumerate(init_angle_array))
+# 		results = Parallel(n_jobs=num_cores,  verbose=10)(delayed(run_parametric_simulation)(pid, init_angle, stiffness, activity_timescale) for pid, init_angle in enumerate(init_angle_array))
 
 
 # fil.plotFilament(r = fil.r)
+init_angle = 0
+activity_timescale = 750
+results = Parallel(n_jobs=num_cores,  verbose=10)(delayed(run_parametric_simulation)(pid, init_angle, stiffness, activity_timescale) for pid, stiffness in enumerate(bending_stiffness_array))

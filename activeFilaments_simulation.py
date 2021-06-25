@@ -14,7 +14,9 @@ from pyfilaments.activeFilaments import activeFilament
 # Check which platform
 if platform == "linux" or platform == "linux2":
 	print("linux system")
-	root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	# root_path = '/home/deepak/Dropbox/LacryModeling/ModellingResults'
+	root_path = '/home/deepak/ActiveFilamentsSearch_backup_3/ModellingResults'
+
 	
 
 elif platform == 'darwin':
@@ -26,7 +28,7 @@ activity_timescale = 750
 duty_cycle = 0.5
 
 # No:of activity cycles we want to simulate
-n_activity_cycles = 5
+n_activity_cycles = 50
 # Total simulation time
 Tf = activity_timescale*n_activity_cycles
 
@@ -39,16 +41,13 @@ Npts = int(Tf/time_step_save)
 
 bc = {0:'clamped', -1:'free'}
 
-
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2.1, k = 40, F0 = 0, S0 = 0, D0 = 1.5, bc = bc, clamping_vector = [1,0,0])
-
+fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2.1, k = 15.0, F0 = 0, S0 = 0, D0 = 1.5, bc = bc, clamping_vector = [1,0,0])
 
 fil.plotFilament(r = fil.r0)
 
-
-fil.simulate(Tf, Npts, save = True, overwrite = False, path = root_path, sim_type = 'point', 
+fil.simulate(Tf = Tf, Npts = Npts, n_cycles = n_activity_cycles, save = True, overwrite = False, path = root_path, sim_type = 'point', 
 	init_condition = {'shape':'line'}, 
-	activity={'type':'square-wave','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle})
+	activity={'type':'normal','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle, 'noise_scale':0.1})
 
 
 fil.plotFilament(r = fil.r)
