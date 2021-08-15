@@ -1,5 +1,6 @@
 # Analysis batch processing
 import numpy as np
+import pandas as pd
 from scipy import signal
 from scipy import interpolate
 import matplotlib.pyplot as plt 
@@ -16,7 +17,8 @@ import multiprocessing
 # data_folder = '/Volumes/DEEPAK-1TB/ActiveFilaments_Simulations_Backup/BendingStiffnessSweeps/b0_4_activity_time_2000/2021-02-27'
 # data_folder = '/media/deepak/DEEPAK-1TB/ActiveFilaments_Simulations_Backup/BendingStiffnessSweeps/b0_4_activity_time_2000/2021-02-27'
 # data_folder = '/media/deepak/DEEPAK-1TB/ActiveFilaments_Simulations_Backup/BendingStiffnessSweeps/AnalysisData'
-data_folder = '/home/deepak/ActiveFilamentsSearch_backup_3/BendingStiffnessSweeps/analysis_test'
+# data_folder = '/home/deepak/ActiveFilamentsSearch_backup_3/BendingStiffnessSweeps/analysis_test'
+data_folder = '/home/deepak/ActiveFilamentsSearch_backup_3/ModellingResults'
 
 print(os.listdir(data_folder))
 

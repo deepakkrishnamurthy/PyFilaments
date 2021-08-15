@@ -50,7 +50,7 @@ def run_parametric_simulation(pid, parameter):
 
 
 # parameter_list = np.array([15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 45])
-parameter_list = np.linspace(24, 25, 10)
+parameter_list = np.linspace(24, 24.2, 10)
 
 num_initial_conditions = 3
 
