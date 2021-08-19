@@ -42,7 +42,14 @@ bc = {0:'clamped', -1:'free'}
 
 def run_parametric_simulation(pid, parameter):
 	radius = 1
-	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
+	# Filament stiffness sweep
+	# fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius, k = parameter, S0 = 0, D0 = 1.5, bc = bc)
+
+	# Filamement length sweep
+	# fil = activeFilament(dim = 3, Np = parameter, radius = radius, b0 = 2.1*radius, k = 25, S0 = 0, D0 = 1.5, bc = bc)
+
+	# Filament activity sweep
+	fil = activeFilament(dim = 3, Np = 32, radius = radius, b0 = 2.1*radius, k = 25, S0 = 0, D0 = parameter, bc = bc)
 
 	fil.simulate(Tf, Npts, n_cycles = n_activity_cycles, save = True, overwrite = False, path = root_path, sim_type = 'point', 
 	init_condition = {'shape':'line'}, 
@@ -50,7 +57,11 @@ def run_parametric_simulation(pid, parameter):
 
 
 # parameter_list = np.array([15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 37.5, 40, 45])
-parameter_list = np.linspace(24, 24.2, 10)
+# parameter_list = np.linspace(24.075, 24.125, 10)
+
+# parameter_list = [16, 32, 48, 64, 96, 128, 256]
+
+parameter_list = np.linspace(0.5,3, 40)
 
 num_initial_conditions = 3
 

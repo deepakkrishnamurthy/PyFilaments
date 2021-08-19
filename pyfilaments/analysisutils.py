@@ -475,7 +475,7 @@ class analysisTools(activeFilament):
 		print(len(constant_phase_indices))
 		# Compare filament shapes at two points at constant phase 
 		periodic_flag = False
-		period_array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16] # Number of periods over which we want to compare. period = 1 means every cycle.
+		period_array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32, 64] # Number of periods over which we want to compare. period = 1 means every cycle.
 		below_threshold_array = np.zeros(len(period_array), dtype = 'bool')
 		# Threshold value for comparing shapes of filaments. Currently choosen as 10% of the sphere radius. 
 		epsilon = 0.01*self.radius
