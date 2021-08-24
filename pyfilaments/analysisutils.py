@@ -312,6 +312,7 @@ class analysisTools(activeFilament):
 
 		self.derived_data['base tip angle'] = np.arctan2(self.derived_data['base tip vector'][1,:], self.derived_data['base tip vector'][0,:])
 
+
 	def compute_tip_angle(self):
 
 		self.derived_data['tip angle'] = np.zeros(self.Nt)
@@ -518,6 +519,25 @@ class analysisTools(activeFilament):
 			print(50*'*')
 
 		return periodic_flag, min_period
+
+	def compute_tip_angle_at_constant_phase(self, phase_value = 0):
+
+		delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
+		abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
+		constant_phase_mask = abs_val_array <= 0.5*delta_phase
+
+		time_points = np.array(range(0, self.Nt))
+		constant_phase_indices = time_points[constant_phase_mask]
+
+		# Get a list of filament tip locations
+		filament_locations_x = self.derived_data['head pos x'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
+		filament_locations_y = self.derived_data['head pos y'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
+
+		# Get the angles that the filament tip reaches at the end of each extension
+		filament_angles =  np.arctan2(filament_locations_y, filament_locations_x)
+		
+		return filament_angles
+
 
 	# Energy based metrics:
 
