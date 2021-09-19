@@ -61,7 +61,7 @@ def run_parametric_simulation(pid, parameter):
 
 # parameter_list = [16, 32, 48, 64, 96, 128, 256]
 
-parameter_list = np.linspace(0.5,3, 40)
+parameter_list = np.linspace(3,5.5, 40)
 
 num_initial_conditions = 3
 
