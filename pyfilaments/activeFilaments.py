@@ -308,6 +308,7 @@ class activeFilament:
 		
 		if(r0 is not None):
 			# If an initial filament shape is given then use that to initialize the filament.
+			print('Initializing filament from provided filament shape')
 			self.r0 = r0
 			self.r = r0
 		else:
@@ -315,15 +316,15 @@ class activeFilament:
 			self.initialize_filament_shape()
 
 		# Initialize the bending-stiffness array
-		self.initialize_bending_stiffness()
-		self.get_separation_vectors()
-		self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
-		self.get_tangent_vectors()
-		self.t_hat_array = self.reshape_to_array(self.t_hat)
-		# Initialize the particle orientations to be along the local tangent vector
-		self.p = self.t_hat_array
-		# Orientation vectors of particles depend on local tangent vector
-		self.p0 = self.p
+		# self.initialize_bending_stiffness()
+		# self.get_separation_vectors()
+		# self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
+		# self.get_tangent_vectors()
+		# self.t_hat_array = self.reshape_to_array(self.t_hat)
+		# # Initialize the particle orientations to be along the local tangent vector
+		# self.p = self.t_hat_array
+		# # Orientation vectors of particles depend on local tangent vector
+		# self.p0 = self.p
 		
 	def apply_BC_force(self):
 		'''
@@ -563,8 +564,10 @@ class activeFilament:
 
 		if(init_condition is not None):
 			
+			print('Test')
 			if('filament' in init_condition.keys()):
 				# If the filament shape is provided use it to initialize the filament
+				print('Initializing from provided filament shape...')
 				self.initialize_filament(r0 = init_condition['filament'])
 
 			elif('shape' in init_condition.keys()):
@@ -929,7 +932,7 @@ class activeFilament:
 	########################################################################################################
 	# Plotting
 	########################################################################################################  
-	def plotFilament(self, r = None, axis = None, title = None):
+	def plotFilament(self, r = None, axis = None, title = None, fig_num = None):
 
 		self.set_particle_colors()
 		ax1 = plt.gca()
