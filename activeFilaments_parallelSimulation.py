@@ -27,7 +27,7 @@ activity_timescale = 750
 duty_cycle = 0.5
 
 # No:of activity cycles we want to simulate
-n_activity_cycles = 500
+n_activity_cycles = 50
 # Total simulation time
 Tf = activity_timescale*n_activity_cycles
 
@@ -61,9 +61,12 @@ def run_parametric_simulation(pid, parameter):
 
 # parameter_list = [16, 32, 48, 64, 96, 128, 256]
 
-parameter_list = np.linspace(3,5.5, 40)
+parameter_list = np.linspace(0.5,3, 40)
 
-num_initial_conditions = 3
+parameter_list = 1.91025641025641
+
+
+num_initial_conditions = 1
 
 parameter_list_full = []
 
