@@ -86,6 +86,7 @@ class analysisTools(activeFilament):
 			# Get the root path for the saved data
 			self.rootFolder, self.dataName = os.path.split(file)
 
+			*rest,self.dataFolder = os.path.split(self.rootFolder)
 			print('Root path: ', self.rootFolder)
 			print('Data file', self.dataName)
 			# Sub-folder in which to save analysis data and plots
@@ -465,7 +466,7 @@ class analysisTools(activeFilament):
 		'''
 		# Find time points at a constant phase (stroboscopic)
 		# In the current activity profile, phase = 0 is start of compression, phase = pi is start of extension
-		phase_value = np.pi/2
+		phase_value = 0
 		# Smallest phase difference = 2*pi*delta_T/T
 		delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
 		abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
@@ -479,7 +480,7 @@ class analysisTools(activeFilament):
 		period_array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32, 64] # Number of periods over which we want to compare. period = 1 means every cycle.
 		below_threshold_array = np.zeros(len(period_array), dtype = 'bool')
 		# Threshold value for comparing shapes of filaments. Currently choosen as 10% of the sphere radius. 
-		epsilon = 0.01*self.radius
+		epsilon = self.radius
 
 		for period_index, period in enumerate(period_array):
 
@@ -500,7 +501,15 @@ class analysisTools(activeFilament):
 					pair_wise_distance[ii] = distance
 
 				# Find if the distance goes below the threshold (and stays there)
-				threshold_index = next((i for i,x in enumerate(pair_wise_distance) if pair_wise_distance[i]<=epsilon and np.all(pair_wise_distance[i:]<epsilon)), None)
+				# threshold_index = next((i for i,x in enumerate(pair_wise_distance) if (pair_wise_distance[i]<=epsilon and np.all(pair_wise_distance[i:]<epsilon)) or (pair_wise_distance[i]<=epsilon and np.all(pair_wise_distance[int(len(constant_phase_indices)/2):-1]<epsilon))) , None)
+				for i in range(len(pair_wise_distance)-1):
+		
+					if(pair_wise_distance[i] <=epsilon and pair_wise_distance[i+1]<=epsilon and np.all(pair_wise_distance[-10:]<=epsilon)):
+						threshold_index = i
+						break
+					else:
+						threshold_index = None
+
 				if(threshold_index is not None):
 					below_threshold_flag = True
 					below_threshold_array[period_index] = below_threshold_flag
@@ -529,7 +538,7 @@ class analysisTools(activeFilament):
 		time_points = np.array(range(0, self.Nt))
 		constant_phase_indices = time_points[constant_phase_mask]
 
-		# Get a list of filament tip locations
+		# Get a list of filament tip locations (after skipping half the total number of simulated cycles)
 		filament_locations_x = self.derived_data['head pos x'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
 		filament_locations_y = self.derived_data['head pos y'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
 
@@ -823,8 +832,9 @@ class analysisTools(activeFilament):
 
 		plt.show()
 
-	def plot_tip_scatter_density(self, save = False, save_folder = None):
-		plt.style.use('dark_background')
+	def plot_tip_scatter_density(self, save = False, save_folder = None, fig_name = None, num_cycles = 50):
+		# plt.style.use('dark_background')
+		print('Tip scatter density plot')
 
 		x = np.array(self.derived_data['head pos x'])
 		y = np.array(self.derived_data['head pos y'])
@@ -834,18 +844,52 @@ class analysisTools(activeFilament):
 		idx = z.argsort()
 		x, y, z = x[idx], y[idx], z[idx]
 
-		fig, ax = plt.subplots()
-		ax1 = plt.scatter(y, x, c = z[::1], s = 20, edgecolor = '')
-		ax2 = plt.scatter(0, 0, c = 'r', s = 40, edgecolor = '')
-		plt.axis('equal')
+		if(fig_name is None):
+			fig = plt.figure(figsize = (4,4))
+		else:
+			fig = plt.figure(num = fig_name)
+
+
+		ax1 = plt.scatter(y, x, c = z[::1], s = 20, edgecolor = None, cmap = cmocean.cm.matter, rasterized = True)
+		plt.scatter(0, 0, c = 'r', s = 40, edgecolor = None)
 		cbar = plt.colorbar(ax1)
 		cbar.ax.set_ylabel('Density')
 		plt.title('Tip locations colored by local density')
 
-		if(save):
+		
+		# Overlay filament center lines
+		phase_value = 0
+		# Smallest phase difference = 2*pi*delta_T/T
+		delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
+		abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
+		constant_phase_mask = abs_val_array <= 0.5*delta_phase
+		time_points = np.array(range(0, self.Nt))
+		constant_phase_indices = time_points[constant_phase_mask]
+	
+
+		for ii in constant_phase_indices[:num_cycles]:
+			self.r = self.R[ii,:]
+			x = self.r[0:self.Np]
+			y = self.r[self.Np:2*self.Np]
+
+			# if(ii%stride==0):
+			cf = plt.plot(y, x, color = 'k', linewidth = 1.5, alpha = 0.2)
+		# for ii in range(self.Nt):
+		#     self.r = self.R[ii,:]
+		#     x = self.r[0:self.Np]
+		#     y = self.r[self.Np:2*self.Np]
+
+		#     if(ii%stride==0):
+		#         cf = plt.plot(y, x, color = 'k', linewidth = 1.0, alpha = 0.5)
+		plt.axis('equal')
+
+		plt.axis('off')
+
+		if(save == True):
+			print('saving figure...')
 			if(save_folder is not None):
 
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.dataFolder)
 			else:
 				file_path = self.analysis_folder
 
@@ -856,6 +900,7 @@ class analysisTools(activeFilament):
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 		
+
 		plt.show()
 
 
@@ -911,7 +956,7 @@ class analysisTools(activeFilament):
   #                               norm=norm,
   #                               orientation='horizontal')
 
-		fig, ax1 = plt.subplots(figsize = (8,8))
+		fig, ax1 = plt.subplots(figsize = (5,5))
 		for ii in range(self.Nt):			
 			self.r = self.R[ii,:]
 			x = self.r[0:self.Np]
