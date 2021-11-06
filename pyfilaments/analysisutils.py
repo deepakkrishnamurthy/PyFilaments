@@ -253,31 +253,79 @@ class analysisTools(activeFilament):
 			d_sorted = np.real(d[idx_sorted])
 			d_normalized = d_sorted/np.sum(d_sorted)
 			self.n_sig_eigenvalues = 3
-			eigenvectors_sorted = v[:, idx_sorted]
+			self.eigenvectors_sorted = v[:, idx_sorted]
 			# Chop the eigenvectors to only keep the ones with the most contribution to the variance
-			self.eigenvectors_sig = eigenvectors_sorted[:,0:self.n_sig_eigenvalues]
+			self.eigenvectors_sig = self.eigenvectors_sorted[:,0:self.n_sig_eigenvalues]
 			self.d_sig = d_sorted[0:self.n_sig_eigenvalues]
 
-			return self.d_sig, self.eigenvectors_sig
+			return self.d_sig, self.eigenvectors_sig, d_normalized
 		else:
 			print('Compute/Suppy covariance matrix first!')
 			return
 
+	def plot_shape_modes(self):
+		'''
+			Plot the shape modes obtained from PCA
+
+		'''
+
+		plt.figure(figsize = (8,6))
+		length_array = np.linspace(0, 1, len(self.eigenvectors_sig[:,0]))
+		for ii in range(self.n_sig_eigenvalues):
+			
+			plt.plot(length_array, self.eigenvectors_sorted[:, ii], label =' Shape mode {}'.format(ii+1), linewidth = 3)
+			
+		plt.xlabel('Normalized arc length')
+		plt.ylabel('Tangent angle (\phi)')
+		plt.title('Shaped modes from eigen-decomposition')
+		plt.legend()
+		# plt.savefig(os.path.join(file_path, filament.dataName[:-5]+'_ShapedModes.png'), dpi = 300)
+		# plt.savefig(os.path.join(file_path, filament.dataName[:-5]+'_ShapedModes.svg'), dpi = 300)
+
+		plt.show()
+
 		
 	def project_filament_shapes(self):
-		""" Projects a give filament shape onto the shape modes computed using PCA.
+		""" 
+			Projects a give filament shape onto the shape modes computed using PCA.
 			For a time series of shapes, returns a time-series of mode amplitudes for each shape mode.
 
 		"""
-		self.mode_amplitudes = {ii: [] for ii in range(self.n_sig_eigenvalues)}
+
 		n_times, n_points = np.shape(self.tangent_angles_matrix)
 
+		assert(n_times == self.Nt) # Make sure we have the Covariance matrix for the whole simulation
+
+		self.mode_amplitudes = np.zeros((n_times, self.n_sig_eigenvalues))
+
+
 		matrix_A = self.eigenvectors_sig # n_points x n_eigvalues
+		matrix_A_inv = np.linalg.pinv(matrix_A)
+
 		
 		for ii in range(n_times):
 
 			rhs = self.variance_matrix[ii, :]
-		pass
+
+			amplitudes_lst_sq = np.matmul(matrix_A_inv, rhs) # 
+	
+			for jj in range(self.n_sig_eigenvalues):
+				self.mode_amplitudes[ii, jj] = amplitudes_lst_sq[jj]
+
+
+	def save_mode_amplitudes(self):
+		df_dict = {}
+		df_dict['Time'] = self.Time
+
+		for ii in range(self.n_sig_eigenvalues):
+			
+			df_dict['Mode {} amplitude'.format(ii+1)] = self.mode_amplitudes[:,ii]
+			
+		df_mode_amplitudes = pd.DataFrame(df_dict)
+		
+
+		df_mode_amplitudes.to_csv(os.path.join(self.analysis_folder, self.dataName[:-5]+'_ModeAmplitudes.csv'))
+		
 
 	def compute_base_tip_angle(self):
 		""" Compute the unit vector along the base to tip vector of the filament
@@ -484,7 +532,6 @@ class analysisTools(activeFilament):
 
 		for period_index, period in enumerate(period_array):
 
-		#     period = 4 
 			if(len(constant_phase_indices)-period > 1):
 				pair_wise_distance = np.zeros(len(constant_phase_indices)-period)
 
@@ -527,7 +574,7 @@ class analysisTools(activeFilament):
 			print('The minimum period of the system is {} times the forcing period'.format(min_period))
 			print(50*'*')
 
-		return periodic_flag, min_period
+		return periodic_flag, min_period, threshold_index
 
 	def compute_tip_angle_at_constant_phase(self, phase_value = 0):
 
@@ -946,9 +993,9 @@ class analysisTools(activeFilament):
 
 		stride = stride
 		cmap = cm.get_cmap('GnBu', 200)
-		if(color_by == 'Time'):
+		if(color_by == 'Cycle'):
 			colors = [cmap(ii) for ii in np.linspace(0,1,self.Nt)]
-			norm = mpl.colors.Normalize(vmin=np.min(self.Time), vmax=np.max(self.Time))
+			norm = mpl.colors.Normalize(vmin = int(np.min((self.Time/self.activity_timescale))), vmax = int(np.max(self.Time/self.activity_timescale)))
 		elif(color_by == 'Phase'):
 			norm = mpl.colors.Normalize(vmin=np.min(self.derived_data['Phase']), vmax=np.max(self.derived_data['Phase']))
 
@@ -976,7 +1023,7 @@ class analysisTools(activeFilament):
 		ax1.set_title(title)
 		if(color_by is not None):
 			fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),
-				 ax=ax1, orientation='vertical', label='Time')		# cbar.ax.set_ylabel('Time')
+				 ax=ax1, orientation='vertical', label=color_by)		# cbar.ax.set_ylabel('Time')
 		ax1.set_xlim(-self.L/4, self.L)
 		ax1.set_ylim(-self.L/2, self.L/2)
 		plt.axis('equal')
