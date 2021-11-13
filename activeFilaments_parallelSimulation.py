@@ -27,7 +27,7 @@ activity_timescale = 750
 duty_cycle = 0.5
 
 # No:of activity cycles we want to simulate
-n_activity_cycles = 50
+n_activity_cycles = 2000
 # Total simulation time
 Tf = activity_timescale*n_activity_cycles
 
@@ -35,7 +35,7 @@ Tf = activity_timescale*n_activity_cycles
 
 # Total simulation time
 # No:of time points saved
-time_step_save = 10
+time_step_save = 20
 Npts = int(Tf/time_step_save)
 
 bc = {0:'clamped', -1:'free'}
@@ -61,12 +61,12 @@ def run_parametric_simulation(pid, parameter):
 
 # parameter_list = [16, 32, 48, 64, 96, 128, 256]
 
-parameter_list = np.linspace(0.5,3, 40)
+# parameter_list = np.linspace(0.5,3, 40)
 
-parameter_list = 1.91025641025641
+parameter_list = [1.52564102564103,  2.67948717948718, 3.25641025641026, 1.78205128205128]
 
 
-num_initial_conditions = 1
+num_initial_conditions = 3
 
 parameter_list_full = []
 

@@ -311,6 +311,17 @@ class activeFilament:
 			print('Initializing filament from provided filament shape')
 			self.r0 = r0
 			self.r = r0
+
+			# Initialize the bending-stiffness array
+			self.initialize_bending_stiffness()
+			self.get_separation_vectors()
+			self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
+			self.get_tangent_vectors()
+			self.t_hat_array = self.reshape_to_array(self.t_hat)
+			# Initialize the particle orientations to be along the local tangent vector
+			self.p = self.t_hat_array
+			# Orientation vectors of particles depend on local tangent vector
+			self.p0 = self.p
 		else:
 			# If not then use the provided shape parameters to initialize the filament.
 			self.initialize_filament_shape()
