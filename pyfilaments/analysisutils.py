@@ -90,11 +90,14 @@ class analysisTools(activeFilament):
 			print('Root path: ', self.rootFolder)
 			print('Data file', self.dataName)
 			# Sub-folder in which to save analysis data and plots
-			self.sub_folder = 'Analysis'
+			self.subFolder = 'Analysis'
 
 			# Create a sub-folder to save Analysis results
-			self.analysis_folder = os.path.join(self.rootFolder, self.sub_folder)
+			self.analysisFolder = os.path.join(self.rootFolder, self.subFolder)
 			self.allocate_variables()
+
+			# Load metadata
+			self.df_metadata = pd.read_csv(os.path.join(self.rootFolder, 'metadata.csv'))
 
 	def allocate_variables(self):
 		self.tangent_angles_matrix = None
@@ -105,8 +108,8 @@ class analysisTools(activeFilament):
 	def create_analysis_folder(self):
 		"""	Create a sub-folder to store analysis data and plots
 		"""
-		if(not os.path.exists(self.analysis_folder)):
-			os.makedirs(self.analysis_folder) 
+		if(not os.path.exists(self.analysisFolder)):
+			os.makedirs(self.analysisFolder) 
 		
 	def relaxation_time_scales(self):
 		"""	Calculate relaxation time-scales for the active filament.
@@ -263,7 +266,7 @@ class analysisTools(activeFilament):
 			print('Compute/Suppy covariance matrix first!')
 			return
 
-	def plot_shape_modes(self):
+	def plot_shape_modes(self, save = False, save_folder = None):
 		'''
 			Plot the shape modes obtained from PCA
 
@@ -279,9 +282,21 @@ class analysisTools(activeFilament):
 		plt.ylabel('Tangent angle (\phi)')
 		plt.title('Shaped modes from eigen-decomposition')
 		plt.legend()
-		# plt.savefig(os.path.join(file_path, filament.dataName[:-5]+'_ShapedModes.png'), dpi = 300)
-		# plt.savefig(os.path.join(file_path, filament.dataName[:-5]+'_ShapedModes.svg'), dpi = 300)
+		if(save):
+			if(save_folder is not None):
 
+				file_path = os.path.join(save_folder, self.subFolder)
+			else:
+				file_path = self.analysisFolder
+
+			if(not os.path.exists(file_path)):
+				os.makedirs(file_path)
+
+			file_name = self.dataName[:-5] +'_' + '_ShapeModes'
+			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
+			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
+
+	
 		plt.show()
 
 		
@@ -324,7 +339,7 @@ class analysisTools(activeFilament):
 		df_mode_amplitudes = pd.DataFrame(df_dict)
 		
 
-		df_mode_amplitudes.to_csv(os.path.join(self.analysis_folder, self.dataName[:-5]+'_ModeAmplitudes.csv'))
+		df_mode_amplitudes.to_csv(os.path.join(self.analysisFolder, self.dataName[:-5]+'_ModeAmplitudes.csv'))
 		
 
 	def compute_base_tip_angle(self):
@@ -409,6 +424,10 @@ class analysisTools(activeFilament):
 		return distance
 
 	def compute_tip_velocity(self):
+		'''
+		Calculate the speed of the filament tip
+
+		'''
 
 		self.derived_data['tip speed'] = np.zeros(self.Nt-1)
 		for ii in range(self.Nt-1):
@@ -489,7 +508,7 @@ class analysisTools(activeFilament):
 			hits_counter_values = np.array(list(self.hits_counter.values()))
 
 			self.create_analysis_folder()
-			analysis_sub_folder = os.path.join(self.analysis_folder, analysis_type)
+			analysis_sub_folder = os.path.join(self.analysisFolder, analysis_type)
 			if(not os.path.exists(analysis_sub_folder)):
 				os.makedirs(analysis_sub_folder)
 
@@ -561,6 +580,10 @@ class analysisTools(activeFilament):
 					below_threshold_flag = True
 					below_threshold_array[period_index] = below_threshold_flag
 					periodic_flag = True
+				else:
+					periodic_flag = False
+					threshold_index = 0
+
 			else:
 				continue
 
@@ -700,9 +723,9 @@ class analysisTools(activeFilament):
 		if(save):
 			if(save_folder is not None):
 
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.subFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -743,9 +766,9 @@ class analysisTools(activeFilament):
 		if(save):
 			if(save_folder is not None):
 
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.subFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -800,9 +823,9 @@ class analysisTools(activeFilament):
 		if(save):
 			if(save_folder is not None):
 
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.subFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -866,9 +889,9 @@ class analysisTools(activeFilament):
 		if(save):
 			if(save_folder is not None):
 
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.subFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -938,7 +961,7 @@ class analysisTools(activeFilament):
 
 				file_path = os.path.join(save_folder, self.dataFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -972,7 +995,7 @@ class analysisTools(activeFilament):
 
 		if(save_folder is not None):
 
-			file_path = os.path.join(save_folder, self.sub_folder)
+			file_path = os.path.join(save_folder, self.subFolder)
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -1031,9 +1054,9 @@ class analysisTools(activeFilament):
 		if(save):
 			if(save_folder is not None):
 
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.subFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -1081,9 +1104,9 @@ class analysisTools(activeFilament):
 
 		if(save):
 			if(save_folder is not None):
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.subFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
@@ -1122,9 +1145,9 @@ class analysisTools(activeFilament):
 
 		if(save):
 			if(save_folder is not None):
-				file_path = os.path.join(save_folder, self.sub_folder)
+				file_path = os.path.join(save_folder, self.subFolder)
 			else:
-				file_path = self.analysis_folder
+				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)

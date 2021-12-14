@@ -388,7 +388,7 @@ class activeFilament:
 	def square_wave_activity(self, t):
 		''' Output a square-wave profile based on a cycle time-scale and duty-cycle
 		'''
-		phase = t%self.activity_timescale
+		phase = (t + self.activity_timescale*self.start_phase/(2*np.pi))%self.activity_timescale 
 		if(phase > self.activity_timescale*self.duty_cycle):
 			return 1
 		elif phase < self.activity_timescale*self.duty_cycle:
@@ -537,7 +537,7 @@ class activeFilament:
 	
 	def simulate(self, Tf = 100, Npts = 10, n_cycles = 1, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
 		scale_factor = 1, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', 
-		note = '', overwrite = False, pid = 0, activity = None, stop_tol = 1E-5):
+		note = '', overwrite = False, create_subdirs = True, pid = 0, activity = None, stop_tol = 1E-5):
 
 		''' Setup and run an active filament simulation.
 
@@ -556,6 +556,8 @@ class activeFilament:
 		# np.random.seed(pid)
 		self.save = save
 		self.overwrite = overwrite
+		self.note = note
+
 		#---------------------------------------------------------------------------------
 		def rhs0(r, t):
 			''' 
@@ -652,6 +654,7 @@ class activeFilament:
 				self.activity_timescale = activity['activity_timescale']
 				self.duty_cycle = activity['duty_cycle']
 				self.activity_profile_array = np.zeros_like(t_array)
+				self.start_phase = activity['start phase']
 				for ii in range(len(t_array)):
 					self.activity_profile_array[ii] = self.filament_activity(t_array[ii])
 
@@ -718,22 +721,35 @@ class activeFilament:
 		self.scale_factor = scale_factor
 		#---------------------------------------------------------------------------------
 		#Allocate a Path and folder to save the results
-		subfolder = datetime.now().strftime('%Y-%m-%d')
 
-		# Create sub-folder by date
-		self.path = os.path.join(path, subfolder)
+		if(create_subdirs):
+			# Create Subdirs
+			subfolder = datetime.now().strftime('%Y-%m-%d')
 
-		# Stagger the start of the simulations to avoid issues with concurrent writing to disk
-		time.sleep(pid/10.0)
+			# Create sub-folder by date
+			self.path = os.path.join(path, subfolder)
 
-		if(not os.path.exists(self.path)):
-			os.makedirs(self.path)
+			# Stagger the start of the simulations to avoid issues with concurrent writing to disk
+			time.sleep(pid/10.0)
 
-		self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-							(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), self.b0, self.F0, self.S0, self.D0, 
-							int(self.activity_timescale), sim_type) + note
+			if(not os.path.exists(self.path)):
+				os.makedirs(self.path)
 
-		self.saveFolder = os.path.join(self.path, self.folder)
+			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
+								int(self.activity_timescale), sim_type)
+
+			self.saveFolder = os.path.join(self.path, self.folder)
+		else:
+			# Directly save to path
+
+			self.path = path
+			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), self.b0, self.F0, self.S0, self.D0, 
+								int(self.activity_timescale), sim_type)
+
+			self.saveFolder = os.path.join(self.path, self.folder)
+
 		#---------------------------------------------------------------------------------
 		
 		# if simulating constant external forces
@@ -872,7 +888,7 @@ class activeFilament:
 	def save_data(self):
 
 		copy_number = 0
-		self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
+		self.saveFile = 'SimResults_{0:02d}'.format(copy_number)+'_'+self.note+'.hdf5'
 
 		if(self.save):
 			if(not os.path.exists(self.saveFolder)):
@@ -881,7 +897,7 @@ class activeFilament:
 			# Choose a new copy number for multiple simulations with the same parameters
 			while(os.path.exists(os.path.join(self.saveFolder, self.saveFile)) and self.overwrite == False):
 				copy_number+=1
-				self.saveFile = 'SimResults_{0:02d}.hdf5'.format(copy_number)
+				self.saveFile = 'SimResults_{0:02d}'.format(copy_number)+'_'+self.note+'.hdf5'
 
 
 		with h5py.File(os.path.join(self.saveFolder, self.saveFile), "w") as f:

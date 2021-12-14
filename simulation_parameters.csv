@@ -1,5 +1,0 @@
-Np,radius,b0,kappa_hat,F0,S0,D0,bending_scale_factor,activity_timescale,sim_time_scalefactor,N_simulations
-32,1,4,5,0,0,1.5,4,1000,10,5
-32,1,4,10,0,0,1.5,4,1000,10,5
-32,1,4,20,0,0,1.5,4,1000,10,5
-32,1,4,50,0,0,1.5,4,1000,10,5
