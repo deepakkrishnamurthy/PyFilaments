@@ -22,11 +22,13 @@ import pickle
 import matplotlib.pyplot as plt 
 from scipy import signal
 from scipy import interpolate
+import random
 from datetime import datetime
 import time
 import h5py
 from tqdm import tqdm
 import imp
+from pyfilaments._def import *
 
 import pystokes
 import pyforces
@@ -87,6 +89,35 @@ class activeFilament:
 		# self.initialize_filament_shape()
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 		self.simFile = ''
+
+	def create_save_folder(self, path = ROOT_PATH, create_subdirs = True):
+		#Allocate a Path and folder to save the results
+		if(create_subdirs):
+			# Create Subdirs
+			subfolder = datetime.now().strftime('%Y-%m-%d')
+
+			# Create sub-folder by date
+			self.path = os.path.join(path, subfolder)
+
+			if(not os.path.exists(self.path)):
+				os.makedirs(self.path)
+
+			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
+								int(self.activity_timescale), self.sim_type)
+
+			self.saveFolder = os.path.join(self.path, self.folder)
+		else:
+			# Directly save to path
+
+			self.path = path
+			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), self.b0, self.F0, self.S0, self.D0, 
+								int(self.activity_timescale), self.sim_type)
+
+			self.saveFolder = os.path.join(self.path, self.folder)
+		#---------------------------------------------------------------------------------
+
 
 	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
@@ -228,14 +259,26 @@ class activeFilament:
 				
 			# Add random fluctuations in the other two directions
 			# y-axis
-			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, 1E-6, self.Np-1)
+			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, TRANSVERSE_NOISE, self.Np-1)
 
 			# z-axis
 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
 			   
 		# Add some Random fluctuations in y-direction
 #            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
-		
+		if(self.shape == 'line at angle'):
+			N_angles = 100
+			angles_array = np.linspace(-ANGULAR_AMP_IC , ANGULAR_AMP_IC , N_angles)
+
+			self.init_angle  = random.sample(list(angles_array), 1)
+			# Initial particle positions and orientations
+
+			print('Initializing filament as a line at angle {}'.format(self.init_angle))
+			for ii in range(self.Np):
+				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
+				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
+				
+
 		elif(self.shape == 'arc'):
 			arc_angle = np.pi
 
@@ -534,9 +577,21 @@ class activeFilament:
 			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 
-	
+	def generate_random_ic(self, N_IC = 10, angle = ANGULAR_AMP_IC):
+
+		# generate N random angles within the filament angular amplitude range
+		N_angles = 100
+		angles_array = np.linspace(-angle, angle, N_angles)
+
+		random_ints = random.sample(angles_array, N_IC)
+
+
+
+		
+
+
 	def simulate(self, Tf = 100, Npts = 10, n_cycles = 1, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
-		scale_factor = 1, save = False, path = '/Users/deepak/Dropbox/LacryModeling/ModellingResults', 
+		scale_factor = 1, save = False, path = ROOT_PATH, 
 		note = '', overwrite = False, create_subdirs = True, pid = 0, activity = None, stop_tol = 1E-5):
 
 		''' Setup and run an active filament simulation.
@@ -551,6 +606,8 @@ class activeFilament:
 				'cantilever': External force on only the most distal colloid. 
 
 		'''
+		# Stagger the start of the simulations to avoid issues with concurrent writing to disk
+		time.sleep(pid/10.0)
 		
 		# Set the seed for the random number generator
 		# np.random.seed(pid)
@@ -720,38 +777,8 @@ class activeFilament:
 		# Set the scale-factor
 		self.scale_factor = scale_factor
 		#---------------------------------------------------------------------------------
-		#Allocate a Path and folder to save the results
+		self.create_save_folder(path = path)
 
-		if(create_subdirs):
-			# Create Subdirs
-			subfolder = datetime.now().strftime('%Y-%m-%d')
-
-			# Create sub-folder by date
-			self.path = os.path.join(path, subfolder)
-
-			# Stagger the start of the simulations to avoid issues with concurrent writing to disk
-			time.sleep(pid/10.0)
-
-			if(not os.path.exists(self.path)):
-				os.makedirs(self.path)
-
-			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
-								int(self.activity_timescale), sim_type)
-
-			self.saveFolder = os.path.join(self.path, self.folder)
-		else:
-			# Directly save to path
-
-			self.path = path
-			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), self.b0, self.F0, self.S0, self.D0, 
-								int(self.activity_timescale), sim_type)
-
-			self.saveFolder = os.path.join(self.path, self.folder)
-
-		#---------------------------------------------------------------------------------
-		
 		# if simulating constant external forces
 		if(self.sim_type == 'sedimentation'):
 			""" 
@@ -787,9 +814,8 @@ class activeFilament:
 		start_time = time.time()
 		tqdm_text = "Param: {} Progress: ".format(self.k).zfill(1)
 
-	
-
-		with tqdm(total = 100, desc=tqdm_text, position=pid+1, disable = False) as self.pbar:
+		# Run the simulation
+		with tqdm(total = 100, desc = tqdm_text, position=pid+1, disable = False) as self.pbar:
 			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 			# integrate the resulting equation using odespy
@@ -949,19 +975,22 @@ class activeFilament:
 			Calculate the Euclidean distance between two filament shapes
 			Use this metric to conclude if the simulation has reached steady state.
 		'''
-		r1_matrix = self.reshape_to_matrix(r1)
-		r2_matrix = self.reshape_to_matrix(r2)
+		r1_copy = r1.copy()
+		r2_copy = r2.copy()
+
+		r1_matrix = self.reshape_to_matrix(r1_copy)
+		r2_matrix = self.reshape_to_matrix(r2_copy)
 		# Find the center of mass of the filament and subtract it to remove translation (rotation will be added later)
 
-		r1_com = [np.nanmean(r1[:self.Np-1]), 
-		np.nanmean(r1[self.Np:2*self.Np-1]), np.nanmean(r1[2*self.Np:3*self.Np-1]) ] 
+		# r1_com = [np.nanmean(r1_copy[:self.Np-1]), 
+		# np.nanmean(r1_copy[self.Np:2*self.Np-1]), np.nanmean(r1_copy[2*self.Np:3*self.Np-1]) ] 
 		
-		r2_com = [np.nanmean(r2[:self.Np-1]), 
-		np.nanmean(r2[self.Np:2*self.Np-1]), np.nanmean(r2[2*self.Np:3*self.Np-1]) ] 
-		for ii in range(self.dim):
+		# r2_com = [np.nanmean(r2_copy[:self.Np-1]), 
+		# np.nanmean(r2_copy[self.Np:2*self.Np-1]), np.nanmean(r2_copy[2*self.Np:3*self.Np-1]) ] 
+		# for ii in range(self.dim):
 
-			r1_matrix[ii,:] = r1_matrix[ii,:] - r1_com[ii] 
-			r2_matrix[ii,:] = r2_matrix[ii,:] - r2_com[ii] 
+		# 	r1_matrix[ii,:] = r1_matrix[ii,:] - r1_com[ii] 
+		# 	r2_matrix[ii,:] = r2_matrix[ii,:] - r2_com[ii] 
 
 		distance = np.sum((r1_matrix - r2_matrix)**2)**(1/2)
 

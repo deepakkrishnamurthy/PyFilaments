@@ -14,6 +14,7 @@ import os
 import numpy as np
 import imp
 from pyfilaments.activeFilaments import activeFilament
+from pyfilaments._def_analysis import *
 import filament.filament as filament_operations
 import matplotlib.pyplot as plt
 import matplotlib as mpl
@@ -52,7 +53,18 @@ class analysisTools(activeFilament):
 		print(self.Np)
 
 		# Dict to store derived datasets
-		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [], 'Tip cosine angle':[],'Axial energy':[],'Bending energy':[]}
+		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [],
+		'Axial energy':[],'Bending energy':[], 'common time array':{'compression':[], 'extension':[]},
+		"Tip angle":{'compression':[], 'extension':[]}, 
+		'Base-Tip angle':{'compression':[], 'extension':[]},
+		'Tip decorrelation':{'compression':[], 'extension':[]},
+		'Base-Tip decorrelation':{'compression':[], 'extension':[]},
+		'constant phase':{'compression':[], 'extension':[]}, 
+		'start end indices':{'compression':[], 'extension':[]}, 
+		'Tip reorientation':{'compression':[], 'extension':[]},
+		'Base-Tip reorientation':{'compression':[], 'extension':[]}}
+
+
 
 		# Set the attributes to those of the filament on which we are doing analysis. 
 		if(filament is not None):
@@ -76,6 +88,7 @@ class analysisTools(activeFilament):
 			print('No:of particles : {}'.format(self.Np))
 			print('No:of time points : {}'.format(self.Nt))
 
+
 			# Find time points corresponding to activity phase =0 and activity phase = pi
 			self.derived_data['Phase'] = 2*np.pi*(self.Time%self.activity_timescale)/self.activity_timescale
 
@@ -98,6 +111,10 @@ class analysisTools(activeFilament):
 
 			# Load metadata
 			self.df_metadata = pd.read_csv(os.path.join(self.rootFolder, 'metadata.csv'))
+
+			# Activity cycles per simulation (only exact for deterministic activity profiles)
+			self.activity_cycles = int(self.Time[-1]/self.activity_timescale) # Number of activity cycles
+
 
 	def allocate_variables(self):
 		self.tangent_angles_matrix = None
@@ -441,7 +458,7 @@ class analysisTools(activeFilament):
 
 
 
-	def filament_tip_coverage(self, save = False):
+	def filament_tip_coverage(self, save = False, overwrite = False):
 		"""	Calculates the no:of unique areas covered by the tip of the filament (head). This serves as a metric for 
 		search coverage. 
 		Pseudocode:
@@ -463,63 +480,94 @@ class analysisTools(activeFilament):
 
 		self.unique_counter_time = np.zeros(self.Nt)
 
-		for ii in range(self.Nt):
 
-			# Particle positions (head/filament-tip position) at time ii
-			self.r = [self.R[ii, self.Np-1], self.R[ii, 2*self.Np-1], self.R[ii, 3*self.Np-1] ]
+		analysis_sub_folder = os.path.join(self.analysisFolder, analysis_type)
 
-			# print(self.r)
-			# Get the separation distance to list of previous unique locations
-			if(not self.unique_positions):
-				# If list is empty
-				self.unique_positions.append(self.r)
-				self.unique_position_times.append(self.Time[ii])
-				self.unique_counter+=1
-				self.hits_counter[self.unique_counter-1]=1
-			else:
-				# If list is not empty
-				# Find the Euclidean distance between current point and list of all previous unique points. 
-				distance = self.distance_from_array(self.r, self.unique_positions)
+		timeseries_file = os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_counts_timeseries.csv')
+		unique_positions_file = os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_positions.csv')
 
-				if(not np.any(distance<=2*self.radius)):
+
+		if(overwrite == False and os.path.exists(timeseries_file) and os.path.exists(unique_positions_file)):
+			# If the data exists then load it
+			print('Loading data from file...')
+			df_unique_count = pd.read_csv(timeseries_file)
+			self.unique_counter_time = df_unique_count['Unique positions count']
+
+			df_unique_positions = pd.read_csv(unique_positions_file)
+
+			hits_counter_keys, hits_counter_values = df_unique_positions['ID'], df_unique_positions['Hits']
+
+			self.hits_counter = {hits_counter_keys[ii]:hits_counter_values[ii] for ii in range(len(hits_counter_keys))}
+
+			self.unique_positions = np.zeros((len(df_unique_positions), 3))
+
+			self.unique_positions[:,0] = df_unique_positions['Position X']
+			self.unique_positions[:,1] = df_unique_positions['Position Y']
+			self.unique_positions[:,2] = df_unique_positions['Position Z']
+
+			self.unique_position_times = df_unique_positions['Time']
+
+		else:
+			# If the unique positions data doesnt exist, then caclulate it
+			print('Calculating unique positions and count...')
+
+			for ii in range(self.Nt):
+
+				# Particle positions (head/filament-tip position) at time ii
+				self.r = [self.R[ii, self.Np-1], self.R[ii, 2*self.Np-1], self.R[ii, 3*self.Np-1] ]
+
+				# print(self.r)
+				# Get the separation distance to list of previous unique locations
+				if(not self.unique_positions):
+					# If list is empty
 					self.unique_positions.append(self.r)
 					self.unique_position_times.append(self.Time[ii])
 					self.unique_counter+=1
 					self.hits_counter[self.unique_counter-1]=1
 				else:
+					# If list is not empty
+					# Find the Euclidean distance between current point and list of all previous unique points. 
+					distance = self.distance_from_array(self.r, self.unique_positions)
 
-					idx = np.argmin(distance)
-					self.hits_counter[idx]+=1
+					if(not np.any(distance<=2*self.radius)):
+						self.unique_positions.append(self.r)
+						self.unique_position_times.append(self.Time[ii])
+						self.unique_counter+=1
+						self.hits_counter[self.unique_counter-1]=1
+					else:
 
-			self.unique_counter_time[ii] = self.unique_counter
+						idx = np.argmin(distance)
+						self.hits_counter[idx]+=1
+
+				self.unique_counter_time[ii] = self.unique_counter
 
 
 
-		self.unique_positions = np.array(self.unique_positions)
-		self.unique_position_times = np.array(self.unique_position_times)
+			self.unique_positions = np.array(self.unique_positions)
+			self.unique_position_times = np.array(self.unique_position_times)
 
-		self.derived_data['unique position count'] = self.unique_counter_time
+			self.derived_data['unique position count'] = self.unique_counter_time
 
-		print('Total unique positions sampled by tip: {}'.format(self.unique_counter_time[-1]))
-		# Save the data
-		if(save == True):
+			print('Total unique positions sampled by tip: {}'.format(self.unique_counter_time[-1]))
+			# Save the data
+			if(save == True):
 
-			hits_counter_keys = np.array(list(self.hits_counter.keys()))
-			hits_counter_values = np.array(list(self.hits_counter.values()))
+				hits_counter_keys = np.array(list(self.hits_counter.keys()))
+				hits_counter_values = np.array(list(self.hits_counter.values()))
 
-			self.create_analysis_folder()
-			analysis_sub_folder = os.path.join(self.analysisFolder, analysis_type)
-			if(not os.path.exists(analysis_sub_folder)):
-				os.makedirs(analysis_sub_folder)
+				self.create_analysis_folder()
+				analysis_sub_folder = os.path.join(self.analysisFolder, analysis_type)
+				if(not os.path.exists(analysis_sub_folder)):
+					os.makedirs(analysis_sub_folder)
 
-			df_unique_count = pd.DataFrame({'Time':self.Time, 'Unique positions count':self.unique_counter_time})
-			df_unique_positions = pd.DataFrame({'ID': hits_counter_keys, 
-				'Time': self.unique_position_times, 'Hits': hits_counter_values,
-				'Position X':self.unique_positions[:,0], 'Position Y':self.unique_positions[:,1], 
-				'Position Z':self.unique_positions[:,2]})
+				df_unique_count = pd.DataFrame({'Time':self.Time, 'Unique positions count':self.unique_counter_time})
+				df_unique_positions = pd.DataFrame({'ID': hits_counter_keys, 
+					'Time': self.unique_position_times, 'Hits': hits_counter_values,
+					'Position X':self.unique_positions[:,0], 'Position Y':self.unique_positions[:,1], 
+					'Position Z':self.unique_positions[:,2]})
 
-			df_unique_count.to_csv(os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_counts_timeseries.csv'))
-			df_unique_positions.to_csv(os.path.join(analysis_sub_folder, self.dataName[:-5] + '_unique_positions.csv'))
+				df_unique_count.to_csv(timeseries_file)
+				df_unique_positions.to_csv(unique_positions_file)
 
 	def classify_filament_dynamics(self):
 		''' Classify the filament dynamics into 1. Periodic or 2. Aperiodic
@@ -599,7 +647,7 @@ class analysisTools(activeFilament):
 
 		return periodic_flag, min_period, threshold_index
 
-	def compute_tip_angle_at_constant_phase(self, phase_value = 0):
+	def compute_basetip_angle_at_constant_phase(self, phase_value = 0, skip_cycles =100):
 
 		delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
 		abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
@@ -608,12 +656,16 @@ class analysisTools(activeFilament):
 		time_points = np.array(range(0, self.Nt))
 		constant_phase_indices = time_points[constant_phase_mask]
 
-		# Get a list of filament tip locations (after skipping half the total number of simulated cycles)
-		filament_locations_x = self.derived_data['head pos x'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
-		filament_locations_y = self.derived_data['head pos y'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
+		self.compute_base_tip_angle()
 
-		# Get the angles that the filament tip reaches at the end of each extension
-		filament_angles =  np.arctan2(filament_locations_y, filament_locations_x)
+		filament_angles = self.derived_data['base tip angle'][constant_phase_indices[skip_cycles:]]
+
+		# # Get a list of filament tip locations (after skipping half the total number of simulated cycles)
+		# filament_locations_x = self.derived_data['head pos x'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
+		# filament_locations_y = self.derived_data['head pos y'][constant_phase_indices[int(len(constant_phase_indices)/2):]]
+
+		# # Get the angles that the filament tip reaches at the end of each extension
+		# filament_angles =  np.arctan2(filament_locations_y, filament_locations_x)
 		
 		return filament_angles
 
@@ -867,13 +919,18 @@ class analysisTools(activeFilament):
 
 		hits_counter_list = [self.hits_counter[key] for key in self.hits_counter.keys()]
 		
-		plt.figure()
+		plt.figure(figsize = (7,5))
 		# ax1 = plt.scatter(unique_positions[:,0], unique_positions[:,1], 40, c = position_prob_density, cmap=cmocean.cm.matter)
 		
 		if(color_by == 'count'):
 			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = hits_counter_list, cmap=cmocean.cm.matter, alpha = 0.75)
 		elif (color_by == 'probability'):
 			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = position_prob_density, cmap=cmocean.cm.matter, alpha = 0.75)
+		elif (color_by == 'first-passage-time'):
+			ax1 = plt.scatter(self.unique_positions[:,0], self.unique_positions[:,1], 20, c = self.unique_position_times/self.activity_timescale, cmap=cmocean.cm.matter, alpha = 0.75)
+
+
+
 
 		ax2 = plt.scatter(self.R[:, 0], self.R[:, self.Np], 20, color ='b')
 
@@ -902,57 +959,106 @@ class analysisTools(activeFilament):
 
 		plt.show()
 
-	def plot_tip_scatter_density(self, save = False, save_folder = None, fig_name = None, num_cycles = 50):
+	def plot_tip_scatter_density(self, save = False, save_folder = None, fig_name = None, 
+									skip_cycles = 50, plot_unique_locations = False, color_by = 'count'):
 		# plt.style.use('dark_background')
-		print('Tip scatter density plot')
+		# print('Tip scatter density plot')
 
-		x = np.array(self.derived_data['head pos x'])
-		y = np.array(self.derived_data['head pos y'])
-		xy = np.vstack([x, y])
-		z = gaussian_kde(xy)(xy)
+		# x = np.array(self.derived_data['head pos x'])
+		# y = np.array(self.derived_data['head pos y'])
+		# xy = np.vstack([x, y])
+		# z = gaussian_kde(xy)(xy)
 
-		idx = z.argsort()
-		x, y, z = x[idx], y[idx], z[idx]
+		# idx = z.argsort()
+		# x, y, z = x[idx], y[idx], z[idx]
 
-		if(fig_name is None):
-			fig = plt.figure(figsize = (4,4))
-		else:
-			fig = plt.figure(num = fig_name)
+		# if(fig_name is None):
+		# 	fig = plt.figure(figsize = (4,4))
+		# else:
+		# 	fig = plt.figure(num = fig_name)
 
 
-		ax1 = plt.scatter(y, x, c = z[::1], s = 20, edgecolor = None, cmap = cmocean.cm.matter, rasterized = True)
-		plt.scatter(0, 0, c = 'r', s = 40, edgecolor = None)
-		cbar = plt.colorbar(ax1)
-		cbar.ax.set_ylabel('Density')
-		plt.title('Tip locations colored by local density')
+		# ax1 = plt.scatter(y, x, c = z[::1], s = 20, edgecolor = None, cmap = SPATIAL_DENSITY_CMAP, rasterized = True)
+		# plt.scatter(0, 0, c = 'r', s = 40, edgecolor = None)
+		# cbar = plt.colorbar(ax1)
+		# cbar.ax.set_ylabel('Density')
+		# plt.title('Tip locations colored by local density')
 
-		
+
+
+		plt.figure(figsize = (7,5))
 		# Overlay filament center lines
-		phase_value = 0
-		# Smallest phase difference = 2*pi*delta_T/T
-		delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
-		abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
-		constant_phase_mask = abs_val_array <= 0.5*delta_phase
-		time_points = np.array(range(0, self.Nt))
-		constant_phase_indices = time_points[constant_phase_mask]
-	
+		phase_value_array = [0, np.pi]
 
-		for ii in constant_phase_indices[:num_cycles]:
-			self.r = self.R[ii,:]
-			x = self.r[0:self.Np]
-			y = self.r[self.Np:2*self.Np]
+		print(skip_cycles)
+		
+		for phase_value in phase_value_array:
+			print(phase_value)
+			# phase_value = 0
+			# Smallest phase difference = 2*pi*delta_T/T
+			delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
+			abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
+			constant_phase_mask = abs_val_array <= 1*delta_phase
+			time_points = np.array(range(0, self.Nt))
+			constant_phase_indices = time_points[constant_phase_mask]
 
-			# if(ii%stride==0):
-			cf = plt.plot(y, x, color = 'k', linewidth = 1.5, alpha = 0.2)
-		# for ii in range(self.Nt):
-		#     self.r = self.R[ii,:]
-		#     x = self.r[0:self.Np]
-		#     y = self.r[self.Np:2*self.Np]
+			# Remove adjacent time points to prevent double counting of time points at constant phase
+			adjacent_mask = (constant_phase_indices[1:]-constant_phase_indices[:-1])==1
 
-		#     if(ii%stride==0):
-		#         cf = plt.plot(y, x, color = 'k', linewidth = 1.0, alpha = 0.5)
+			constant_phase_indices = constant_phase_indices[1:][~adjacent_mask]
+
+
+			
+			print(len(constant_phase_indices))
+			for ii in constant_phase_indices[skip_cycles:]:
+				
+				self.r = self.R[ii,:]
+				x = self.r[0:self.Np]
+				y = self.r[self.Np:2*self.Np]
+
+				# if(ii%stride==0):
+				if(phase_value==0):
+					plt.plot(y, x, color = COMP_COLOR, linewidth = 1.5, alpha = 0.5, zorder=1)
+				elif(phase_value==np.pi):
+					plt.plot(y, x, color = EXT_COLOR, linewidth = 1.5, alpha = 0.5, zorder=1)
+				else:
+					plt.plot(y, x, color = 'k', linewidth = 1.5, alpha = 0.5, zorder=1)
+
+
+		if(plot_unique_locations):
+
+			hits_total = np.sum(list(self.hits_counter.values()))
+
+			print('Total hits : {}'.format(hits_total))
+
+			position_prob_density = [self.hits_counter[key]/hits_total for key in self.hits_counter.keys()]
+
+			hits_counter_list = [self.hits_counter[key] for key in self.hits_counter.keys()]
+			
+			
+			# ax1 = plt.scatter(unique_positions[:,0], unique_positions[:,1], 40, c = position_prob_density, cmap=cmocean.cm.matter)
+			
+			if(color_by == 'count'):
+				ax1 = plt.scatter(self.unique_positions[:,1], self.unique_positions[:,0], 20, c = hits_counter_list, cmap=SPATIAL_DENSITY_CMAP, alpha = 0.75)
+			elif (color_by == 'probability'):
+				ax1 = plt.scatter(self.unique_positions[:,1], self.unique_positions[:,0], 20, c = position_prob_density, cmap=SPATIAL_DENSITY_CMAP, alpha = 0.75)
+			elif (color_by == 'first-passage-time'):
+				ax1 = plt.scatter(self.unique_positions[:,1], self.unique_positions[:,0], 20, c = self.unique_position_times/self.activity_timescale, cmap=SPATIAL_DENSITY_CMAP, alpha = 0.75, zorder=1)
+
+			# Plot filament base
+			ax2 = plt.scatter(self.R[:, self.Np], self.R[:, 0], 20, color ='b')
+
+			# plt.xlabel('Filament tip (x)')
+			# plt.ylabel('Filament tip (y)')
+			# plt.title('Search coverage of filament tip')
+			
+			plt.clim(0, 500)
+			cbar = plt.colorbar(ax1)
+			cbar.ax.set_ylabel(color_by)
+		# plt.axis('equal')
 		plt.axis('equal')
-
+		plt.xlim([-1.25*self.Np*self.b0, 1.25*self.Np*self.b0])
+		plt.ylim([-1.25*self.Np*self.b0, 1.25*self.Np*self.b0])
 		plt.axis('off')
 
 		if(save == True):
@@ -966,7 +1072,7 @@ class analysisTools(activeFilament):
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
 
-			file_name = self.dataName[:-5] +'_' + '_TipLocationScatterDensity'
+			file_name = self.dataName[:-5] +'_' + '_FilamentShapes_SearchCloud'
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 		
