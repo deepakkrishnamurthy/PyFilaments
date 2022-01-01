@@ -90,7 +90,7 @@ class activeFilament:
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 		self.simFile = ''
 
-	def create_save_folder(self, path = ROOT_PATH, create_subdirs = True):
+	def create_save_folder(self, path = ROOT_PATH, create_subdirs = True, ic_sim = False):
 		#Allocate a Path and folder to save the results
 		if(create_subdirs):
 			# Create Subdirs
@@ -102,7 +102,7 @@ class activeFilament:
 			if(not os.path.exists(self.path)):
 				os.makedirs(self.path)
 
-			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+			self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
 								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
 								int(self.activity_timescale), self.sim_type)
 
@@ -111,11 +111,21 @@ class activeFilament:
 			# Directly save to path
 
 			self.path = path
-			self.folder = 'SimResults_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), self.b0, self.F0, self.S0, self.D0, 
+			self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
 								int(self.activity_timescale), self.sim_type)
 
 			self.saveFolder = os.path.join(self.path, self.folder)
+
+
+		if ic_sim:
+			self.path = path
+			self.folder = 'IC_Sim_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+							(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
+							int(self.activity_timescale), self.sim_type)
+
+			self.saveFolder = os.path.join(self.path, self.folder)
+
 		#---------------------------------------------------------------------------------
 
 
@@ -252,7 +262,7 @@ class activeFilament:
 	def initialize_filament_shape(self):
 		if(self.shape == 'line'):
 			# Initial particle positions and orientations
-			print('Initializing filament as a line at angle {}'.format(self.init_angle))
+			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
 			for ii in range(self.Np):
 				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
 				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
@@ -273,7 +283,7 @@ class activeFilament:
 			self.init_angle  = random.sample(list(angles_array), 1)
 			# Initial particle positions and orientations
 
-			print('Initializing filament as a line at angle {}'.format(self.init_angle))
+			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
 			for ii in range(self.Np):
 				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
 				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
@@ -351,7 +361,7 @@ class activeFilament:
 		
 		if(r0 is not None):
 			# If an initial filament shape is given then use that to initialize the filament.
-			print('Initializing filament from provided filament shape')
+			# print('Initializing filament from provided filament shape')
 			self.r0 = r0
 			self.r = r0
 
@@ -592,7 +602,8 @@ class activeFilament:
 
 	def simulate(self, Tf = 100, Npts = 10, n_cycles = 1, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
 		scale_factor = 1, save = False, path = ROOT_PATH, 
-		note = '', overwrite = False, create_subdirs = True, pid = 0, activity = None, stop_tol = 1E-5):
+		note = '', overwrite = False, create_subdirs = True, pid = 0, activity = None, 
+		stop_tol = 1E-5, ic_sim = False):
 
 		''' Setup and run an active filament simulation.
 
@@ -645,10 +656,9 @@ class activeFilament:
 
 		if(init_condition is not None):
 			
-			print('Test')
 			if('filament' in init_condition.keys()):
 				# If the filament shape is provided use it to initialize the filament
-				print('Initializing from provided filament shape...')
+				# print('Initializing from provided filament shape...')
 				self.initialize_filament(r0 = init_condition['filament'])
 
 			elif('shape' in init_condition.keys()):
@@ -692,10 +702,7 @@ class activeFilament:
 		self.time_now = 0
 		self.time_prev = 0
 
-		
 		self.set_particle_colors()
-
-		print(self.shape)
 
 		# Plot the activity profile
 		t_array = np.linspace(0, Tf, Npts)
@@ -777,7 +784,7 @@ class activeFilament:
 		# Set the scale-factor
 		self.scale_factor = scale_factor
 		#---------------------------------------------------------------------------------
-		self.create_save_folder(path = path)
+		self.create_save_folder(path = path, create_subdirs = create_subdirs, ic_sim = ic_sim)
 
 		# if simulating constant external forces
 		if(self.sim_type == 'sedimentation'):
@@ -809,7 +816,7 @@ class activeFilament:
 			self.D_mag[:] = 0
 
 		
-		print('Running the filament simulation ....')
+		# print('Running the filament simulation ....')
 
 		start_time = time.time()
 		tqdm_text = "Param: {} Progress: ".format(self.k).zfill(1)
@@ -837,11 +844,11 @@ class activeFilament:
 
 	def load_data(self, file = None):
 
-		print('Loading Simulation data from disk .......')
+		# print('Loading Simulation data from disk .......')
 		if(file is not None):
 			self.simFolder, self.simFile = os.path.split(file)
 			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
-				print('Loading hdf5 file')
+				# print('Loading hdf5 file')
 				with h5py.File(file, "r") as f:
 					if('simulation data' in f.keys()): # Load the simulation data (newer method)
 						
@@ -858,9 +865,9 @@ class activeFilament:
 
 						try:
 							self.activity_profile = dset["activity profile"][:]
-							print('Activity profile data found!')
+							# print('Activity profile data found!')
 						except:
-							print('Activity profile not found!')
+							# print('Activity profile not found!')
 							self.activity_profile = None
 
 						# Load the metadata:
@@ -914,7 +921,7 @@ class activeFilament:
 	def save_data(self):
 
 		copy_number = 0
-		self.saveFile = 'SimResults_{0:02d}'.format(copy_number)+'_'+self.note+'.hdf5'
+		self.saveFile = '{0}_{1:02d}'.format(FILE_NAME, copy_number)+'_'+self.note+'.hdf5'
 
 		if(self.save):
 			if(not os.path.exists(self.saveFolder)):
@@ -923,7 +930,7 @@ class activeFilament:
 			# Choose a new copy number for multiple simulations with the same parameters
 			while(os.path.exists(os.path.join(self.saveFolder, self.saveFile)) and self.overwrite == False):
 				copy_number+=1
-				self.saveFile = 'SimResults_{0:02d}'.format(copy_number)+'_'+self.note+'.hdf5'
+				self.saveFile = '{0}_{1:02d}'.format(FILE_NAME, copy_number)+'_'+self.note+'.hdf5'
 
 
 		with h5py.File(os.path.join(self.saveFolder, self.saveFile), "w") as f:

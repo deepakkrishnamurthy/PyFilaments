@@ -50,8 +50,6 @@ class analysisTools(activeFilament):
 		# Initialize the parent activeFilament class so its attr are available
 		super().__init__()
 
-		print(self.Np)
-
 		# Dict to store derived datasets
 		self.derived_data = {'Filament arc length':[], 'Tip unit vector': [],
 		'Axial energy':[],'Bending energy':[], 'common time array':{'compression':[], 'extension':[]},
@@ -64,15 +62,11 @@ class analysisTools(activeFilament):
 		'Tip reorientation':{'compression':[], 'extension':[]},
 		'Base-Tip reorientation':{'compression':[], 'extension':[]}}
 
-
-
 		# Set the attributes to those of the filament on which we are doing analysis. 
 		if(filament is not None):
 			fil_attr = filament.__dict__
 			for key in fil_attr.keys():
 				setattr(self, key, getattr(filament, key))
-
-			print(self.kappa_hat_array)
 			# Reload the cython sub-modules using the loaded parameters
 			self.filament_operations = filament_operations.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, 
 				self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
@@ -85,13 +79,8 @@ class analysisTools(activeFilament):
 
 			self.find_num_time_points()
 
-			print('No:of particles : {}'.format(self.Np))
-			print('No:of time points : {}'.format(self.Nt))
-
-
 			# Find time points corresponding to activity phase =0 and activity phase = pi
 			self.derived_data['Phase'] = 2*np.pi*(self.Time%self.activity_timescale)/self.activity_timescale
-
 			self.derived_data['head pos x'] = self.R[:, self.Np-1]
 			self.derived_data['head pos y'] = self.R[:, 2*self.Np-1]
 			self.derived_data['head pos z'] = self.R[:, 3*self.Np-1]
@@ -100,8 +89,6 @@ class analysisTools(activeFilament):
 			self.rootFolder, self.dataName = os.path.split(file)
 
 			*rest,self.dataFolder = os.path.split(self.rootFolder)
-			print('Root path: ', self.rootFolder)
-			print('Data file', self.dataName)
 			# Sub-folder in which to save analysis data and plots
 			self.subFolder = 'Analysis'
 
@@ -176,7 +163,7 @@ class analysisTools(activeFilament):
 
 		self.Nt, *rest  = np.shape(self.R)
 		self.avg_time_step = np.max(self.Time)/self.Nt
-		print('Time step: {}'.format(np.max(self.Time)/self.Nt))
+		# print('Time step: {}'.format(np.max(self.Time)/self.Nt))
 			
 	def filament_com(self, r):
 
@@ -749,8 +736,6 @@ class analysisTools(activeFilament):
 
 		num_plots = len(var)
 
-		print(num_plots)
-
 		if(colors is None):
 			cmap = cm.get_cmap('viridis', 255)
 			colors = [cmap(ii) for ii in np.linspace(0,1,num_plots)]
@@ -892,7 +877,6 @@ class analysisTools(activeFilament):
 	def plot_tip_position(self):
 
 		
-		print(len(self.R[:, self.Np]))
 		plt.figure()
 
 		ax1 = plt.scatter(self.R[:, self.Np-1], self.R[:, 2*self.Np-1], c = self.Time)
@@ -989,11 +973,8 @@ class analysisTools(activeFilament):
 		plt.figure(figsize = (7,5))
 		# Overlay filament center lines
 		phase_value_array = [0, np.pi]
-
-		print(skip_cycles)
 		
 		for phase_value in phase_value_array:
-			print(phase_value)
 			# phase_value = 0
 			# Smallest phase difference = 2*pi*delta_T/T
 			delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
@@ -1006,10 +987,7 @@ class analysisTools(activeFilament):
 			adjacent_mask = (constant_phase_indices[1:]-constant_phase_indices[:-1])==1
 
 			constant_phase_indices = constant_phase_indices[1:][~adjacent_mask]
-
-
 			
-			print(len(constant_phase_indices))
 			for ii in constant_phase_indices[skip_cycles:]:
 				
 				self.r = self.R[ii,:]
@@ -1179,8 +1157,6 @@ class analysisTools(activeFilament):
 		start_index = next((i for i,x in enumerate(self.Time) if x>= start_time), 0)
 		end_index = next((i for i,x in enumerate(self.Time) if x>= end_time), len(self.Time))
 
-		print(start_index)
-		print(end_index)
 
 		title = 'tangent_angles'
 		grid_kws = {"width_ratios": (.9, 0.05), "wspace": .1}

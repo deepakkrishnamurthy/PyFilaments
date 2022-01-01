@@ -13,6 +13,10 @@ elif platform == 'darwin':
 	print("OSX system")
 	ROOT_PATH = '/Users/deepak/Dropbox/LacryModeling/'
 
+# Naming conventions
+FILE_NAME = 'sim_data' # Name for individual simulation files
+FILE_FORMAT = '.hdf5'
+
 # Filament parameter constants
 DIMS = 3
 RADIUS = 1
