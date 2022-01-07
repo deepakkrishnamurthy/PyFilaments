@@ -22,9 +22,9 @@ import pandas as pd
 from scipy import interpolate
 from scipy.stats import gaussian_kde
 import seaborn as sns
+import h5py
 
 import cmocean
-
 # Figure parameters
 from matplotlib import rcParams
 from matplotlib import rc
@@ -253,30 +253,82 @@ class analysisTools(activeFilament):
 		self.covariance_matrix = np.matmul(self.variance_matrix.T, self.variance_matrix)
 
 	def matrix_eigen_decomposition(self, matrix = None):
+		self.eigenvectors_sorted = None
+		self.eigenvalues_sorted = None
 
 		if(matrix is not None):
 			d, v = np.linalg.eigh(matrix)
-			idx_sorted = np.argsort(-np.real(d))
+			idx_sorted = np.argsort(-np.real(d))	# Sort in descending order of eigenvalues
 			d_sorted = np.real(d[idx_sorted])
-			d_normalized = d_sorted/np.sum(d_sorted)
-			self.n_sig_eigenvalues = 3
+			
+			self.d_normalized = d_sorted/np.sum(d_sorted)
 			self.eigenvectors_sorted = v[:, idx_sorted]
-			# Chop the eigenvectors to only keep the ones with the most contribution to the variance
-			self.eigenvectors_sig = self.eigenvectors_sorted[:,0:self.n_sig_eigenvalues]
-			self.d_sig = d_sorted[0:self.n_sig_eigenvalues]
+			self.eigenvalues_sorted = d_sorted
 
-			return self.d_sig, self.eigenvectors_sig, d_normalized
+			self.find_sig_eigenvalues()
+
+			return self.eigenvalues_sig, self.eigenvectors_sig, self.d_normalized
 		else:
-			print('Compute/Suppy covariance matrix first!')
+			print('Compute/Supply covariance matrix first!')
 			return
+
+	def find_sig_eigenvalues(self):
+
+		N_eigvalues = 10
+
+		for n_eig in range(N_eigvalues):
+			
+			perc_var = 100*np.sum(self.d_normalized[0:n_eig])
+			
+			if(perc_var>=95):
+				break
+				
+		print('No:of eigenvalues to explain {} perc of variance: {}'.format(95, n_eig))
+
+		self.n_sig_eigenvalues = n_eig
+
+		# Chop the eigenvectors to only keep the ones with the most contribution to the variance
+		self.eigenvectors_sig = self.eigenvectors_sorted[:,0:self.n_sig_eigenvalues]
+		self.eigenvalues_sig = self.eigenvalues_sorted[0:self.n_sig_eigenvalues]
+
+	def save_eigenvectors(self):
+		""" Save the significant eigenvectors and associated eigenvalues
+
+		"""
+		save_file = self.dataName[:-5] + '_eigenvectors.hdf5'
+
+
+		with h5py.File(os.path.join(self.analysisFolder, save_file), "w") as f:
+
+			dset = f.create_group('eigenvectors')
+			dset.create_dataset('eigenvalues', data = self.eigenvalues_sig)
+			dset.create_dataset('eigenvectors', data = self.eigenvectors_sig)
+
+
+	def load_eigenvectors(self):
+
+		load_file = self.dataName[:-5] + '_eigenvectors.hdf5'
+
+		if(os.path.exists(os.path.join(self.analysisFolder, load_file))):
+
+			with h5py.File(os.path.join(self.analysisFolder, load_file), "r") as f:
+
+				dset = f['eigenvectors']
+
+				self.eigenvalues_sig = dset['eigenvalues'][:]
+				self.eigenvectors_sig = dset['eigenvectors'][:]
+
+				self.n_sig_eigenvalues = len(self.eigenvalues_sig)
+
+		else:
+			print('Eigenvectors file not found!')
 
 	def plot_shape_modes(self, save = False, save_folder = None):
 		'''
 			Plot the shape modes obtained from PCA
 
 		'''
-
-		plt.figure(figsize = (8,6))
+		plt.figure(figsize = (4,4))
 		length_array = np.linspace(0, 1, len(self.eigenvectors_sig[:,0]))
 		for ii in range(self.n_sig_eigenvalues):
 			
@@ -300,7 +352,6 @@ class analysisTools(activeFilament):
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 
-	
 		plt.show()
 
 		
