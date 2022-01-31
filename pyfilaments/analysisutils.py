@@ -102,6 +102,7 @@ class analysisTools(activeFilament):
 			# Activity cycles per simulation (only exact for deterministic activity profiles)
 			self.activity_cycles = int(self.Time[-1]/self.activity_timescale) # Number of activity cycles
 
+			self.compute_scales()
 
 	def allocate_variables(self):
 		self.tangent_angles_matrix = None
@@ -133,7 +134,16 @@ class analysisTools(activeFilament):
 		print('Stretch relzation time: {}'.format(round(self.tau_stretch, 2)))
 		print('Bend relaxation time: {}'.format(round(self.tau_bend, 2)))
 		print('Active motility time-scale: {}'.format(round(self.tau_swim, 2)))
-		print(50*'*')
+
+
+	def compute_scales(self):
+
+		self.length_scale = self.radius
+		self.time_scale = (self.radius*self.D0)**(-1)
+
+		self.velocity_scale = self.length_scale/self.time_scale
+
+		self.force_scale = self.mu*self.D0*(self.radius**3)
 
 	def compute_dimensionless_groups(self):
 		"""	Calculate derived dimensionles groups based on the intrinisic parameters. 
@@ -396,6 +406,21 @@ class analysisTools(activeFilament):
 
 		df_mode_amplitudes.to_csv(os.path.join(self.analysisFolder, self.dataName[:-5]+'_ModeAmplitudes.csv'))
 		
+	def find_constant_phase_indices(self, phase = 0):
+		""" Finds the time point indices of the data that correspond to the same activity phase.
+			Only use for periodic activity profiles with a fixed activity timescale.
+		"""
+
+		phase_value = phase
+		# Smallest phase difference = 2*pi*delta_T/T
+		delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
+		abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
+		constant_phase_mask = abs_val_array <= 0.5*delta_phase
+		time_points = np.array(range(0, self.Nt))
+		constant_phase_indices = time_points[constant_phase_mask]
+
+		return constant_phase_indices
+
 
 	def compute_base_tip_angle(self):
 		""" Compute the unit vector along the base to tip vector of the filament
@@ -617,6 +642,10 @@ class analysisTools(activeFilament):
 				period: int, Period (multiple of driving or forcing time-scale) over which the dynamics is periodic, None for aperiodic dynamics
 
 		'''
+		periodic_flag = False
+		min_period = None
+		threshold_index = 0
+
 		# Find time points at a constant phase (stroboscopic)
 		# In the current activity profile, phase = 0 is start of compression, phase = pi is start of extension
 		phase_value = 0
@@ -629,7 +658,6 @@ class analysisTools(activeFilament):
 
 		print(len(constant_phase_indices))
 		# Compare filament shapes at two points at constant phase 
-		periodic_flag = False
 		period_array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32, 64] # Number of periods over which we want to compare. period = 1 means every cycle.
 		below_threshold_array = np.zeros(len(period_array), dtype = 'bool')
 		# Threshold value for comparing shapes of filaments. Currently choosen as 10% of the sphere radius. 
@@ -673,12 +701,18 @@ class analysisTools(activeFilament):
 			else:
 				continue
 
+			if periodic_flag==True:
+				# If we have found the min period then we can break from the main loop.
+				break
+
 		# Summarize the results
 
 		print(50*'*')
 		print('Is the dynamics Periodic? :{}'.format(periodic_flag))
-		min_period = next((x for i, x in enumerate(period_array) if below_threshold_array[i]==True), None)
 		print(50*'*')
+
+		min_period = next((x for i, x in enumerate(period_array) if below_threshold_array[i]==True), None)
+
 		if(min_period is not None):
 			print('The minimum period of the system is {} times the forcing period'.format(min_period))
 			print(50*'*')

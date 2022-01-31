@@ -20,12 +20,13 @@ BC = {0:'clamped', -1:'free'}
 NP = 32
 K = 25
 S0 = 0
+D0 = 1.5
 # Activity profile parameters
-activity_timescale = 750 # Activity time-scale (one compression and extension cycle)
+activity_timescale = 500 # Activity time-scale (one compression and extension cycle)
 duty_cycle = 0.5	# Relative time for compression relative to total activity time-scale
-n_activity_cycles = 1 # No:of activity cycles we want to simulate
+n_activity_cycles = 500 # No:of activity cycles we want to simulate
 Tf = activity_timescale*n_activity_cycles # Total simulation time
-time_step_save = 10
+time_step_save = int(10*activity_timescale/750)
 Npts = int(Tf/time_step_save) # No:of time points saved
 
 def run_parametric_simulation(pid, parameter):
@@ -39,16 +40,19 @@ def run_parametric_simulation(pid, parameter):
 	fil = activeFilament(dim = DIMS, Np = NP, radius = RADIUS, b0 = B0, k = K, S0 = S0, 
 		D0 = parameter, bc = BC)
 
+	# Activity time-scale sweep
+	# fil = activeFilament(dim = DIMS, Np = NP, radius = RADIUS, b0 = B0, k = K, S0 = S0, D0 = D0, bc = BC)
+
 	fil.simulate(Tf, Npts, n_cycles = n_activity_cycles, save = True, overwrite = False, 
 		path = ROOT_PATH, sim_type = 'point', init_condition = {'shape':'line'}, 
-	activity={'type':'square-wave','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle, 
+	activity={'type':'square-wave','activity_timescale':parameter, 'duty_cycle':duty_cycle, 
 	'start phase':0})
 
 
-# parameter_list = np.linspace(0.5,3, 40)
-parameter_list = 0
+parameter_list = np.linspace(0.5,3, 20)
+# parameter_list = np.linspace(1000, 2000, 20)
 
-num_initial_conditions = 1
+num_initial_conditions = 3
 
 parameter_list_full = []
 
