@@ -22,11 +22,11 @@ K = 25
 S0 = 0
 D0 = 1.5
 # Activity profile parameters
-activity_timescale = 500 # Activity time-scale (one compression and extension cycle)
+activity_timescale = 700 # Activity time-scale (one compression and extension cycle)
 duty_cycle = 0.5	# Relative time for compression relative to total activity time-scale
-n_activity_cycles = 500 # No:of activity cycles we want to simulate
+n_activity_cycles = 250 # No:of activity cycles we want to simulate
 Tf = activity_timescale*n_activity_cycles # Total simulation time
-time_step_save = int(10*activity_timescale/750)
+time_step_save = 5 # This is roughly 4X the axial stretch time-scale which is the smallest time-scale in the dynamics
 Npts = int(Tf/time_step_save) # No:of time points saved
 
 def run_parametric_simulation(pid, parameter):
@@ -45,12 +45,19 @@ def run_parametric_simulation(pid, parameter):
 
 	fil.simulate(Tf, Npts, n_cycles = n_activity_cycles, save = True, overwrite = False, 
 		path = ROOT_PATH, sim_type = 'point', init_condition = {'shape':'line'}, 
-	activity={'type':'square-wave','activity_timescale':parameter, 'duty_cycle':duty_cycle, 
+	activity={'type':'square-wave','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle, 
 	'start phase':0})
+
+	# fil.simulate(Tf, Npts, n_cycles = n_activity_cycles, save = True, overwrite = False, 
+	# 	path = ROOT_PATH, sim_type = 'point', init_condition = {'shape':'line'}, 
+	# activity={'type':'normal','activity_timescale':activity_timescale, 'duty_cycle':duty_cycle, 'noise_scale':0.1})
+
 
 
 parameter_list = np.linspace(0.5,3, 20)
 # parameter_list = np.linspace(1000, 2000, 20)
+
+# parameter_list = [1.5]
 
 num_initial_conditions = 3
 

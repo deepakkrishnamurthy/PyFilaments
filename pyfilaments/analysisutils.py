@@ -661,7 +661,7 @@ class analysisTools(activeFilament):
 		period_array = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 32, 64] # Number of periods over which we want to compare. period = 1 means every cycle.
 		below_threshold_array = np.zeros(len(period_array), dtype = 'bool')
 		# Threshold value for comparing shapes of filaments. Currently choosen as 10% of the sphere radius. 
-		epsilon = self.radius
+		epsilon = 0.1*self.radius
 
 		for period_index, period in enumerate(period_array):
 

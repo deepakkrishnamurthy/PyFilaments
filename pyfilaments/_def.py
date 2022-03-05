@@ -22,7 +22,9 @@ DIMS = 3
 RADIUS = 1
 B0 = 2.1*RADIUS
 BC = {0:'clamped', -1:'free'}
+MU = 1/6.0  # Viscosity
+
 
 N_IC = 10 # No:of filament ICs
 ANGULAR_AMP_IC = np.pi/4 # Angular amplitude for generating filament ICs
-TRANSVERSE_NOISE = 1E-12
+TRANSVERSE_NOISE = 1E-6

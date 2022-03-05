@@ -505,8 +505,14 @@ class activeFilament:
 			else:
 				return 1
 
+	def biphasic_activity(self, t):
+
+		pass
+
 
 	def activity_function(self):
+		""" Sets the activity function based on activity-profile in the simulation.
+		"""
 
 		if(self.activity_type == 'square-wave'):
 			return lambda t: self.square_wave_activity(t)

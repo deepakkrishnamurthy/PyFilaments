@@ -41,7 +41,7 @@ Npts = int(Tf/time_step_save)
 
 bc = {0:'clamped', -1:'free'}
 
-fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2.1, k = 15.0, F0 = 0, S0 = 0, D0 = 1.5, bc = bc, clamping_vector = [1,0,0])
+fil = activeFilament(dim = 3, Np = 32, radius = 1, b0 = 2.1, k = 15.0, F0 = 0, S0 = 0, D0 = 1.2, bc = bc, clamping_vector = [1,0,0])
 
 fil.plotFilament(r = fil.r0)
 
