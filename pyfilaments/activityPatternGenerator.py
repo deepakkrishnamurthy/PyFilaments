@@ -173,39 +173,30 @@ class activityPatternGenerator:
 				return 1
 
 	def reset_biphasic_activity(self):
-		self.counter = {'slow':0, 'fast':0}
-
 		self.curr_state = self.activity['start_state'] # Can be 1: "fast" or 0:"slow"
-
-		self.duty_cycle = self.activity['duty_cycle']
-
-		self.activity_timescale = self.activity_timescale_biphasic[self.curr_state]
-
-		self.curr_activity = -1
-		self.prev_activity = -1
-
 		self.t_start = 0
 
-		self.initialized = True
 
 
 	def biphasic_activity(self, t):	  
 
 		# If the number of cycles in the current phase elapsed then switch the phase
-		if self.curr_state == 'slow' and self.counter['slow']>=self.N_cycles['slow']:
-			self.curr_state = 'fast'
-			self.counter['fast'] = 0
-			self.t_start = np.copy(t)
-		elif self.curr_state =='fast' and self.counter['fast']>=self.N_cycles['fast']:
-			self.curr_state = 'slow'
-			self.counter['slow'] = 0
-			self.t_start = np.copy(t)
+		# if self.curr_state == 'slow' and self.counter['slow']>=self.N_cycles['slow']:
+		# 	self.curr_state = 'fast'
+		# 	self.counter['fast'] = 0
+		# 	self.t_start = np.copy(t)
+		# elif self.curr_state =='fast' and self.counter['fast']>=self.N_cycles['fast']:
+		# 	self.curr_state = 'slow'
+		# 	self.counter['slow'] = 0
+		# 	self.t_start = np.copy(t)
+
+		
 			
 		# Count each activity cycle in the current phase
-		if (self.curr_activity == -1 and self.prev_activity==1) or (self.curr_activity==-1 and self.prev_activity==0):
-			self.counter[self.curr_state]+=1
+		# if (self.curr_activity == -1 and self.prev_activity==1) or (self.curr_activity==-1 and self.prev_activity==0):
+		# 	self.counter[self.curr_state]+=1
 		
-		self.prev_activity = self.curr_activity
+		# self.prev_activity = self.curr_activity
 			
 		 # Set the activity parameter based on current state
 		self.activity_timescale = self.activity_timescale_biphasic[self.curr_state]
@@ -215,7 +206,16 @@ class activityPatternGenerator:
 		
 		self.curr_activity = self.square_wave_activity(t_elapsed)
 			
-		print('{}, {}, {}'.format(t, self.curr_state, self.curr_activity))  
+		# print('{}, {}, {}'.format(t, self.curr_state, self.t_start))  
+
+		if self.curr_state == 'slow' and t_elapsed>=self.N_cycles['slow']*self.activity_timescale_biphasic['slow']:
+			self.curr_state = 'fast'
+			# self.counter['fast'] = 0
+			self.t_start = np.copy(t)
+		elif self.curr_state =='fast' and t_elapsed>=self.N_cycles['fast']*self.activity_timescale_biphasic['fast']:
+			self.curr_state = 'slow'
+			# self.counter['slow'] = 0
+			self.t_start = np.copy(t)
 
 		return self.curr_activity
 
@@ -225,6 +225,8 @@ class activityPatternGenerator:
 
 			This function is called by the activeFilament object
 		"""
+		print(self.activity_type)
+
 		if(self.activity_type == 'square-wave'):
 			return lambda t: self.square_wave_activity(t)
 		elif(self.activity_type == 'poisson'):
@@ -237,13 +239,14 @@ class activityPatternGenerator:
 	def activity_profile(self, time_array):
 		"""Return activity profile for a given time array
 		"""
-		self.reset_biphasic_activity()
-		
+
 		activity_array = np.zeros_like(time_array)
+
+		self.filament_activity = self.activity_function()
 
 		for ii, t in enumerate(time_array):
 
-			activity_array[ii] = self.activity_function()(t)
+			activity_array[ii] = self.filament_activity(t)
 
 		return activity_array
 

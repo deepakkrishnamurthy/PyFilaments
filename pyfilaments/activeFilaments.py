@@ -712,9 +712,7 @@ class activeFilament:
 				print('Saving results...')
 				self.save_data()
 
-			# @@@ HOTFIX
-			if self.activity_type == 'biphasic':
-				self.activityPatternGenerator.reset_biphasic_activity()
+			
 
 	def load_data(self, file = None):
 
@@ -838,13 +836,17 @@ class activeFilament:
 			dset.create_dataset("particle potDipoles", data = self.D_mag)
 
 			# Save the activity profile for the actual saved time points
-			self.activity_profile_array = np.zeros(len(self.Time))
-			for ii in range(len(self.Time)):
-				self.activity_profile_array[ii] = self.filament_activity(self.Time[ii])
+			# @@@ HOTFIX
+			if self.activity_type == 'biphasic':
+				
+				self.activityPatternGenerator.reset_biphasic_activity()
+				
+			
+			self.activity_profile_array = self.activityPatternGenerator.activity_profile(self.Time)
+
 			dset.create_dataset('activity profile', data = self.activity_profile_array)
 
-			if('activity_profile' in self.__dict__):
-				dset.create_dataset("activity profile", data = self.activity_profile(self.Time))
+			
 
 		# Save user readable metadata in the same folder
 		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
