@@ -11,9 +11,9 @@ rc('font', family='sans-serif')
 rc('font', serif='Helvetica') 
 rc('text', usetex='false') 
 
-SMALL_SIZE = 12
-MEDIUM_SIZE = 18
-BIGGER_SIZE = 24
+SMALL_SIZE = 10
+MEDIUM_SIZE = 14
+BIGGER_SIZE = 18
 
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
 plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title
