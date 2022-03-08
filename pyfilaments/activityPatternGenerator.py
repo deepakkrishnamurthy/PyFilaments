@@ -177,6 +177,13 @@ class activityPatternGenerator:
 		self.t_start = 0
 
 
+	def toggle_start_phase(self):
+
+		if self.start_phase == 0:
+			self.start_phase = np.pi
+		elif self.start_phase == np.pi:
+			self.start_phase = 0
+
 
 	def biphasic_activity(self, t):	  
 
@@ -212,10 +219,12 @@ class activityPatternGenerator:
 			self.curr_state = 'fast'
 			# self.counter['fast'] = 0
 			self.t_start = np.copy(t)
+			# self.toggle_start_phase()
 		elif self.curr_state =='fast' and t_elapsed>=self.N_cycles['fast']*self.activity_timescale_biphasic['fast']:
 			self.curr_state = 'slow'
 			# self.counter['slow'] = 0
 			self.t_start = np.copy(t)
+			# self.toggle_start_phase()
 
 		return self.curr_activity
 

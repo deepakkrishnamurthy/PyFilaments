@@ -37,9 +37,9 @@ D0 = 1.5
 
 # Biphasic activity (Uncomment below)
 slow_timescale = 750
-fast_timescale = 250
+fast_timescale = 300
 n_slow_cycles = 1
-n_fast_cycles = 5
+n_fast_cycles = 3
 n_activity_cycles = 100 # No:of activity cycles we want to simulate (for biphasic activity this is the number of slow and fast cycles)
 Tf = n_activity_cycles*(n_slow_cycles*slow_timescale+n_fast_cycles*fast_timescale)
 time_step_save = 5 # This is roughly 4X the axial stretch time-scale which is the smallest time-scale in the dynamics
@@ -76,7 +76,7 @@ def run_parametric_simulation(pid, parameter):
 # parameter_list = np.linspace(0.5,3, 20)
 # parameter_list = np.linspace(1000, 2000, 20)
 
-parameter_list = [1.75]
+parameter_list = [1.78]
 
 num_initial_conditions = 1
 
