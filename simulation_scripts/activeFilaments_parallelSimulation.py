@@ -16,10 +16,7 @@ from pyfilaments._def import *
 #-------------------------------------------------------------
 # Filament parameters
 #-------------------------------------------------------------
-BC = {0:'clamped', -1:'free'}
 NP = 32
-K = 25
-S0 = 0
 D0 = 1.5
 # Activity profile parameters
 # activity_timescale = 750 # Activity time-scale (one compression and extension cycle)
