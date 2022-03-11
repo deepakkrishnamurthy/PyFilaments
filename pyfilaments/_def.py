@@ -21,9 +21,10 @@ FILE_FORMAT = '.hdf5'
 DIMS = 3
 RADIUS = 1
 B0 = 2.1*RADIUS
+S0 = 0
 BC = {0:'clamped', -1:'free'}
 MU = 1/6.0  # Viscosity
-
+K = 25 # Axial stiffness
 
 N_IC = 10 # No:of filament ICs
 ANGULAR_AMP_IC = np.pi/4 # Angular amplitude for generating filament ICs

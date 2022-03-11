@@ -35,6 +35,7 @@ import pyforces
 import odespy
 
 import filament.filament as filament
+from pyfilaments.activityPatternGenerator import activityPatternGenerator
 
 class activeFilament:
 	'''
@@ -438,92 +439,6 @@ class activeFilament:
 				self.F[end + self.Np] += constraint_force[1]
 				self.F[end + self.xx] += constraint_force[2]
 
-	def square_wave_activity(self, t):
-		''' Output a square-wave profile based on a cycle time-scale and duty-cycle
-		'''
-		phase = (t + self.activity_timescale*self.start_phase/(2*np.pi))%self.activity_timescale 
-		if(phase > self.activity_timescale*self.duty_cycle):
-			return 1
-		elif phase < self.activity_timescale*self.duty_cycle:
-			return -1
-		else:
-			return 0
-
-	def poisson_activity(self, t):
-		''' Output activity pattern as a Poisson process
-		'''
-		delta_t = t - self.t_previous
-		self.t_previous = t
-		if self.compression_in_progress:
-			rand_num = np.random.uniform()
-			
-			if(rand_num < self.lambda_comp*delta_t):
-				self.extension_in_progress = True
-				self.compression_in_progress = False
-				self.T_ext_start = t
-				# self.T_comp_poisson[current_cycle] = t - self.T_comp_start
-				return 1
-			else:
-				return -1
-
-			
-		elif self.extension_in_progress:
-		
-			rand_num = np.random.uniform()
-			if(rand_num < self.lambda_ext*delta_t):
-				self.extension_in_progress = False
-				self.compression_in_progress = True
-				self.T_comp_start = t
-				# self.T_ext_poisson[current_cycle] = t - self.T_ext_start
-				self.current_cycle += 1
-				return -1
-			else:
-				return 1
-
-	def normal_activity(self, t):
-
-		if self.compression_in_progress:
-			t_elapsed = t - self.T_comp_start
-
-			if t_elapsed > self.T_comp[self.current_cycle]:
-				self.extension_in_progress = True
-				self.compression_in_progress = False
-				self.T_ext_start = t
-				return 1
-			else:
-				return -1
-			
-		elif self.extension_in_progress:
-			t_elapsed = t - self.T_ext_start
-
-			if t_elapsed > self.T_ext[self.current_cycle]:
-				self.extension_in_progress = False
-				self.compression_in_progress = True
-				self.T_comp_start = t
-				self.current_cycle += 1
-				return -1
-			else:
-				return 1
-
-	def biphasic_activity(self, t):
-
-		pass
-
-
-	def activity_function(self):
-		""" Sets the activity function based on activity-profile in the simulation.
-		"""
-
-		if(self.activity_type == 'square-wave'):
-			return lambda t: self.square_wave_activity(t)
-		elif(self.activity_type == 'poisson'):
-			return lambda t: self.poisson_activity(t)
-		elif(self.activity_type == 'normal'):
-			return lambda t: self.normal_activity(t)
-
-
-
-
 	def set_filament_activity(self, t):
 
 		if(self.sim_type == 'point'):
@@ -606,7 +521,7 @@ class activeFilament:
 		
 
 
-	def simulate(self, Tf = 100, Npts = 10, n_cycles = 1, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
+	def simulate(self, Tf = 100, Npts = 10, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
 		scale_factor = 1, save = False, path = ROOT_PATH, 
 		note = '', overwrite = False, create_subdirs = True, pid = 0, activity = None, 
 		stop_tol = 1E-5, ic_sim = False):
@@ -715,76 +630,25 @@ class activeFilament:
 
 		# Set the simulation type
 		self.sim_type = sim_type
-		# Activity parameters
-		if(activity is not None):
-			self.activity_type = activity['type']
-			self.filament_activity = self.activity_function()	# Function that holds the time dynamics of activity
 
-			if(self.activity_type == 'square-wave'):
-				self.activity_timescale = activity['activity_timescale']
-				self.duty_cycle = activity['duty_cycle']
-				self.activity_profile_array = np.zeros_like(t_array)
-				self.start_phase = activity['start phase']
-				for ii in range(len(t_array)):
-					self.activity_profile_array[ii] = self.filament_activity(t_array[ii])
+		# Initialize the activity pattern generator
+		self.activity = activity
 
-			elif(self.activity_type == 'poisson'):
-				# Define variables related to simulating Poisson process
-				self.activity_timescale = activity['activity_timescale']
-				self.duty_cycle = activity['duty_cycle']
-				self.T_ext_mean = self.duty_cycle*self.activity_timescale
-				self.T_comp_mean = (1 - self.duty_cycle)*self.activity_timescale
-				self.lambda_ext = 1/self.T_ext_mean
-				self.lambda_comp = 1/self.T_comp_mean
-				self.compression_in_progress = True
-				self.extension_in_progress = False
-				self.T_ext_start = 0
-				self.T_comp_start = 0
-				self.current_cycle = 0
-				self.t_previous = 0
-				self.activity_profile_array = np.zeros_like(t_array)
-				for ii in range(len(t_array)):
-					self.activity_profile_array[ii] = self.filament_activity(t_array[ii])
+		# For each simulation we initialize a new instance of activityGenerator
+		self.activityPatternGenerator = activityPatternGenerator(activity = self.activity)
 
-				# Reset state
-				self.t_previous = 0
-				self.compression_in_progress = True
-				self.extension_in_progress = False
-				self.T_ext_start = 0
-				self.T_comp_start = 0
-				self.current_cycle = 0
+	
+		self.activity_type = self.activity['type']
 
-			elif(self.activity_type == 'normal'):
-				self.activity_timescale = activity['activity_timescale']
-				self.noise_scale = activity['noise_scale']
-				self.duty_cycle = activity['duty_cycle']
-				self.n_cycles = n_cycles
-				self.T_ext_mean = self.duty_cycle*self.activity_timescale
-				self.T_comp_mean = (1 - self.duty_cycle)*self.activity_timescale
-				self.compression_in_progress = True
-				self.extension_in_progress = False
-				self.T_ext_start = 0
-				self.T_comp_start = 0
-				self.current_cycle = 0
 
-				self.T_ext = np.random.normal(loc = self.T_ext_mean, scale = self.noise_scale*self.T_ext_mean, size = self.n_cycles)
-				self.T_comp = np.random.normal(loc = self.T_comp_mean , scale = self.noise_scale*self.T_comp_mean, size = self.n_cycles)
-				# Reset Tf based on the actual T-ext and T_comp values
-				Tf = np.sum(self.T_ext + self.T_comp)
+		# @@@ Hotfix (need to change how activity time scale is stored when there is more than one timescale)
+		if self.activity_type == 'biphasic':
+			self.activity_timescale = (self.activity['activity time scale']['slow']+ self.activity['activity time scale']['fast'])/2.0
+		else:
+			self.activity_timescale = self.activity['activity time scale']
 
-				self.activity_profile_array = np.zeros_like(t_array)
-				for ii in range(len(t_array)):
-					self.activity_profile_array[ii] = self.filament_activity(t_array[ii])
-
-				# Reset state
-				self.compression_in_progress = True
-				self.extension_in_progress = False
-				self.T_ext_start = 0
-				self.T_comp_start = 0
-				self.current_cycle = 0
-			# plt.figure()
-			# plt.plot(t_array/self.activity_timescale, self.activity_profile_array)
-			# plt.show()
+		# Function encodes time dynamics of activity. For a given time returns the current activity value.
+		self.filament_activity = self.activityPatternGenerator.activity_function()	
 
 
 		# Set the scale-factor
@@ -847,6 +711,8 @@ class activeFilament:
 			if(self.save):
 				print('Saving results...')
 				self.save_data()
+
+			
 
 	def load_data(self, file = None):
 
@@ -955,23 +821,32 @@ class activeFilament:
 			dset.attrs['stresslet strength'] = self.S0
 			dset.attrs['potDipole strength'] = self.D0
 			dset.attrs['simulation type'] = self.sim_type
-			dset.attrs['activity time scale'] = self.activity_timescale
 			dset.attrs['viscosity'] = self.mu
 			dset.attrs['boundary condition 0'] = self.bc[0]
 			dset.attrs['boundary condition 1'] = self.bc[-1]
+
+			dset.attrs['activity time scale'] = self.activity_timescale
+
+			# Save the activity parameters
+			# for key in self.activity.keys():
+			# 	dset.attrs[key] = self.activity[key]
 
 			dset.create_dataset("particle forces", data = self.F_mag)
 			dset.create_dataset("particle stresslets", data = self.S_mag)
 			dset.create_dataset("particle potDipoles", data = self.D_mag)
 
 			# Save the activity profile for the actual saved time points
-			self.activity_profile_array = np.zeros(len(self.Time))
-			for ii in range(len(self.Time)):
-				self.activity_profile_array[ii] = self.filament_activity(self.Time[ii])
+			# @@@ HOTFIX
+			if self.activity_type == 'biphasic':
+				
+				self.activityPatternGenerator.reset_biphasic_activity()
+				
+			
+			self.activity_profile_array = self.activityPatternGenerator.activity_profile(self.Time)
+
 			dset.create_dataset('activity profile', data = self.activity_profile_array)
 
-			if('activity_profile' in self.__dict__):
-				dset.create_dataset("activity profile", data = self.activity_profile(self.Time))
+			
 
 		# Save user readable metadata in the same folder
 		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
