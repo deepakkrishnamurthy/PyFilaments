@@ -631,6 +631,34 @@ class analysisTools(activeFilament):
 
 				df_unique_count.to_csv(timeseries_file)
 				df_unique_positions.to_csv(unique_positions_file)
+	def total_tip_distance(self):
+		''' Calculate the cumulative distance covered by the filament tip
+
+
+		'''
+		total_distance = 0
+		
+		disp_array_x = self.derived_data['head pos x'][1:] - self.derived_data['head pos x'][0:-1]
+		disp_array_y = self.derived_data['head pos y'][1:] - self.derived_data['head pos y'][0:-1]
+		disp_array_z = self.derived_data['head pos z'][1:] - self.derived_data['head pos z'][0:-1] 
+
+		total_distance = np.sum((disp_array_x**2 + disp_array_y**2 + disp_array_z**2)**(1/2))
+
+		return total_distance
+
+
+	def search_efficiency(self):
+		""" Search efficiency = Unique sites sampled by tip/Total distance covered by tip
+			Run filament_tip_coverage before running this
+
+		"""
+		
+		total_distance = self.total_tip_distance()
+		
+		total_unique_locations = self.unique_counter_time[-1]
+
+		return total_unique_locations/total_distance
+
 
 	def classify_filament_dynamics(self):
 		''' Classify the filament dynamics into 1. Periodic or 2. Aperiodic
@@ -640,7 +668,6 @@ class analysisTools(activeFilament):
 
 				periodic_flag: bool, with True when the dynamics is periodic, False for Aperiodic
 				period: int, Period (multiple of driving or forcing time-scale) over which the dynamics is periodic, None for aperiodic dynamics
-
 		'''
 		periodic_flag = False
 		min_period = None

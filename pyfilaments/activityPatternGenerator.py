@@ -57,25 +57,20 @@ class activityPatternGenerator:
 				self.activity_timescale = self.activity['activity time scale']
 				self.noise_scale = self.activity['noise_scale']
 				self.duty_cycle = self.activity['duty_cycle']
-				self.n_cycles = n_cycles
+				self.n_cycles = self.activity['n_cycles']
 				self.T_ext_mean = self.duty_cycle*self.activity_timescale
 				self.T_comp_mean = (1 - self.duty_cycle)*self.activity_timescale
-				self.compression_in_progress = True
-				self.extension_in_progress = False
-				self.T_ext_start = 0
-				self.T_comp_start = 0
-				self.current_cycle = 0
+				self.curr_phase = 'comp'
+				
+				self.t_start = 0
+				self.counter = 0
 
-				self.T_ext = np.random.normal(loc = self.T_ext_mean, scale = self.noise_scale*self.T_ext_mean, size = self.n_cycles)
+				# We create random times for one extra cycle so as to handle cases where Tf is higher than the mean value of n_cycles*(T_ext_mean + T_comp_mean)
+				self.T_ext = np.random.normal(loc = self.T_ext_mean, scale = self.noise_scale*self.T_ext_mean, size = self.n_cycles) 
 				self.T_comp = np.random.normal(loc = self.T_comp_mean , scale = self.noise_scale*self.T_comp_mean, size = self.n_cycles)
 				# Reset Tf based on the actual T-ext and T_comp values
-				Tf = np.sum(self.T_ext + self.T_comp)
-				# Reset state
-				self.compression_in_progress = True
-				self.extension_in_progress = False
-				self.T_ext_start = 0
-				self.T_comp_start = 0
-				self.current_cycle = 0
+				self.Tf = np.sum(self.T_ext + self.T_comp)
+				
 
 			elif self.activity_type == 'biphasic':
 
@@ -149,28 +144,53 @@ class activityPatternGenerator:
 
 	def normal_activity(self, t):
 
-		if self.compression_in_progress:
-			t_elapsed = t - self.T_comp_start
+		t_elapsed = t - self.t_start
 
-			if t_elapsed > self.T_comp[self.current_cycle]:
-				self.extension_in_progress = True
-				self.compression_in_progress = False
-				self.T_ext_start = t
-				return 1
-			else:
-				return -1
+		if self.curr_phase == 'comp':
+			if t_elapsed >=self.T_comp[self.counter]:
+				self.curr_phase = 'ext'
+				self.t_start = np.copy(t)
+		elif self.curr_phase == 'ext':
+			if t_elapsed >= self.T_ext[self.counter]:
+				self.curr_phase = 'comp'
+				self.t_start = np.copy(t)
+				self.counter+=1
+
+		if self.curr_phase == 'comp':
+			return -1
+		elif self.curr_phase == 'ext':
+			return 1
+
+
+
+		# if self.compression_in_progress:
+		# 	t_elapsed = t - self.T_comp_start
+
+		# 	if t_elapsed > self.T_comp[self.current_cycle]:
+		# 		self.extension_in_progress = True
+		# 		self.compression_in_progress = False
+		# 		self.T_ext_start = t
+		# 		return 1
+		# 	else:
+		# 		return -1
 			
-		elif self.extension_in_progress:
-			t_elapsed = t - self.T_ext_start
+		# elif self.extension_in_progress:
+		# 	t_elapsed = t - self.T_ext_start
 
-			if t_elapsed > self.T_ext[self.current_cycle]:
-				self.extension_in_progress = False
-				self.compression_in_progress = True
-				self.T_comp_start = t
-				self.current_cycle += 1
-				return -1
-			else:
-				return 1
+		# 	if t_elapsed > self.T_ext[self.current_cycle]:
+		# 		self.extension_in_progress = False
+		# 		self.compression_in_progress = True
+		# 		self.T_comp_start = t
+		# 		self.current_cycle += 1
+		# 		return -1
+		# 	else:
+		# 		return 1
+	def reset_normal_activity(self):
+		# Reset state
+		self.curr_phase = 'comp'
+		self.t_start = 0
+		self.counter = 0
+
 
 	def reset_biphasic_activity(self):
 		self.curr_state = self.activity['start_state'] # Can be 1: "fast" or 0:"slow"
@@ -186,24 +206,6 @@ class activityPatternGenerator:
 
 
 	def biphasic_activity(self, t):	  
-
-		# If the number of cycles in the current phase elapsed then switch the phase
-		# if self.curr_state == 'slow' and self.counter['slow']>=self.N_cycles['slow']:
-		# 	self.curr_state = 'fast'
-		# 	self.counter['fast'] = 0
-		# 	self.t_start = np.copy(t)
-		# elif self.curr_state =='fast' and self.counter['fast']>=self.N_cycles['fast']:
-		# 	self.curr_state = 'slow'
-		# 	self.counter['slow'] = 0
-		# 	self.t_start = np.copy(t)
-
-		
-			
-		# Count each activity cycle in the current phase
-		# if (self.curr_activity == -1 and self.prev_activity==1) or (self.curr_activity==-1 and self.prev_activity==0):
-		# 	self.counter[self.curr_state]+=1
-		
-		# self.prev_activity = self.curr_activity
 			
 		 # Set the activity parameter based on current state
 		self.activity_timescale = self.activity_timescale_biphasic[self.curr_state]
@@ -227,6 +229,31 @@ class activityPatternGenerator:
 			# self.toggle_start_phase()
 
 		return self.curr_activity
+
+	def biphasic_state(self, t):
+		 # Set the activity parameter based on current state
+		self.activity_timescale = self.activity_timescale_biphasic[self.curr_state]
+		
+		# Get the square-wave activity profile based on current state
+		t_elapsed = t - self.t_start # Elapsed time since the start of current activity phase
+		
+		self.curr_activity = self.square_wave_activity(t_elapsed)
+			
+		# print('{}, {}, {}'.format(t, self.curr_state, self.t_start))  
+
+		if self.curr_state == 'slow' and t_elapsed>=self.N_cycles['slow']*self.activity_timescale_biphasic['slow']:
+			self.curr_state = 'fast'
+			# self.counter['fast'] = 0
+			self.t_start = np.copy(t)
+			# self.toggle_start_phase()
+		elif self.curr_state =='fast' and t_elapsed>=self.N_cycles['fast']*self.activity_timescale_biphasic['fast']:
+			self.curr_state = 'slow'
+			# self.counter['slow'] = 0
+			self.t_start = np.copy(t)
+			# self.toggle_start_phase()
+
+		return self.curr_state
+
 
 
 	def activity_function(self):
@@ -258,6 +285,19 @@ class activityPatternGenerator:
 			activity_array[ii] = self.filament_activity(t)
 
 		return activity_array
+
+
+	def activity_state_profile(self, time_array):
+		""" Return the activity state: "slow" vs "fast" when implementing biphasic filament behaviors
+		"""
+		activity_state_array = np.empty_like(time_array, dtype=str)
+
+		for ii, t in enumerate(time_array):
+
+			activity_state_array[ii] = self.biphasic_state(t)
+
+		return activity_state_array
+
 
 
 		

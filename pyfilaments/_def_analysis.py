@@ -24,3 +24,5 @@ EXT_COLOR = 'r'
 SPATIAL_DENSITY_CMAP = cmocean.cm.deep
 
 ACTIVITY_STRENGTH_CMAP = cmocean.cm.matter
+
+ACTIVITY_TIME_CMAP = cmocean.cm.deep

@@ -26,6 +26,7 @@ import random
 from datetime import datetime
 import time
 import h5py
+import json
 from tqdm import tqdm
 import imp
 from pyfilaments._def import *
@@ -112,11 +113,11 @@ class activeFilament:
 			# Directly save to path
 
 			self.path = path
-			self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
-								int(self.activity_timescale), self.sim_type)
+			# self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+			# 					(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
+			# 					int(self.activity_timescale), self.sim_type)
 
-			self.saveFolder = os.path.join(self.path, self.folder)
+			self.saveFolder = self.path
 
 
 		if ic_sim:
@@ -647,6 +648,11 @@ class activeFilament:
 		else:
 			self.activity_timescale = self.activity['activity time scale']
 
+		if self.activity_type == 'normal':
+			''' For stochastic activity change the total sim time based on the actual random timescales generated.
+			'''
+			Tf = self.activityPatternGenerator.Tf
+
 		# Function encodes time dynamics of activity. For a given time returns the current activity value.
 		self.filament_activity = self.activityPatternGenerator.activity_function()	
 
@@ -758,9 +764,18 @@ class activeFilament:
 							self.bc = {0:[],-1:[]}
 							self.bc[0] = dset.attrs['boundary condition 0']
 							self.bc[-1] = dset.attrs['boundary condition 1']
+							self.activity_type = dset.attrs['activity type']
 						except:
 							print('Attribute not found')
 						
+						activity_metadata = os.path.join(self.simFolder, 'activity_metadata.json')
+
+						if os.path.exists(activity_metadata):
+							with open(activity_metadata, 'r') as f:
+								self.activity = json.load(f)
+
+						if self.activity['type']=='biphasic':
+							self.activity_state_array = dset['activity state profile'][:]
 
 					else:  # Load the simulation data (older method)
 						self.Time = f["Time"][:]
@@ -825,11 +840,9 @@ class activeFilament:
 			dset.attrs['boundary condition 0'] = self.bc[0]
 			dset.attrs['boundary condition 1'] = self.bc[-1]
 
+			dset.attrs['activity type'] = self.activity_type
 			dset.attrs['activity time scale'] = self.activity_timescale
 
-			# Save the activity parameters
-			# for key in self.activity.keys():
-			# 	dset.attrs[key] = self.activity[key]
 
 			dset.create_dataset("particle forces", data = self.F_mag)
 			dset.create_dataset("particle stresslets", data = self.S_mag)
@@ -837,22 +850,35 @@ class activeFilament:
 
 			# Save the activity profile for the actual saved time points
 			# @@@ HOTFIX
+			if self.activity_type == 'normal':
+				self.activityPatternGenerator.reset_normal_activity()
+
 			if self.activity_type == 'biphasic':
 				
 				self.activityPatternGenerator.reset_biphasic_activity()
+
+				activity_state_array = self.activityPatternGenerator.activity_state_profile(time_array)
+				dset.create_dataset('activity state profile', data = self.activity_state_array)
+
 				
 			
 			self.activity_profile_array = self.activityPatternGenerator.activity_profile(self.Time)
 
 			dset.create_dataset('activity profile', data = self.activity_profile_array)
 
-			
 
 		# Save user readable metadata in the same folder
-		self.metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
-		self.metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale, activity type, viscosity,Simulation time,CPU time (s)\n')
-		self.metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+ self.activity_type + ',' + str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
-		self.metadata.close()
+		metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
+		metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale, activity type, viscosity,Simulation time,CPU time (s)\n')
+		metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+ self.activity_type + ',' + str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
+		metadata.close()
+
+		# Save user readable metadata of activity parameters
+		activity_metadata = os.path.join(self.saveFolder, 'activity_metadata.json')
+
+		with open(activity_metadata, 'w') as f:
+			json.dump(self.activity, f)
+ 
 
 
 	########################################################################################################
