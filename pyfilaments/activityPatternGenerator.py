@@ -290,11 +290,16 @@ class activityPatternGenerator:
 	def activity_state_profile(self, time_array):
 		""" Return the activity state: "slow" vs "fast" when implementing biphasic filament behaviors
 		"""
-		activity_state_array = np.empty_like(time_array, dtype=str)
+		activity_state_array = np.empty_like(time_array, dtype=bool)
 
 		for ii, t in enumerate(time_array):
 
-			activity_state_array[ii] = self.biphasic_state(t)
+			state = self.biphasic_state(t)
+
+			if state =='slow':
+				activity_state_array[ii] = 0
+			elif state == 'fast':
+				activity_state_array[ii] = 1 
 
 		return activity_state_array
 

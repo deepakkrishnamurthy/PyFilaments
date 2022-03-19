@@ -775,7 +775,7 @@ class activeFilament:
 								self.activity = json.load(f)
 
 						if self.activity['type']=='biphasic':
-							self.activity_state_array = dset['activity state profile'][:]
+							self.activity_state_array = dset["activity state profile"][:]
 
 					else:  # Load the simulation data (older method)
 						self.Time = f["Time"][:]
@@ -857,8 +857,12 @@ class activeFilament:
 				
 				self.activityPatternGenerator.reset_biphasic_activity()
 
-				activity_state_array = self.activityPatternGenerator.activity_state_profile(time_array)
-				dset.create_dataset('activity state profile', data = self.activity_state_array)
+				activity_state_array = self.activityPatternGenerator.activity_state_profile(self.Time)
+				print(activity_state_array)
+				dset.create_dataset("activity state profile", data = activity_state_array)
+
+				self.activityPatternGenerator.reset_biphasic_activity()
+
 
 				
 			
