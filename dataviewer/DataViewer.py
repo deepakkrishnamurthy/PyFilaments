@@ -29,6 +29,9 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		
 		super().__init__(parent)
 
+		# Background color
+		self.setBackground('w')
+
 		self.plot = self.addPlot()
 		self.plot.setAspectLocked(True)
 		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=False)
@@ -40,8 +43,8 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		if(self.filament.R is None):
 			n = 1
 
-			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120))
-			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120))
+			self.s1 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120), pxMode = False)
+			self.s2 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120), pxMode = False)
 			pos = np.random.normal(size = (2,n))
 
 			# spots = [{'pos': pos[:,i], 'data': 1} for i in range(n)] + [{'pos': [0,0], 'data': 1}]
@@ -51,9 +54,9 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 			self.s1.setData(x = pos[1,:], y = pos[0,:], brush = pg.mkBrush(255, 0, 255, 200))
 
 		else:
-			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
+			self.s1 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200), pxMode = False)
 			# Scatter plot to show filament tip history
-			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200))
+			self.s2 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200), pxMode = False)
 			
 			x_pos = self.filament.R[self.current_index,:self.filament.Np]
 			y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]

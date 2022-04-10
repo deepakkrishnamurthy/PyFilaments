@@ -27,5 +27,5 @@ MU = 1/6.0  # Viscosity
 K = 25 # Axial stiffness
 
 N_IC = 10 # No:of filament ICs
-ANGULAR_AMP_IC = np.pi/4 # Angular amplitude for generating filament ICs
+ANGULAR_AMP_IC = np.pi/12 # Angular amplitude for generating filament ICs
 TRANSVERSE_NOISE = 1E-6

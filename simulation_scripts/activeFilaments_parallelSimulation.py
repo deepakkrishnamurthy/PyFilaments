@@ -17,30 +17,30 @@ from pyfilaments._def import *
 NP = 32
 D0 = 1.5
 # Activity profile parameters
-# activity_timescale = 750 # Activity time-scale (one compression and extension cycle)
-# duty_cycle = 0.5	# Relative time for compression relative to total activity time-scale
-# n_activity_cycles = 500 # No:of activity cycles we want to simulate
-# Tf = activity_timescale*n_activity_cycles # Total simulation time
-# time_step_save = 5 # This is roughly 4X the axial stretch time-scale which is the smallest time-scale in the dynamics
-# Npts = int(Tf/time_step_save) # No:of time points saved
+activity_timescale = 550 # Activity time-scale (one compression and extension cycle)
+duty_cycle = 0.5	# Relative time for compression relative to total activity time-scale
+n_activity_cycles = 250 # No:of activity cycles we want to simulate
+Tf = activity_timescale*n_activity_cycles # Total simulation time
+time_step_save = 5 # This is roughly 4X the axial stretch time-scale which is the smallest time-scale in the dynamics
+Npts = int(Tf/time_step_save) # No:of time points saved
 
 # Activity parameters
 # Square-wave activity (Uncomment below)
-# activity_parameters = {'type':'square-wave','activity time scale':activity_timescale, 'duty_cycle':duty_cycle, 
-# 	'start phase':0}
+activity_parameters = {'type':'square-wave','activity time scale':activity_timescale, 'duty_cycle':duty_cycle, 
+	'start phase':0}
 
 # Biphasic activity (Uncomment below)
-slow_timescale = 750
-fast_timescale = 250
-n_slow_cycles = 1
-n_fast_cycles = 3
-n_activity_cycles = 10 # No:of activity cycles we want to simulate (for biphasic activity this is the number of slow and fast cycles)
-Tf = n_activity_cycles*(n_slow_cycles*slow_timescale+n_fast_cycles*fast_timescale)
-time_step_save = 5 # This is roughly 4X the axial stretch time-scale which is the smallest time-scale in the dynamics
-Npts = int(Tf/time_step_save) # No:of time points saved
-activity_parameters = {'type':'biphasic','activity time scale':{'slow':slow_timescale, 'fast':fast_timescale}, 
-                       'duty_cycle':0.5,'N_cycles':{'slow':n_slow_cycles, 'fast':n_fast_cycles}, 
-                       'start_state':'slow', 'start phase':0}
+# slow_timescale = 750
+# fast_timescale = 250
+# n_slow_cycles = 1
+# n_fast_cycles = 3
+# n_activity_cycles = 10 # No:of activity cycles we want to simulate (for biphasic activity this is the number of slow and fast cycles)
+# Tf = n_activity_cycles*(n_slow_cycles*slow_timescale+n_fast_cycles*fast_timescale)
+# time_step_save = 5 # This is roughly 4X the axial stretch time-scale which is the smallest time-scale in the dynamics
+# Npts = int(Tf/time_step_save) # No:of time points saved
+# activity_parameters = {'type':'biphasic','activity time scale':{'slow':slow_timescale, 'fast':fast_timescale}, 
+#                        'duty_cycle':0.5,'N_cycles':{'slow':n_slow_cycles, 'fast':n_fast_cycles}, 
+#                        'start_state':'slow', 'start phase':0}
 
 
 # Normally distributed activity times
@@ -85,8 +85,8 @@ def run_parametric_simulation(pid, parameter):
 
 
 # Activity strength sweep
-# parameter_list = np.linspace(0.5,3, 20)
-parameter_list = 1.7
+parameter_list = np.linspace(0.5,3, 20)
+# parameter_list = 0.1
 
 # Activity time sweep
 # parameter_list = np.arange(300, 1050, 50)

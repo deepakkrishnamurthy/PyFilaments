@@ -116,8 +116,8 @@ class analysisTools(activeFilament):
 		if(not os.path.exists(self.analysisFolder)):
 			os.makedirs(self.analysisFolder) 
 		
-	def relaxation_time_scales(self):
-		"""	Calculate relaxation time-scales for the active filament.
+	def time_scales(self):
+		"""	Calculate relevant time-scales for the active filament.
 		"""
 		self.L = (self.Np - 1)*self.b0
 		self.kappa = self.kappa_hat*self.b0
@@ -654,7 +654,7 @@ class analysisTools(activeFilament):
 		"""
 		
 		total_distance = self.total_tip_distance()
-		
+
 		total_unique_locations = self.unique_counter_time[-1]
 
 		return total_unique_locations/total_distance
@@ -745,6 +745,17 @@ class analysisTools(activeFilament):
 			print(50*'*')
 
 		return periodic_flag, min_period, threshold_index
+
+	def detect_buckling(self):
+		""" Detect if the straight filament shape is stable for all times
+
+		"""
+		self.compute_base_tip_angle()
+
+		if np.all(abs(self.derived_data['base tip angle'])<=0.001):
+			return False # No buckling occurs
+		else:
+			return True
 
 	def compute_basetip_angle_at_constant_phase(self, phase_value = 0, skip_cycles =100):
 

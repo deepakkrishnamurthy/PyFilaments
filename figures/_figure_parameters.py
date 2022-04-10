@@ -13,7 +13,7 @@ rc('text', usetex='false')
 
 SMALL_SIZE = 10
 MEDIUM_SIZE = 14
-BIGGER_SIZE = 18
+BIGGER_SIZE = 28
 
 plt.rc('font', size=MEDIUM_SIZE)          # controls default text sizes
 plt.rc('axes', titlesize=MEDIUM_SIZE)     # fontsize of the axes title

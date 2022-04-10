@@ -774,8 +774,14 @@ class activeFilament:
 							with open(activity_metadata, 'r') as f:
 								self.activity = json.load(f)
 
-						if self.activity['type']=='biphasic':
-							self.activity_state_array = dset["activity state profile"][:]
+						try:
+							if self.activity['type']=='biphasic':
+								try:
+									self.activity_state_array = dset["activity state profile"][:]
+								except:
+									print('Activity state profile not found!')
+						except:
+							pass
 
 					else:  # Load the simulation data (older method)
 						self.Time = f["Time"][:]
