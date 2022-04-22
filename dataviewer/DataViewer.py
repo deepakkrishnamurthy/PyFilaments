@@ -23,15 +23,22 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
+
+
 class ScatterPlotWidget(pg.GraphicsLayoutWidget):
+	'''
+	This plots the series of colloids that make up the filament as a scatter plot
+
+	'''
 
 	def __init__(self, filament = None, parent=None):
 		
 		super().__init__(parent)
 
 		# Background color
-		self.setBackground('w')
+		self.setBackground('k')
 
+		# Add PlotItem for holding the scatterplots
 		self.plot = self.addPlot()
 		self.plot.setAspectLocked(True)
 		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=False)
@@ -67,7 +74,7 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 			self.s1.setBrush(self.particle_colors)
 
 
-
+		# Add the two scatterplots (filament) and tip history
 		self.plot.addItem(self.s1)
 		self.plot.addItem(self.s2)
 
@@ -91,10 +98,10 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		# self.text.setText('{:0.1f}'.format(self.filament.Time[self.current_index]))
 
 		# Display head position
-		x_pos_head = self.filament.R[:self.current_index:5,self.filament.Np-1]
-		y_pos_head = self.filament.R[:self.current_index:5,2*self.filament.Np-1]
+		# x_pos_head = self.filament.R[:self.current_index:5,self.filament.Np-1]
+		# y_pos_head = self.filament.R[:self.current_index:5,2*self.filament.Np-1]
 
-		self.s2.setData(x = y_pos_head, y = x_pos_head, brush = pg.mkBrush(255, 255, 255, 40))
+		# self.s2.setData(x = y_pos_head, y = x_pos_head, brush = pg.mkBrush(255, 255, 255, 40))
 
 
 	def set_colors(self):
@@ -119,6 +126,7 @@ class PlotWidget3D(gl.GLViewWidget):
 	""" Widget for displaying 3D plots
 		Input:
 		Time series of (x, y, z) data.
+		Currently this is used for plotting the phase plot of the filament dynamics
 	"""
 
 	def __init__(self, data = None, parent = None):
@@ -400,6 +408,9 @@ class VideoPlayer(QWidget):
 			print(self.frames)
 
 class simParamsDisplayWidget(QWidget):
+	''' This is a simple widget that displays the simulation parameters for the current dataset
+
+	'''
 
 	update_main_window = Signal()
 
@@ -408,6 +419,8 @@ class simParamsDisplayWidget(QWidget):
 		super().__init__(parent)
 
 		self.filament = filament
+
+		filament.D0 = round(filament.D0,2)
 
 		self.displayed_parameters = ['N particles', 'radius', 'bond length', 'spring constant', 
 			'kappa_hat', 'potDipole strength', 'activity time','simulation type']
@@ -466,6 +479,8 @@ class simParamsDisplayWidget(QWidget):
 	def update_param_values(self):
 
 		print('Updating parameter values...')
+		self.filament.D0 = round(self.filament.D0,2)
+
 		self.variable_mapping = {'N particles':self.filament.Np, 'radius':self.filament.radius, 
 			'bond length':self.filament.b0, 'spring constant':self.filament.k, 
 			'kappa_hat':self.filament.kappa_hat, 'simulation type': self.filament.sim_type, 
@@ -480,6 +495,14 @@ class simParamsDisplayWidget(QWidget):
 		QApplication.processEvents()
 
 class DataInteractionWidget(QMainWindow):
+	'''
+	This is the main widget through which we interact with the data.
+	It opens up when the user opens a new dataset.
+	It calls the ScatterPlotWidget and ParamsDisplayWidget as well as the VideoPlayer 
+	for scrubbing through the data
+
+
+	'''
 	close_widget = Signal(int)
 
 	def __init__(self, filament = None, widget_id = None):
@@ -591,6 +614,11 @@ class DataInteractionWidget(QMainWindow):
 #%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 '''
 class CentralWidget(QWidget):
+	'''
+	This is the main widget that opens on startup.
+	It allows the user to open a new dataset.
+	Also allows control of parameters, like playback speed, that apply across all datasets.
+	'''
 
 	playback_speed = Signal(int)
 
