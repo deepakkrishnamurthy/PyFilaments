@@ -23,7 +23,67 @@ from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
 
+class PlotWidget(pg.GraphicsLayoutWidget):
 
+	'''
+		Use this to plot the activity profile vs time/phase
+
+	'''
+
+	def __init__(self, title='', filament=None, parent=None):
+		super().__init__(parent)
+		self.title=title
+		self.filament = filament
+		
+		# Set the data for the static activity profile that we want to plot
+		self.x_data = np.linspace(0, 2*np.pi, 500)
+		self.y_data = np.zeros_like(self.x_data)
+
+		self.y_data[self.x_data<=np.pi] = -1
+		self.y_data[self.x_data>np.pi] = 1
+
+		self.plot1 = self.addPlot(title=title)
+		self.curve = self.plot1.plot(self.x_data,self.y_data, pen=pg.mkPen('r', width = 3))
+		self.zero_curve = self.plot1.plot(self.x_data, np.zeros_like(self.y_data), pen=pg.mkPen('w', width = 1))
+		self.curve.setClipToView(True)
+		self.plot1.enableAutoRange('xy', True)
+		self.plot1.showGrid(x=False, y=False)
+
+		self.fillbetween = pg.FillBetweenItem(curve1 = self.zero_curve, curve2 = self.curve, brush = pg.mkBrush(255,0,0,50))
+
+		# Infinite line
+		self.cursor = pg.InfiniteLine(pos=0, angle = 90)
+		self.plot1.addItem(self.cursor)
+		self.plot1.addItem(self.fillbetween)
+
+		self.cursor.setMovable(False)
+
+		self.current_index = 0
+		
+	def update_cursor(self):
+
+		value = 2*np.pi*(self.filament.Time[self.current_index]%self.filament.activity_timescale)/self.filament.activity_timescale
+
+		self.cursor.setValue(value)
+		
+		# data = np.zeros(2)
+		# # For now the x-axis is always time
+		# data[0] = self.filament.Time[self.current_index]%self.filament.activity_timescale
+		# data[1] = self.filament.activity_profile[self.current_index]
+		# self.Abscissa.append(data[0])
+		# self.Ordinate.append(data[1])
+		# self.Abs=list(self.Abscissa)
+		# self.Ord=list(self.Ordinate)
+		# self.curve.setData(self.Abs,self.Ord)
+
+	def initialize_plot(self):
+	
+		self.curve.setData(self.x_data,self.y_data)
+
+	def update_index(self, index):
+
+		self.current_index = index
+		self.update_cursor()
 
 class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 	'''
@@ -120,6 +180,13 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 
 	def update_plot_tip_history_flag(self, flag):
 		self.plot_tip_history = flag
+
+	def update_index(self, index):
+
+		self.current_index = index 
+		self.update_plot()
+
+
 
 
 class PlotWidget3D(gl.GLViewWidget):
@@ -234,12 +301,11 @@ class VideoPlayer(QWidget):
 	"""
 	current_index = Signal(int)
 
-	def __init__(self, filament = None, plotFilamentWidget = None, parent=None):
+	def __init__(self, filament = None, parent=None):
 		
 		super().__init__(parent)
 		# Data used for displaying the sequence of plots. 
 		self.filament = filament
-		self.plotFilamentWidget = plotFilamentWidget
 		# Playback indices
 		self.timer = QTimer()
 		self.timer.setInterval(1) #in ms
@@ -311,8 +377,6 @@ class VideoPlayer(QWidget):
 			self.positionSpinBox.setValue(self.Time[newvalue])
 			self.positionSpinBox_prevValue=self.Time[newvalue]
 			self.positionSlider_prevValue=newvalue
-			self.plotFilamentWidget.current_index = newvalue
-			self.plotFilamentWidget.update_plot()
 			self.current_index.emit(newvalue)
 
 	def find_slider_index(self, value):
@@ -522,7 +586,10 @@ class DataInteractionWidget(QMainWindow):
 		# Widget for displaying the simulation parameters
 		self.sim_parameters_display = simParamsDisplayWidget(filament = self.filament)
 		# Widget for sequentially displaying data
-		self.video_player = VideoPlayer(filament = self.filament, plotFilamentWidget = self.plotFilamentWidget)
+		self.video_player = VideoPlayer(filament = self.filament)
+
+		# Plot Widget
+		self.plot_widget = PlotWidget(filament = self.filament)
 
 		# Data analysis widgets
 		self.button_open_analysis = QPushButton('Open analysis data')
@@ -532,9 +599,10 @@ class DataInteractionWidget(QMainWindow):
 		# Widget for displaying the analysis data
 		self.analysis_widget = None
 
-		layout_right = QVBoxLayout()
-		layout_right.addWidget(self.sim_parameters_display)
-		layout_right.addWidget(self.button_open_analysis)
+		layout_right = QGridLayout()
+		layout_right.addWidget(self.plot_widget,0,0,1,1) # Plot widget for displying related data
+		layout_right.addWidget(self.sim_parameters_display,1,0,2,1) # Parameter values display widget
+		layout_right.addWidget(self.button_open_analysis,2,0,1,1) # Analysis data open button
 
 		# Add widgets to the central widget
 		video_player_layout = QVBoxLayout()
@@ -553,6 +621,9 @@ class DataInteractionWidget(QMainWindow):
 		# Connections
 		self.button_open_analysis.clicked.connect(self.open_analysis_data)
 
+		self.video_player.current_index.connect(self.plot_widget.update_index)
+		self.video_player.current_index.connect(self.plotFilamentWidget.update_index)
+
 
 	def open_dataset(self, fileName):
 
@@ -567,6 +638,7 @@ class DataInteractionWidget(QMainWindow):
 			self.video_player.initialize_data(self.filament.Time)
 			self.video_player.initialize_parameters()
 			self.sim_parameters_display.update_param_values()
+			self.plot_widget.initialize_plot()
 		else:
 			self.newData = False
 
