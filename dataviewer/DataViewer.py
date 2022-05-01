@@ -2,9 +2,6 @@
 # - Deepak Krishnamurthy
 
 import numpy as np
-import pyqtgraph as pg
-import pyqtgraph.opengl as gl
-pg.setConfigOptions(antialias=True)
 import time as time
 import os
 from pathlib import Path
@@ -12,16 +9,26 @@ from pathlib import Path
 import sys
 import cmocean
 import context
-from pyfilaments.activeFilaments import activeFilament
 import pandas as pd
+from collections import deque
 
+# Qt libraries
 os.environ["QT_API"] = "pyqt5"
-import qtpy
 
-# qt libraries
+import qtpy
 from qtpy.QtCore import *
 from qtpy.QtWidgets import *
 from qtpy.QtGui import *
+
+# pyqtgraph 
+import pyqtgraph as pg
+import pyqtgraph.opengl as gl
+pg.setConfigOptions(antialias=True)
+
+# pyfilament libraries
+from pyfilaments.activeFilaments import activeFilament
+from _def_dataviewer import *
+
 
 class PlotWidget(pg.GraphicsLayoutWidget):
 
@@ -36,11 +43,9 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.filament = filament
 		
 		# Set the data for the static activity profile that we want to plot
-		self.x_data = np.linspace(0, 2*np.pi, 500)
-		self.y_data = np.zeros_like(self.x_data)
+		self.x_data = deque(maxlen=200)
+		self.y_data = deque(maxlen=200)
 
-		self.y_data[self.x_data<=np.pi] = -1
-		self.y_data[self.x_data>np.pi] = 1
 
 		self.plot1 = self.addPlot(title=title)
 		self.curve = self.plot1.plot(self.x_data,self.y_data, pen=pg.mkPen('r', width = 3))
@@ -52,14 +57,24 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.fillbetween = pg.FillBetweenItem(curve1 = self.zero_curve, curve2 = self.curve, brush = pg.mkBrush(255,0,0,50))
 
 		# Infinite line
-		self.cursor = pg.InfiniteLine(pos=0, angle = 90)
-		self.plot1.addItem(self.cursor)
+		# self.cursor = pg.InfiniteLine(pos=0, angle = 90)
+		# self.plot1.addItem(self.cursor)
 		self.plot1.addItem(self.fillbetween)
 
-		self.cursor.setMovable(False)
+		# self.cursor.setMovable(False)
 
 		self.current_index = 0
-		
+
+	def update_data(self):
+
+		self.x_data.append(self.filament.Time[self.current_index])
+		self.y_data.append(self.filament.activity_profile[self.current_index])
+
+		self.zero_curve.setData(self.x_data, np.zeros_like(self.x_data))
+
+		self.curve.setData(self.x_data, self.y_data)
+
+	
 	def update_cursor(self):
 
 		value = 2*np.pi*(self.filament.Time[self.current_index]%self.filament.activity_timescale)/self.filament.activity_timescale
@@ -83,17 +98,26 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 	def update_index(self, index):
 
 		self.current_index = index
-		self.update_cursor()
+		self.update_data()
+		# self.update_cursor()
 
 class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 	'''
 	This plots the series of colloids that make up the filament as a scatter plot
 
 	'''
+	playback_speed = Signal(int)
+
 
 	def __init__(self, filament = None, parent=None):
 		
 		super().__init__(parent)
+		# Filament object being plotted
+		self.filament = filament
+		self.plot_tip_history = False
+		self.current_index = 0
+		self.cycle = 0
+		self.change_display_params = True
 
 		# Background color
 		self.setBackground('k')
@@ -101,35 +125,31 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		# Add PlotItem for holding the scatterplots
 		self.plot = self.addPlot()
 		self.plot.setAspectLocked(True)
-		self.plot.setRange(xRange=(0, 150), yRange=(-150,150),disableAutoRange=False)
-		self.filament = filament
+		self.plot.setRange(xRange=(-60, 60), yRange=(-20,80), disableAutoRange=True)
 
-		self.plot_tip_history = False
+		# Add some sub-objects within the plot
+		self.text_color = 'r'
+		self.text = pg.TextItem(color = self.text_color, anchor=(0,0), angle=0)
 
-		self.current_index = 0
+		self.text_cycle_count = pg.TextItem(color = 'w', anchor=(0,0), angle=0)
+
 		if(self.filament.R is None):
 			n = 1
 
-			self.s1 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120), pxMode = False)
-			self.s2 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 120), pxMode = False)
+			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen('w'), brush = pg.mkBrush(255, 255, 255, 120), pxMode = True)
+			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 100), pxMode = True)
 			pos = np.random.normal(size = (2,n))
-
-			# spots = [{'pos': pos[:,i], 'data': 1} for i in range(n)] + [{'pos': [0,0], 'data': 1}]
-			
-			# s1.addPoints(spots)
 
 			self.s1.setData(x = pos[1,:], y = pos[0,:], brush = pg.mkBrush(255, 0, 255, 200))
 
 		else:
-			self.s1 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200), pxMode = False)
+			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen('w'), brush = pg.mkBrush(255, 0, 255, 200), pxMode = True)
 			# Scatter plot to show filament tip history
-			self.s2 = pg.ScatterPlotItem(size=2*filament.radius, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 200), pxMode = False)
+			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 100), pxMode = True)
 			
 			x_pos = self.filament.R[self.current_index,:self.filament.Np]
 			y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
 
-			# spots = [{'pos': pos[:,i], 'data': 1} for i in range(n)] + [{'pos': [0,0], 'data': 1}]
-			# s1.addPoints(spots)
 			self.s1.setData(x = y_pos, y = x_pos)
 			self.s1.setBrush(self.particle_colors)
 
@@ -139,10 +159,9 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		self.plot.addItem(self.s2)
 
 
-		self.text = pg.TextItem(color = 'w', anchor=(0,0), angle=0)
-		# self.plot.addItem(self.text)
+		self.plot.addItem(self.text)
+		self.plot.addItem(self.text_cycle_count)
 		self.text.setPos(-20, 0)
-		self.text.setText('{:0.1f}'.format(0))
 
 
 	def update_plot(self):
@@ -154,14 +173,24 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		self.s1.setData(x = y_pos, y = x_pos, brush = pg.mkBrush(255, 255, 255, 255))
 		self.s1.setBrush(self.particle_colors)
 		self.s1.setZValue(10)
-		self.text.setPos(x_pos[0] -10, y_pos[0] + 0)
-		# self.text.setText('{:0.1f}'.format(self.filament.Time[self.current_index]))
+		self.text.setPos(x_pos[0] -12, y_pos[0] -15)
+		self.text_cycle_count.setPos(x_pos[0]- 12, y_pos[0] - 5)
 
 		# Display head position
-		# x_pos_head = self.filament.R[:self.current_index:5,self.filament.Np-1]
-		# y_pos_head = self.filament.R[:self.current_index:5,2*self.filament.Np-1]
+		if self.plot_tip_history:
+			x_pos_head = self.filament.R[:self.current_index:5,self.filament.Np-1]
+			y_pos_head = self.filament.R[:self.current_index:5,2*self.filament.Np-1]
+			self.s2.setData(x = y_pos_head, y = x_pos_head, brush = pg.mkBrush(255, 255, 255, 40))
+		else:
+			self.s2.setData(x = [], y = [], brush = pg.mkBrush(255, 255, 255, 40))
 
-		# self.s2.setData(x = y_pos_head, y = x_pos_head, brush = pg.mkBrush(255, 255, 255, 40))
+		# Change the data display after some cycles
+		# if self.cycle > 10:
+		# 	self.plot_tip_history = True
+		
+		# if self.cycle > 20 and self.change_display_params:	
+		# 	self.playback_speed.emit(12)
+		# 	self.change_display_params = False
 
 
 	def set_colors(self):
@@ -174,17 +203,40 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		for ii in range(self.filament.Np):
 			
 			if(self.filament.S_mag[ii]!=0 or self.filament.D_mag[ii]!=0):
-				self.particle_colors.append(pg.mkBrush(255, 0, 0, 255))
+				self.particle_colors.append(pg.mkBrush(ACTIVE_COLLOID_COLOR))
 			else:
-				self.particle_colors.append(pg.mkBrush(0, 255, 0, 255))
+				self.particle_colors.append(pg.mkBrush(PASSIVE_COLLOID_COLOR))
 
 	def update_plot_tip_history_flag(self, flag):
 		self.plot_tip_history = flag
+
+	def update_text(self):
+
+		value = 2*np.pi*(self.filament.Time[self.current_index]%self.filament.activity_timescale)/self.filament.activity_timescale
+
+		self.cycle = int(self.filament.Time[self.current_index]/self.filament.activity_timescale)
+
+		if value>np.pi:
+			text = 'extension'
+			self.text_color = EXTENSION_COLOR
+		else:
+			text = 'compression'
+			self.text_color = COMPRESSION_COLOR
+
+		self.text.setText(text)
+		self.text.setColor(self.text_color)
+
+		self.text_cycle_count.setText('cycle: {}'.format(self.cycle))
+
+
+
+
 
 	def update_index(self, index):
 
 		self.current_index = index 
 		self.update_plot()
+		self.update_text()
 
 
 
@@ -467,9 +519,7 @@ class VideoPlayer(QWidget):
 		if self.real_time:
 			self.playback_speed = value
 		else:
-
 			self.frames = value
-			print(self.frames)
 
 class simParamsDisplayWidget(QWidget):
 	''' This is a simple widget that displays the simulation parameters for the current dataset
@@ -568,6 +618,7 @@ class DataInteractionWidget(QMainWindow):
 
 	'''
 	close_widget = Signal(int)
+	tip_history = Signal(bool)
 
 	def __init__(self, filament = None, widget_id = None):
 		super().__init__()
@@ -596,13 +647,23 @@ class DataInteractionWidget(QMainWindow):
 		self.button_open_analysis.setCheckable(True)
 		self.button_open_analysis.setChecked(False)
 
+		# Plot Display 
+		self.checkbox_display = QCheckBox('Tip history')
+		self.checkbox_display.setCheckable(True)
+		self.checkbox_display.setChecked(False)
+
+
 		# Widget for displaying the analysis data
 		self.analysis_widget = None
 
+		layout_bottom = QHBoxLayout()
+		layout_bottom.addWidget(self.button_open_analysis)
+		layout_bottom.addWidget(self.checkbox_display)
+
 		layout_right = QGridLayout()
 		layout_right.addWidget(self.plot_widget,0,0,1,1) # Plot widget for displying related data
-		layout_right.addWidget(self.sim_parameters_display,1,0,2,1) # Parameter values display widget
-		layout_right.addWidget(self.button_open_analysis,2,0,1,1) # Analysis data open button
+		layout_right.addWidget(self.sim_parameters_display,1,0,1,1) # Parameter values display widget
+		layout_right.addLayout(layout_bottom,2,0,1,1) # Analysis data open button
 
 		# Add widgets to the central widget
 		video_player_layout = QVBoxLayout()
@@ -620,10 +681,13 @@ class DataInteractionWidget(QMainWindow):
 
 		# Connections
 		self.button_open_analysis.clicked.connect(self.open_analysis_data)
+		self.checkbox_display.clicked.connect(self.handle_checkbox)
+		self.tip_history.connect(self.plotFilamentWidget.update_plot_tip_history_flag)
 
 		self.video_player.current_index.connect(self.plot_widget.update_index)
 		self.video_player.current_index.connect(self.plotFilamentWidget.update_index)
 
+		self.plotFilamentWidget.playback_speed.connect(self.video_player.update_playback_speed)
 
 	def open_dataset(self, fileName):
 
@@ -669,6 +733,13 @@ class DataInteractionWidget(QMainWindow):
 			else:
 				pass
 
+	def handle_checkbox(self):
+
+		if self.checkbox_display.isChecked() == True:
+			self.tip_history.emit(True)
+		else:
+			self.tip_history.emit(False)
+
 
 	def closeEvent(self, event):
 		# send a signal to the MainWindow to keep track of datasets that are open.
@@ -696,9 +767,8 @@ class CentralWidget(QWidget):
 
 	def __init__(self):
 		super().__init__()
-
+		self.speed_slider_value = 4
 		self.add_components()
-		self.speed_slider_value = 1
 
 
 
@@ -713,13 +783,15 @@ class CentralWidget(QWidget):
 		self.speedSlider = QSlider(Qt.Horizontal)
 		self.speedSlider.setRange(1, 100)
 		self.speedSlider.setEnabled(True)
-		self.speedSlider_prevValue=1
+		self.speedSlider_prevValue = self.speed_slider_value
 		
 		self.speedSpinBox = QDoubleSpinBox()
 		self.speedSpinBox.setRange(1, 100)
 		self.speedSpinBox.setSingleStep(1)
 		self.speedSpinBox.setEnabled(True)
-		self.speedSpinBox_prevValue=1
+		self.speedSpinBox_prevValue = self.speed_slider_value
+		self.speedSpinBox.setValue(self.speed_slider_value)
+
 
 		speed_control_layout = QHBoxLayout()
 		speed_control_layout.addWidget(self.speedSlider)
@@ -805,9 +877,11 @@ class MainWindow(QMainWindow):
 			self.data_widgets[self.widget_count] = DataInteractionWidget(widget_id = self.widget_count)
 			self.data_widgets[self.widget_count].open_dataset(self.dataFile)
 			self.data_widgets[self.widget_count].show()
+			self.data_widgets[self.widget_count].resize(1200,800)
 			self.data_widgets[self.widget_count].close_widget.connect(self.close_dataset)
 			self.central_widget.playback_speed.connect(self.data_widgets[self.widget_count].video_player.update_playback_speed)
 			self.central_widget.speedSlider_setValue(self.central_widget.speed_slider_value)
+			self.data_widgets[self.widget_count].plotFilamentWidget.playback_speed.connect(self.central_widget.speedSlider_setValue)
 			self.active_widgets.append(self.widget_count)	
 			self.widget_count+=1	
 			# self.central_widget.open_dataset(self.dataFile)
