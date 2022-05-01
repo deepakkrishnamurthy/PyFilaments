@@ -133,26 +133,8 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 
 		self.text_cycle_count = pg.TextItem(color = 'w', anchor=(0,0), angle=0)
 
-		if(self.filament.R is None):
-			n = 1
-
-			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen('w'), brush = pg.mkBrush(255, 255, 255, 120), pxMode = True)
-			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 255, 255, 100), pxMode = True)
-			pos = np.random.normal(size = (2,n))
-
-			self.s1.setData(x = pos[1,:], y = pos[0,:], brush = pg.mkBrush(255, 0, 255, 200))
-
-		else:
-			self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen('w'), brush = pg.mkBrush(255, 0, 255, 200), pxMode = True)
-			# Scatter plot to show filament tip history
-			self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 100), pxMode = True)
-			
-			x_pos = self.filament.R[self.current_index,:self.filament.Np]
-			y_pos = self.filament.R[self.current_index,self.filament.Np:2*self.filament.Np]
-
-			self.s1.setData(x = y_pos, y = x_pos)
-			self.s1.setBrush(self.particle_colors)
-
+		self.s1 = pg.ScatterPlotItem(size=10, pen = pg.mkPen('w'), brush = pg.mkBrush(255, 0, 255, 200), pxMode = True)
+		self.s2 = pg.ScatterPlotItem(size=10, pen = pg.mkPen(None), brush = pg.mkBrush(255, 0, 255, 100), pxMode = True)
 
 		# Add the two scatterplots (filament) and tip history
 		self.plot.addItem(self.s1)
@@ -774,7 +756,7 @@ class CentralWidget(QWidget):
 
 	def add_components(self):
 
-		self.label = QLabel('pyfilaments interactive data-viewer')
+		self.label = QLabel('pyfilaments data-viewer')
 
 		self.load_button = QPushButton('Load new data')
 		self.load_button.setCheckable(False)
