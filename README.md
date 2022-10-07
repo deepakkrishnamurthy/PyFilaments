@@ -38,6 +38,18 @@ Navigate to the pyforces folder within the pyfilaments repo and then run.
 python setup.py install
 ```
 
+### Install fast filamnent subroutines
+
+Navigate to filament folder: /PyFilament/pyfilament/filament.
+Run the installation for Cythonized filament subroutines
+```bash
+python setup.py install
+```
+
+### Create PYTHONPATH variables
+Since the code base is under development. Add the root folder of the repo to your PYTHONPATH by following the instructions [here](https://bic-berkeley.github.io/psych-214-fall-2016/using_pythonpath.html)
+
+
 ## OSX only: 
 If openMP is not detected while installing pystokes and pyforces. Then follow the next steps
 
