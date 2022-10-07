@@ -263,6 +263,13 @@ class analysisTools(activeFilament):
 		self.covariance_matrix = np.matmul(self.variance_matrix.T, self.variance_matrix)
 
 	def matrix_eigen_decomposition(self, matrix = None):
+		'''
+			Eigen-decomposition of the Shape Covariance Matrix for a filament time series.
+			Stores the sorted eigenvalues (self.eigenvalues_sorted) and eigenvectors (self.eigenvectors_sorted)
+
+			Also calls a function that computes the number of significant eigenvalues
+
+		'''
 		self.eigenvectors_sorted = None
 		self.eigenvalues_sorted = None
 

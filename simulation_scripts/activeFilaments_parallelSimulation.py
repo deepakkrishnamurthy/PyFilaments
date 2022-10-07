@@ -17,7 +17,7 @@ from pyfilaments._def import *
 NP = 32
 D0 = 1.5
 # Activity profile parameters
-activity_timescale = 550 # Activity time-scale (one compression and extension cycle)
+activity_timescale = 750 # Activity time-scale (one compression and extension cycle)
 duty_cycle = 0.5	# Relative time for compression relative to total activity time-scale
 n_activity_cycles = 250 # No:of activity cycles we want to simulate
 Tf = activity_timescale*n_activity_cycles # Total simulation time
@@ -85,8 +85,8 @@ def run_parametric_simulation(pid, parameter):
 
 
 # Activity strength sweep
-parameter_list = np.linspace(0.5,3, 20)
-# parameter_list = 0.1
+# parameter_list = np.linspace(0.5,3, 10)
+parameter_list = [0.5, 1.5, 2.5]
 
 # Activity time sweep
 # parameter_list = np.arange(300, 1050, 50)
@@ -106,6 +106,8 @@ print(parameter_list_full)
 
 num_cores = multiprocessing.cpu_count()
 
-num_cores = 12
+print("No:of detected cores: {}".format(num_cores))
+
+num_cores = 10
 
 results = Parallel(n_jobs=num_cores,  verbose=10)(delayed(run_parametric_simulation)(pid, parameter) for pid, parameter in enumerate(parameter_list_full))
