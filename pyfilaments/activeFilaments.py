@@ -189,7 +189,7 @@ class activeFilament:
 		return np.squeeze(np.reshape(Matrix, (nrows*ncols,1), order = 'C'))
 	
 	def reshape_to_matrix(self, Array):
-		"""Takes an array of shape (dim*N, 1) and reshapes to a Matrix  of shape (dim, N) and 
+		"""Takes an array of shape (dim*Np, 1) and reshapes to a Matrix  of shape (dim, Np) and 
 			where the array convention is [x1, x2 , x3 ... X_Np, y1, y2, .... y_Np, z1, z2, .... z_Np]
 			and matrix convention is |x1 x2 ...  |
 									 |y1 y2 ...  |
@@ -221,9 +221,18 @@ class activeFilament:
 	# (vectorized) Find the local tangent vector of the filament at the position of each particle
 	def get_tangent_vectors(self):
 		
+		# Get colloid position in matrix form
+		self.r_matrix = self.reshape_to_matrix(self.r)
+
 		# Unit tangent vector at the particle locations
 		self.t_hat = np.ones((self.dim,self.Np))
-		self.t_hat[:,1:self.Np-1] = (self.dr_hat[:,0:self.Np-2] + self.dr_hat[:,1:self.Np-1])/2
+
+		# Central-difference or secant line approximation for the middle colloids
+		self.t_hat[:, 1:self.Np-1] = self.r_matrix[:,2:self.Np] - self.r_matrix[:,0:self.Np-2]
+
+		# self.t_hat[:,1:self.Np-1] = (self.dr_hat[:,0:self.Np-2] + self.dr_hat[:,1:self.Np-1])/2
+
+		# Backward and Forward difference approximation for the terminal colloids
 		self.t_hat[:,0] = self.dr_hat[:,0]
 		self.t_hat[:,-1] = self.dr_hat[:,-1]
 		t_hat_mag = np.zeros(self.Np)
