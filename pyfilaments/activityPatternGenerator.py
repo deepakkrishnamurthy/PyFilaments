@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 from scipy import signal
 from scipy import interpolate
 import random
-from datetime import datetime
 import time
 import h5py
 from tqdm import tqdm
