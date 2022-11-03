@@ -169,6 +169,17 @@ class analysisTools(activeFilament):
 		c = np.sum(a*b,axis=0)
 		return  c
 
+	def cycle_to_index(self, cycle):
+		""" Convert between activity cycle number and array index of the Time array of the simulation data
+
+		"""
+		time = cycle*self.activity_timescale
+
+		index = next((i for i,x in enumerate(self.Time) if x>= time), 0)
+
+		return index
+
+
 	def find_num_time_points(self):
 
 		self.Nt, *rest  = np.shape(self.R)
@@ -244,9 +255,10 @@ class analysisTools(activeFilament):
 
 			self.tangent_angles_matrix[ii, :] = tangent_angles_fun(points_array)
 
-	def compute_shape_covariance_matrix(self):
-		""" Calculates the shape covariance matrix for a list of filament shapes.
-
+	def compute_shape_covariance_matrix(self, start_cycle = 0):
+		""" Calculates the shape covariance matrix for a list of filament shapes. 
+			start_cycle: cycle from which we calculate the covariance matrix to ignore trasients
+		
 		Rows: time points
 		Columns: Arc length 
 	
@@ -320,6 +332,7 @@ class analysisTools(activeFilament):
 			dset = f.create_group('eigenvectors')
 			dset.create_dataset('eigenvalues', data = self.eigenvalues_sig)
 			dset.create_dataset('eigenvectors', data = self.eigenvectors_sig)
+			dset.attrs['PCA dimension'] = self.pca_dim
 
 
 	def load_eigenvectors(self):
@@ -334,11 +347,34 @@ class analysisTools(activeFilament):
 
 				self.eigenvalues_sig = dset['eigenvalues'][:]
 				self.eigenvectors_sig = dset['eigenvectors'][:]
-
 				self.n_sig_eigenvalues = len(self.eigenvalues_sig)
+
+				try:
+					self.pca_dim = dset.attrs['PCA dimension']
+					print('PCA dimension found!')
+				except:
+					print('Data not found!')
+
 
 		else:
 			print('Eigenvectors file not found!')
+
+	def compute_participation_ratio(self):
+
+		"""
+		Find the participation ratio given the Eigenvalues of the Covariance matrix.
+
+		"""
+		self.pca_dim = None
+		
+		try:
+			self.pca_dim = np.sum(self.eigenvalues_sorted)**2/(np.sum(self.eigenvalues_sorted**2))
+
+			return self.pca_dim
+
+		except:
+			print('Eigenvalues need to be computed!')
+
 
 	def plot_shape_modes(self, save = False, save_folder = None):
 		'''
@@ -372,21 +408,23 @@ class analysisTools(activeFilament):
 		plt.show()
 
 		
-	def project_filament_shapes(self):
+	def project_filament_shapes(self, mode_num = 5):
 		""" 
 			Projects a give filament shape onto the shape modes computed using PCA.
 			For a time series of shapes, returns a time-series of mode amplitudes for each shape mode.
-
+			
+			mode_num: Gives the number of shape modes to compute. 
 		"""
+		self.modes_to_save = mode_num
 
 		n_times, n_points = np.shape(self.tangent_angles_matrix)
 
 		assert(n_times == self.Nt) # Make sure we have the Covariance matrix for the whole simulation
 
-		self.mode_amplitudes = np.zeros((n_times, self.n_sig_eigenvalues))
+		self.mode_amplitudes = np.zeros((n_times, self.modes_to_save))
 
 
-		matrix_A = self.eigenvectors_sig # n_points x n_eigvalues
+		matrix_A = self.eigenvectors_sorted[:,0:self.modes_to_save] # n_points x n_eigvalues
 		matrix_A_inv = np.linalg.pinv(matrix_A)
 
 		
@@ -396,7 +434,7 @@ class analysisTools(activeFilament):
 
 			amplitudes_lst_sq = np.matmul(matrix_A_inv, rhs) # 
 	
-			for jj in range(self.n_sig_eigenvalues):
+			for jj in range(self.modes_to_save):
 				self.mode_amplitudes[ii, jj] = amplitudes_lst_sq[jj]
 
 
@@ -404,7 +442,7 @@ class analysisTools(activeFilament):
 		df_dict = {}
 		df_dict['Time'] = self.Time
 
-		for ii in range(self.n_sig_eigenvalues):
+		for ii in range(self.modes_to_save):
 			
 			df_dict['Mode {} amplitude'.format(ii+1)] = self.mode_amplitudes[:,ii]
 			
