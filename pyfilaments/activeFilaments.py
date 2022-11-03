@@ -93,45 +93,6 @@ class activeFilament:
 		self.filament = filament.filament_operations(self.Np, self.dim, self.radius, self.b0, self.k, self.kappa_hat_array, ljrmin = 2.1*self.radius, ljeps = 0.01)
 		self.simFile = ''
 
-	def create_save_folder(self, path = ROOT_PATH, create_subdirs = True, ic_sim = False):
-		#Allocate a Path and folder to save the results
-		if(create_subdirs):
-			# Create Subdirs
-			subfolder = datetime.now().strftime('%Y-%m-%d')
-
-			# Create sub-folder by date
-			self.path = os.path.join(path, subfolder)
-
-			if(not os.path.exists(self.path)):
-				os.makedirs(self.path)
-
-			self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
-								int(self.activity_timescale), self.sim_type)
-
-			self.saveFolder = os.path.join(self.path, self.folder)
-		else:
-			# Directly save to path
-
-			self.path = path
-			# self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-			# 					(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
-			# 					int(self.activity_timescale), self.sim_type)
-
-			self.saveFolder = self.path
-
-
-		if ic_sim:
-			self.path = path
-			self.folder = 'IC_Sim_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
-							(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
-							int(self.activity_timescale), self.sim_type)
-
-			self.saveFolder = os.path.join(self.path, self.folder)
-
-		#---------------------------------------------------------------------------------
-
-
 	def allocate_arrays(self):
 		# Initiate positions, orientations, forces etc of the particles
 		self.r = np.zeros(self.Np*self.dim, dtype = np.double)
@@ -200,8 +161,11 @@ class activeFilament:
 		ncols = int(array_len/self.dim)
 		return np.reshape(Array, (self.dim, ncols), order = 'C')
 					
-	# calculate the pair-wise separation vector
 	def get_separation_vectors(self):
+		'''
+		Calculate the pair-wise separation vector
+
+		'''
 		# length Np-1
 		self.dx = self.r[1:self.Np] - self.r[0:self.Np-1]
 		self.dy = self.r[self.Np+1:2*self.Np] - self.r[self.Np:2*self.Np-1]
@@ -219,8 +183,11 @@ class activeFilament:
 		self.dr_hat = np.vstack((self.dx_hat, self.dy_hat, self.dz_hat))
 		self.dr_hat = np.array(self.dr_hat, dtype = np.double)
 
-	# (vectorized) Find the local tangent vector of the filament at the position of each particle
 	def get_tangent_vectors(self):
+		'''
+		(vectorized) Find the local tangent vector of the filament at the position of each particle
+
+		'''
 		
 		# Get colloid position in matrix form
 		self.r_matrix = self.reshape_to_matrix(self.r)
@@ -249,7 +216,7 @@ class activeFilament:
 
 	def set_stresslet(self):
 		"""
-			Specifies the stresslet on each active particle
+			Specifies the stresslet on each active particle based on the particle orientation (local tangent)
 		"""
 		self.S[:self.Np]            = self.S_mag*(self.p[:self.Np]*self.p[:self.Np] - 1./3)
 		self.S[self.Np:2*self.Np]   = self.S_mag*(self.p[self.Np:2*self.Np]*self.p[self.Np:2*self.Np] - 1./3)
@@ -259,7 +226,8 @@ class activeFilament:
 	
 	def set_potDipole(self):
 		"""
-			Specifies the potential dipole on each active particle
+			Specifies the potential dipole on each active particle based on the particle orientation (local tangent)
+		
 		"""
 		# Potential dipole axis is along the local orientation vector of the particles
 		self.D[:self.Np] = self.D_mag*self.p[:self.Np]
@@ -270,83 +238,6 @@ class activeFilament:
 		# self.D[:self.Np] = self.D_mag*np.ones(self.Np)
 		# self.D[self.Np:2*self.Np] = 0
 		# self.D[2*self.Np:3*self.Np] = 0
-
-# 	def initialize_filament_shape(self):
-# 		if(self.shape == 'line'):
-# 			# Initial particle positions and orientations
-# 			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
-# 			for ii in range(self.Np):
-# 				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
-# 				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
-				
-# 			# Add random fluctuations in the other two directions
-# 			# y-axis
-# 			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, TRANSVERSE_NOISE, self.Np-1)
-
-# 			# z-axis
-# 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
-			   
-# 		# Add some Random fluctuations in y-direction
-# #            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
-# 		if(self.shape == 'line at angle'):
-# 			N_angles = 100
-# 			angles_array = np.linspace(-ANGULAR_AMP_IC , ANGULAR_AMP_IC , N_angles)
-
-# 			self.init_angle  = random.sample(list(angles_array), 1)
-# 			# Initial particle positions and orientations
-
-# 			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
-# 			for ii in range(self.Np):
-# 				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
-# 				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
-				
-
-# 		elif(self.shape == 'arc'):
-# 			arc_angle = np.pi
-
-# 			arc_angle_piece = arc_angle/self.Np
-			
-# 			for ii in range(self.Np):
-# 				# The filament is initially linear along x-axis with the first particle at origin
-# 				if(ii==0):
-# 					self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
-
-# 				else:
-# 					self.r0[ii] = self.r0[ii-1] + self.b0*np.sin(ii*arc_angle_piece)
-# 					self.r0[ii + self.Np] = self.r0[ii-1 + self.Np] + self.b0*np.cos(ii*arc_angle_piece)
-					
-				
-# 		elif(self.shape == 'sinusoid'):
-
-# 			if(self.plane == 'xy'):
-# 				first_index = 0
-# 				second_index = self.Np
-
-# 			elif(self.plane == 'xz'):
-# 				first_index = 0
-# 				second_index = self.xx
-
-# 			elif(self.plane == 'yz'):
-# 				first_index = self.Np
-# 				second_index = self.xx
-
-# 			for ii in range(self.Np):
-
-# 				# The first particle at origin
-# 				if(ii==0):
-# 					self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
-
-# 				else:
-# 					self.r0[ii + first_index] = ii*(self.b0)
-# 					self.r0[ii + second_index] = self.amplitude*np.sin(self.r0[ii]*2*np.pi/(self.wavelength))
-# 		elif(self.shape == 'helix'):
-# 			nWaves = 1
-# 			Amp = 1e-4
-
-# 		# Apply the kinematic boundary conditions to the filament ends
-# 		# self.apply_BC_position()
-# 		self.r = self.r0
-
 
 	def initialize_bending_stiffness(self):
 		'''
@@ -443,16 +334,102 @@ class activeFilament:
 				self.F[end + self.Np] += constraint_force[1]
 				self.F[end + self.xx] += constraint_force[2]
 
+	def init_dynamic_activity(self, activity = None):
+		'''
+		Initializes the dynamic forces and activity on the colloids
+
+		----------
+		Parameters
+		activity: dict containing the activity parameters
+
+		'''
+		self.activity = activity
+		if self.activity is not None:
+			# Initialize the activity pattern generator (time dynamic activity)
+			# For each simulation we initialize a new instance of activityGenerator
+			self.activityPatternGenerator = activityPatternGenerator(activity = self.activity)
+			self.activity_type = self.activity['type']
 
 
-	def set_filament_activity(self, t):
+			if self.activity_type == 'biphasic':
+				self.activity_timescale = (self.activity['activity time scale']['slow']+ self.activity['activity time scale']['fast'])/2.0
+			else:
+				self.activity_timescale = self.activity['activity time scale']
+
+			if self.activity_type == 'normal':
+				''' For stochastic activity change the total sim time based on the actual random timescales generated.
+				'''
+				Tf = self.activityPatternGenerator.Tf
+
+			# Function encodes time dynamics of activity. For a given time returns the current activity value.
+			self.filament_activity = self.activityPatternGenerator.activity_function()
+
+		else:
+
+			self.activity_type = None
+			self.activity_timescale = None
+
+
+	def init_steady_activity(self):
+		'''
+		Sets steady forces and activity on colloids 
+
+		'''
+
+		# if simulating constant external forces
+		if(self.sim_type == 'sedimentation'):
+			""" 
+				Simulates a filament where there is a net body force on each particle making up the filament.
+			"""
+			Np = self.Np
+			xx = 2*Np 
+
+			for ii in range(Np):
+					# F[i   ] +=  0
+					self.F_mag[ii+Np] += self.F0 # Constant body force in the y-direction
+				# F[i+xx] +=  g
+
+			self.S_mag[:] = 0
+			self.D_mag[:] = 0
+		elif (self.sim_type == 'cantilever'):
+			""" 
+				Simulates a filament clamped at one end, with a constant force acting at the tip which is transverse
+				to the eqbrm orientation.
+			"""
+			Np = self.Np
+			xx = 2*Np 
+
+			# Force along -y direction on the distal colloid. 
+			self.F_mag[xx-1] += self.F0
+
+			self.S_mag[:] = 0
+			self.D_mag[:] = 0
+
+
+	def set_activity_distribution(self, t):
+		'''
+		Set spatial activity distribution along the filament
+
+		'''
 
 		if(self.sim_type == 'point'):
 			'''Simulates active filament where only the distal particle has time-dependent activity.
 			'''
 			self.D_mag[-1] = self.D0*self.filament_activity(t)
+
+		elif self.sim_type == 'dist':
+
+			'''
+			Distribited activity along all the colloids
+			'''
+		
+			if(self.filament_activity(t)==1):
+				self.D_mag[:-1] = self.D0/self.Np
+			elif(self.filament_activity(t)==-1):
+				self.D_mag[:-1] = -self.D0/self.Np
+
 	
-		elif(self.sim_type == 'dist'):
+		elif(self.sim_type == 'lacry'):
 			'''
 			Simulates active filament where the activity pattern models that in Lacrymaria olor.
 			Distal particle: 
@@ -469,7 +446,7 @@ class activeFilament:
 				# self.D_mag[:self.Np-1] = self.D0/self.scale_factor
 				self.D_mag[-1] = self.D0
 			elif(self.filament_activity(t)==-1):
-				self.D_mag[:self.Np-1] = -self.D0/self.scale_factor
+				self.D_mag[:self.Np-1] = -self.D0/SCALE_FACTOR
 				self.D_mag[-1] = 0
 
 	# @profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)
@@ -487,7 +464,7 @@ class activeFilament:
 		self.p = self.t_hat_array
 
 		# Set activity
-		self.set_filament_activity(t = t)
+		self.set_activity_distribution(t = t)
 		self.set_stresslet()
 		self.set_potDipole()
 
@@ -529,16 +506,18 @@ class activeFilament:
 		note = '', overwrite = False, create_subdirs = True, pid = 0, activity = None, 
 		stop_tol = 1E-5, ic_sim = False):
 
-		''' Setup and run an active filament simulation.
+		''' 
+		Setup and run an active filament simulation.
+		----------------
+		Parameters:
 
-			Simulation parameters:
-			Tf: Total simulation time
-			Npts: No:of time points stored. 
-			sim_type: Simulation type:
-				'point': Activity of the most distal colloid only, activity dynamics over time specified by activity_profile
-				'dist': Distributed activity along filament length. Simulates the observed ciliary activity in Lacrymaria olor.
-				'sedimentation': External force on all the colloids.
-				'cantilever': External force on only the most distal colloid. 
+		Tf: Total simulation time
+		Npts: No:of time points stored. 
+		sim_type: Simulation type:
+			'point': Activity of the most distal colloid only, activity dynamics over time specified by activity_profile
+			'dist': Distributed activity along filament length. Simulates the observed ciliary activity in Lacrymaria olor.
+			'sedimentation': External force on all the colloids.
+			'cantilever': External force on only the most distal colloid. 
 
 		'''
 		# Stagger the start of the simulations to avoid issues with concurrent writing to disk
@@ -549,7 +528,6 @@ class activeFilament:
 		self.save = save
 		self.overwrite = overwrite
 		self.note = note
-
 		#---------------------------------------------------------------------------------
 		def rhs0(r, t):
 			''' 
@@ -590,62 +568,11 @@ class activeFilament:
 		# Set the simulation type
 		self.sim_type = sim_type
 
-		# Initialize the activity pattern generator
-		self.activity = activity
-		# For each simulation we initialize a new instance of activityGenerator
-		self.activityPatternGenerator = activityPatternGenerator(activity = self.activity)
-		self.activity_type = self.activity['type']
-
-
-		if self.activity_type == 'biphasic':
-			self.activity_timescale = (self.activity['activity time scale']['slow']+ self.activity['activity time scale']['fast'])/2.0
-		else:
-			self.activity_timescale = self.activity['activity time scale']
-
-		if self.activity_type == 'normal':
-			''' For stochastic activity change the total sim time based on the actual random timescales generated.
-			'''
-			Tf = self.activityPatternGenerator.Tf
-
-		# Function encodes time dynamics of activity. For a given time returns the current activity value.
-		self.filament_activity = self.activityPatternGenerator.activity_function()	
-
-
-		# Set the scale-factor
-		self.scale_factor = scale_factor
+		self.init_steady_activity()
+		self.init_dynamic_activity(activity = activity)
 		#---------------------------------------------------------------------------------
 		self.create_save_folder(path = path, create_subdirs = create_subdirs, ic_sim = ic_sim)
 
-		# if simulating constant external forces
-		if(self.sim_type == 'sedimentation'):
-			""" 
-				Simulates a filament where there is a net body force on each particle making up the filament.
-			"""
-			Np = self.Np
-			xx = 2*Np 
-
-			for ii in range(Np):
-					# F[i   ] +=  0
-					self.F_mag[ii+Np] += self.F0 # Constant body force in the y-direction
-				# F[i+xx] +=  g
-
-			self.S_mag[:] = 0
-			self.D_mag[:] = 0
-		elif (self.sim_type == 'cantilever'):
-			""" 
-				Simulates a filament clamped at one end, with a constant force acting at the tip which is transverse
-				to the eqbrm orientation.
-			"""
-			Np = self.Np
-			xx = 2*Np 
-
-			# Force along -y direction on the distal colloid. 
-			self.F_mag[xx-1] += self.F0
-
-			self.S_mag[:] = 0
-			self.D_mag[:] = 0
-
-		
 		start_time = time.time()
 		tqdm_text = "Progress: ".zfill(1)
 
@@ -677,90 +604,61 @@ class activeFilament:
 		# print('Loading Simulation data from disk .......')
 		if(file is not None):
 			self.simFolder, self.simFile = os.path.split(file)
-			if(file[-4:] == 'hdf5'):  # Newer data format (.hdf5)
-				# print('Loading hdf5 file')
-				with h5py.File(file, "r") as f:
-					if('simulation data' in f.keys()): # Load the simulation data (newer method)
-						
-						dset = f['simulation data']
-						self.Time = dset["Time"][:]
-						self.R = dset["Position"][:]
-						self.F_mag = dset["particle forces"][:]
-						self.S_mag = dset["particle stresslets"][:]
-						self.D_mag = dset["particle potDipoles"][:]
-						try:
-							self.kappa_hat_array = dset["kappa_hat_array"][:]
-						except:
-							self.kappa_hat_array = dset["kappa_array"][:]
+			with h5py.File(file, "r") as f:
+				if('simulation data' in f.keys()): # Load the simulation data (newer method)
+					
+					dset = f['simulation data']
+					self.Time = dset["Time"][:]
+					self.R = dset["Position"][:]
+					self.F_mag = dset["particle forces"][:]
+					self.S_mag = dset["particle stresslets"][:]
+					self.D_mag = dset["particle potDipoles"][:]
+					try:
+						self.kappa_hat_array = dset["kappa_hat_array"][:]
+					except:
+						self.kappa_hat_array = dset["kappa_array"][:]
 
-						try:
-							self.activity_profile = dset["activity profile"][:]
-							# print('Activity profile data found!')
-						except:
-							# print('Activity profile not found!')
-							self.activity_profile = None
+					try:
+						self.activity_profile = dset["activity profile"][:]
+						# print('Activity profile data found!')
+					except:
+						# print('Activity profile not found!')
+						self.activity_profile = None
 
-						# Load the metadata:
-						self.Np = dset.attrs['N particles']
-						self.radius = dset.attrs['radius']
-						self.b0 = dset.attrs['bond length']
-						self.k = dset.attrs['spring constant'] 
-						self.kappa_hat = dset.attrs['kappa_hat']
-						self.F0 = dset.attrs['force strength']
-						self.S0 = dset.attrs['stresslet strength'] 
-						self.D0 = dset.attrs['potDipole strength']
+					# Load the metadata:
+					self.Np = dset.attrs['N particles']
+					self.radius = dset.attrs['radius']
+					self.b0 = dset.attrs['bond length']
+					self.k = dset.attrs['spring constant'] 
+					self.kappa_hat = dset.attrs['kappa_hat']
+					self.F0 = dset.attrs['force strength']
+					self.S0 = dset.attrs['stresslet strength'] 
+					self.D0 = dset.attrs['potDipole strength']
+					self.sim_type = dset.attrs['simulation type']
+					try:
 						self.activity_timescale = dset.attrs['activity time scale']
-						self.sim_type = dset.attrs['simulation type']
-						try:
-							self.mu = dset.attrs['viscosity']
-							self.bc = {0:[],-1:[]}
-							self.bc[0] = dset.attrs['boundary condition 0']
-							self.bc[-1] = dset.attrs['boundary condition 1']
-							self.activity_type = dset.attrs['activity type']
-						except:
-							print('Attribute not found')
-						
-						activity_metadata = os.path.join(self.simFolder, 'activity_metadata.json')
+						self.mu = dset.attrs['viscosity']
+						self.bc = {0:[],-1:[]}
+						self.bc[0] = dset.attrs['boundary condition 0']
+						self.bc[-1] = dset.attrs['boundary condition 1']
+						self.activity_type = dset.attrs['activity type']
+					except:
+						print('Attribute not found')
+					
+					activity_metadata = os.path.join(self.simFolder, 'activity_metadata.json')
 
-						if os.path.exists(activity_metadata):
-							with open(activity_metadata, 'r') as f:
-								self.activity = json.load(f)
+					if os.path.exists(activity_metadata):
+						with open(activity_metadata, 'r') as f:
+							self.activity = json.load(f)
 
-						try:
-							if self.activity['type']=='biphasic':
-								try:
-									self.activity_state_array = dset["activity state profile"][:]
-								except:
-									print('Activity state profile not found!')
-						except:
-							pass
-
-					else:  # Load the simulation data (older method)
-						self.Time = f["Time"][:]
-						dset = f["Position"]
-						self.R = dset[:]
-						# Load the metadata:
-						self.Np = dset.attrs['N particles']
-						self.radius = dset.attrs['radius']
-						self.b0 = dset.attrs['bond length']
-						self.k = dset.attrs['spring constant'] 
-						self.kappa_hat = dset.attrs['kappa_hat']
-						self.F0 = dset.attrs['force strength']
-						self.S0 = dset.attrs['stresslet strength'] 
-						self.D0 = dset.attrs['potDipole strength']
-						self.activity_timescale = dset.attrs['activity time scale']
-						self.sim_type = dset.attrs['simulation type']
-						self.F_mag = f["particle forces"][:]
-						self.S_mag = f["particle stresslets"][:]
-						self.D_mag = f["particle potDipoles"][:]
-						if('activity profile' in f.keys()):
-							self.activity_profile = f["activity profile"][:]
-						else:
-							self.activity_profile = None
-			else:
-				print('Loading pkl file')
-				with open(file, 'rb') as f:
-					self.Np, self.b0, self.k, self.S0, self.D0, self.F_mag, self.S_mag, self.D_mag, self.R, self.Time = pickle.load(f)
+					try:
+						if self.activity['type']=='biphasic':
+							try:
+								self.activity_state_array = dset["activity state profile"][:]
+							except:
+								print('Activity state profile not found!')
+					except:
+						pass
 
 	# Implement a save module based on HDF5 format:
 	def save_data(self):
@@ -797,52 +695,98 @@ class activeFilament:
 			dset.attrs['viscosity'] = self.mu
 			dset.attrs['boundary condition 0'] = self.bc[0]
 			dset.attrs['boundary condition 1'] = self.bc[-1]
-
-			dset.attrs['activity type'] = self.activity_type
-			dset.attrs['activity time scale'] = self.activity_timescale
-
-
 			dset.create_dataset("particle forces", data = self.F_mag)
 			dset.create_dataset("particle stresslets", data = self.S_mag)
 			dset.create_dataset("particle potDipoles", data = self.D_mag)
 
-			# Save the activity profile for the actual saved time points
-			# @@@ HOTFIX
-			if self.activity_type == 'normal':
-				self.activityPatternGenerator.reset_normal_activity()
+			if self.activity is not None:
+				dset.attrs['activity type'] = self.activity_type
+				dset.attrs['activity time scale'] = self.activity_timescale
 
-			if self.activity_type == 'biphasic':
-				
-				self.activityPatternGenerator.reset_biphasic_activity()
+				# Save the activity profile for the actual saved time points
+				# @@@ HOTFIX
+				if self.activity_type == 'normal':
+					self.activityPatternGenerator.reset_normal_activity()
 
-				activity_state_array = self.activityPatternGenerator.activity_state_profile(self.Time)
-				print(activity_state_array)
-				dset.create_dataset("activity state profile", data = activity_state_array)
+				if self.activity_type == 'biphasic':
+					
+					self.activityPatternGenerator.reset_biphasic_activity()
 
-				self.activityPatternGenerator.reset_biphasic_activity()
+					activity_state_array = self.activityPatternGenerator.activity_state_profile(self.Time)
+					print(activity_state_array)
+					dset.create_dataset("activity state profile", data = activity_state_array)
 
+					self.activityPatternGenerator.reset_biphasic_activity()
 
-				
-			
-			self.activity_profile_array = self.activityPatternGenerator.activity_profile(self.Time)
+				self.activity_profile_array = self.activityPatternGenerator.activity_profile(self.Time)
 
-			dset.create_dataset('activity profile', data = self.activity_profile_array)
+				dset.create_dataset('activity profile', data = self.activity_profile_array)
+
+				# Save user readable metadata of activity parameters
+				activity_metadata = os.path.join(self.saveFolder, 'activity_metadata.json')
+
+				with open(activity_metadata, 'w') as f:
+					json.dump(self.activity, f)
 
 
 		# Save user readable metadata in the same folder
 		metadata = open(os.path.join(self.saveFolder, 'metadata.csv'), 'w+')
-		metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale, activity type, viscosity,Simulation time,CPU time (s)\n')
-		metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+ self.activity_type + ',' + str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
+
+		try:
+			metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, activity time scale, activity type, viscosity,Simulation time,CPU time (s)\n')
+			metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+str(self.activity_timescale)+','+ self.activity_type + ',' + str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
+		except:
+			metadata.write('N particles,radius,bond length,spring constant,kappa_hat,force strength,stresslet strength,potDipole strength,simulation type, boundary condition 0, boundary condition 1, viscosity,Simulation time,CPU time (s)\n')
+			metadata.write(str(self.Np)+','+str(self.radius)+','+str(self.b0)+','+str(self.k)+','+str(self.kappa_hat)+','+str(self.F0)+','+str(self.S0)+','+str(self.D0)+','+self.sim_type+','+self.bc[0] + ',' + self.bc[-1]+','+ ',' + str(self.mu)+','+str(self.Time[-1])+','+str(self.cpu_time))
+		
+
 		metadata.close()
 
-		# Save user readable metadata of activity parameters
-		activity_metadata = os.path.join(self.saveFolder, 'activity_metadata.json')
-
-		with open(activity_metadata, 'w') as f:
-			json.dump(self.activity, f)
+	
  
 
+	def create_save_folder(self, path = ROOT_PATH, create_subdirs = True, ic_sim = False):
+		#Allocate a Path and folder to save the results
+		if(create_subdirs):
+			# Create Subdirs
+			subfolder = datetime.now().strftime('%Y-%m-%d')
 
+			# Create sub-folder by date
+			self.path = os.path.join(path, subfolder)
+
+			if(not os.path.exists(self.path)):
+				os.makedirs(self.path)
+
+			try:
+				self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
+								int(self.activity_timescale), self.sim_type)
+			except:
+				self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_simType_{}'.format\
+								(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), self.sim_type)
+
+
+			self.saveFolder = os.path.join(self.path, self.folder)
+		else:
+			# Directly save to path
+
+			self.path = path
+			# self.folder = 'SimData_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+			# 					(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
+			# 					int(self.activity_timescale), self.sim_type)
+
+			self.saveFolder = self.path
+
+
+		if ic_sim:
+			self.path = path
+			self.folder = 'IC_Sim_Np_{}_Shape_{}_kappa_hat_{}_k_{}_b0_{}_F_{}_S_{}_D_{}_activityTime_{}_simType_{}'.format\
+							(self.Np, self.shape, round(self.kappa_hat), round(self.k,3), round(self.b0,2), round(self.F0,2), round(self.S0,2),  round(self.D0,3), 
+							int(self.activity_timescale), self.sim_type)
+
+		self.saveFolder = os.path.join(self.path, self.folder)
+
+		#---------------------------------------------------------------------------------
 	########################################################################################################
 	# Derived quantities
 	########################################################################################################

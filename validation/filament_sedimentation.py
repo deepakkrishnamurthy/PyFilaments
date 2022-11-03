@@ -53,7 +53,7 @@ def run_parametric_sweep(pid, k):
 
 	filament = activeFilament(dim = 3, Np = Np, radius = a, b0 = b0, k = k, mu = mu,  F0 = F_mag, S0 = 0, D0 = 0, bc = bc)
 
-	filament.plotFilament(r = filament.r0)
+	# filament.plotFilament(r = filament.r0)
 
 	# Check which platform to define the OpenMP flags
 	if platform == "linux" or platform == "linux2":
