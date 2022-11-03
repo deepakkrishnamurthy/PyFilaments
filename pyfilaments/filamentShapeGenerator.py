@@ -15,7 +15,7 @@ import imp
 from pyfilaments._def import *
 
 
-def filamentShapeGenerator:
+class filamentShapeGenerator:
 	"""
 
 	Generate filament shape based on given parameters
@@ -55,10 +55,10 @@ def filamentShapeGenerator:
 
 		if 'shape' in self.init_condition.keys():
 
-			self.noise_amp = self.init_condition['noise_amp']
-			self.shape = 
+			self.shape = self.init_condition['shape']
 
 			if(self.shape=='line'):
+
 				if('angle' in self.init_condition.keys()):
 					self.init_angle = self.init_condition['angle']
 				else:
@@ -70,32 +70,20 @@ def filamentShapeGenerator:
 			elif(self.shape == 'parametric'):
 				# Parametric equation for the filament shape
 
-				pass
+				# x_fun, y_fun, z_fun contain the parametric equations of the filament centerline as a function of arc length
 
-			# elif(self.shape == 'sinusoid'):
-			# 	if('plane' in init_condition.keys()):
-			# 		self.plane = init_condition['plane']
-			# 	else:
-			# 		self.plane = 'xy'
+				self.x_func = self.init_condition['x fun']
+				self.y_func = self.init_condition['y fun']
+				self.z_func = self.init_condition['z fun']
 
-			# 	if('amplitude' in init_condition.keys()):
-			# 		self.amplitude = init_condition['amplitude']
-			# 	else:
-			# 		self.amplitude = 1e-4
-
-			# 	if('wavelength' in init_condition.keys()):
-			# 		self.wavelength = init_condition['wavelength']
-			# 	else:
-			# 		self.wavelength = self.L
-
-			# 	self.sinusoid_shape()
+				self.parametric_curve()
 
 
 		elif 'filament' in init_condition.keys():
 
 			# Check if the supplied filament parameters match with the current filament parameters
 
-			assert(np.shape(self.init_condition['filament'])==(self.Np*self.dim), 'Filament shape supplied does not match current filament parameters')
+			assert(len(self.init_condition['filament'])==self.Np*self.dim, 'Filament shape supplied does not match current filament parameters')
 
 			self.r0 = self.init_condition['filament']
 
@@ -115,7 +103,7 @@ def filamentShapeGenerator:
 			
 		# Add random fluctuations in the y-direction
 		# y-axis
-		self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, self.noise_amp, self.Np-1)
+		self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, TRANSVERSE_NOISE, self.Np-1)
 
 
 	# def arc_shape(self):
@@ -167,7 +155,17 @@ def filamentShapeGenerator:
 
 		'''
 
-		pass
+		s_array = np.array([self.b0*ii for ii in range(self.Np)])
+
+		for ii in range(self.Np):
+
+			self.r0[ii] = self.x_func(s_array[ii])
+
+			self.r0[ii+self.Np] = self.y_func(s_array[ii])
+
+			self.r0[ii+2*self.Np] = self.z_func(s_array[ii])
+
+
 
 
 
