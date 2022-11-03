@@ -37,6 +37,7 @@ import odespy
 
 import filament.filament as filament
 from pyfilaments.activityPatternGenerator import activityPatternGenerator
+from pyfilaments.filamentShapeGenerator import filamentShapeGenerator
 
 class activeFilament:
 	'''
@@ -227,7 +228,7 @@ class activeFilament:
 		# Unit tangent vector at the particle locations
 		self.t_hat = np.ones((self.dim,self.Np))
 
-		# Central-difference or secant line approximation for the middle colloids
+		# Central-difference or secant line approximation for the interior colloids
 		self.t_hat[:, 1:self.Np-1] = self.r_matrix[:,2:self.Np] - self.r_matrix[:,0:self.Np-2]
 
 		# self.t_hat[:,1:self.Np-1] = (self.dr_hat[:,0:self.Np-2] + self.dr_hat[:,1:self.Np-1])/2
@@ -270,85 +271,90 @@ class activeFilament:
 		# self.D[self.Np:2*self.Np] = 0
 		# self.D[2*self.Np:3*self.Np] = 0
 
-	def initialize_filament_shape(self):
-		if(self.shape == 'line'):
-			# Initial particle positions and orientations
-			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
-			for ii in range(self.Np):
-				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
-				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
+# 	def initialize_filament_shape(self):
+# 		if(self.shape == 'line'):
+# 			# Initial particle positions and orientations
+# 			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
+# 			for ii in range(self.Np):
+# 				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
+# 				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
 				
-			# Add random fluctuations in the other two directions
-			# y-axis
-			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, TRANSVERSE_NOISE, self.Np-1)
+# 			# Add random fluctuations in the other two directions
+# 			# y-axis
+# 			self.r0[self.Np+1:2*self.Np] = self.r0[self.Np+1:2*self.Np]+ np.random.normal(0, TRANSVERSE_NOISE, self.Np-1)
 
-			# z-axis
-			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
+# 			# z-axis
+# 			# self.r0[2*self.Np:3*self.Np] = np.random.normal(0, 1E-2, self.Np)
 			   
-		# Add some Random fluctuations in y-direction
-#            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
-		if(self.shape == 'line at angle'):
-			N_angles = 100
-			angles_array = np.linspace(-ANGULAR_AMP_IC , ANGULAR_AMP_IC , N_angles)
+# 		# Add some Random fluctuations in y-direction
+# #            self.r0[self.Np:self.xx] = 0.05*self.radius*np.random.rand(self.Np)
+# 		if(self.shape == 'line at angle'):
+# 			N_angles = 100
+# 			angles_array = np.linspace(-ANGULAR_AMP_IC , ANGULAR_AMP_IC , N_angles)
 
-			self.init_angle  = random.sample(list(angles_array), 1)
-			# Initial particle positions and orientations
+# 			self.init_angle  = random.sample(list(angles_array), 1)
+# 			# Initial particle positions and orientations
 
-			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
-			for ii in range(self.Np):
-				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
-				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
+# 			# print('Initializing filament as a line at angle {}'.format(self.init_angle))
+# 			for ii in range(self.Np):
+# 				self.r0[ii] = ii*(self.b0)*np.cos(self.init_angle)
+# 				self.r0[self.Np+ii] = ii*(self.b0)*np.sin(self.init_angle) 
 				
 
-		elif(self.shape == 'arc'):
-			arc_angle = np.pi
+# 		elif(self.shape == 'arc'):
+# 			arc_angle = np.pi
 
-			arc_angle_piece = arc_angle/self.Np
+# 			arc_angle_piece = arc_angle/self.Np
 			
-			for ii in range(self.Np):
-				# The filament is initially linear along x-axis with the first particle at origin
-				if(ii==0):
-					self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
+# 			for ii in range(self.Np):
+# 				# The filament is initially linear along x-axis with the first particle at origin
+# 				if(ii==0):
+# 					self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
 
-				else:
-					self.r0[ii] = self.r0[ii-1] + self.b0*np.sin(ii*arc_angle_piece)
-					self.r0[ii + self.Np] = self.r0[ii-1 + self.Np] + self.b0*np.cos(ii*arc_angle_piece)
+# 				else:
+# 					self.r0[ii] = self.r0[ii-1] + self.b0*np.sin(ii*arc_angle_piece)
+# 					self.r0[ii + self.Np] = self.r0[ii-1 + self.Np] + self.b0*np.cos(ii*arc_angle_piece)
 					
 				
-		elif(self.shape == 'sinusoid'):
+# 		elif(self.shape == 'sinusoid'):
 
-			if(self.plane == 'xy'):
-				first_index = 0
-				second_index = self.Np
+# 			if(self.plane == 'xy'):
+# 				first_index = 0
+# 				second_index = self.Np
 
-			elif(self.plane == 'xz'):
-				first_index = 0
-				second_index = self.xx
+# 			elif(self.plane == 'xz'):
+# 				first_index = 0
+# 				second_index = self.xx
 
-			elif(self.plane == 'yz'):
-				first_index = self.Np
-				second_index = self.xx
+# 			elif(self.plane == 'yz'):
+# 				first_index = self.Np
+# 				second_index = self.xx
 
-			for ii in range(self.Np):
+# 			for ii in range(self.Np):
 
-				# The first particle at origin
-				if(ii==0):
-					self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
+# 				# The first particle at origin
+# 				if(ii==0):
+# 					self.r0[ii], self.r0[ii+self.Np], self.r0[ii+self.xx] = 0,0,0 
 
-				else:
-					self.r0[ii + first_index] = ii*(self.b0)
-					self.r0[ii + second_index] = self.amplitude*np.sin(self.r0[ii]*2*np.pi/(self.wavelength))
-		elif(self.shape == 'helix'):
-			nWaves = 1
-			Amp = 1e-4
+# 				else:
+# 					self.r0[ii + first_index] = ii*(self.b0)
+# 					self.r0[ii + second_index] = self.amplitude*np.sin(self.r0[ii]*2*np.pi/(self.wavelength))
+# 		elif(self.shape == 'helix'):
+# 			nWaves = 1
+# 			Amp = 1e-4
 
-		# Apply the kinematic boundary conditions to the filament ends
-		# self.apply_BC_position()
-		self.r = self.r0
+# 		# Apply the kinematic boundary conditions to the filament ends
+# 		# self.apply_BC_position()
+# 		self.r = self.r0
 
 
 	def initialize_bending_stiffness(self):
-		# bc: dictionary that holds the boundary-conditions at the two ends of the filaments 
+		'''
+		Initialize the bending stiffness array based on the boundary-conditions at the two ends of the filament
+		
+		bc: dictionary that holds the boundary-conditions at the two ends of the filaments 
+		'''
+
 		# Constant-bending stiffness case
 		
 		for key in self.bc:
@@ -356,10 +362,8 @@ class activeFilament:
 
 			if value=='free' or value == 'fixed':
 				# The bending stiffness is set to zero only for 'free' or 'fixed' boundary conditions
-				# print('Assigning {} BC to filament end {}'.format(value, key))
 				self.kappa_hat_array[key] = 0 
 			elif value == 'clamped':
-				# @@@ Test: Clamped BC, the bending stiffness for the first link is order of magnitude higher to impose tangent condition at the filament base.
 				if key==0:
 					self.kappa_hat_array[0] = self.clamping_bc_scalefactor*self.kappa_hat
 				elif key==-1:
@@ -401,16 +405,6 @@ class activeFilament:
 			# Orientation vectors of particles depend on local tangent vector
 			self.p0 = self.p
 
-		# Initialize the bending-stiffness array
-		# self.initialize_bending_stiffness()
-		# self.get_separation_vectors()
-		# self.filament.get_bond_angles(self.dr_hat, self.cosAngle)
-		# self.get_tangent_vectors()
-		# self.t_hat_array = self.reshape_to_array(self.t_hat)
-		# # Initialize the particle orientations to be along the local tangent vector
-		# self.p = self.t_hat_array
-		# # Orientation vectors of particles depend on local tangent vector
-		# self.p0 = self.p
 		
 	def apply_BC_force(self):
 		'''
@@ -448,6 +442,8 @@ class activeFilament:
 				self.F[end] += constraint_force[0]
 				self.F[end + self.Np] += constraint_force[1]
 				self.F[end + self.xx] += constraint_force[2]
+
+
 
 	def set_filament_activity(self, t):
 
@@ -518,17 +514,14 @@ class activeFilament:
 			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 
-	def generate_random_ic(self, N_IC = 10, angle = ANGULAR_AMP_IC):
+	# def generate_random_ic(self, N_IC = 10, angle = ANGULAR_AMP_IC):
 
-		# generate N random angles within the filament angular amplitude range
-		N_angles = 100
-		angles_array = np.linspace(-angle, angle, N_angles)
+	# 	# generate N random angles within the filament angular amplitude range
+	# 	N_angles = 100
+	# 	angles_array = np.linspace(-angle, angle, N_angles)
 
-		random_ints = random.sample(angles_array, N_IC)
+	# 	random_ints = random.sample(angles_array, N_IC)
 
-
-
-		
 
 
 	def simulate(self, Tf = 100, Npts = 10, sim_type = 'point', init_condition = {'shape':'line', 'angle':0}, 
@@ -585,73 +578,25 @@ class activeFilament:
 			else:
 				return False
 
-		if(init_condition is not None):
-			
-			if('filament' in init_condition.keys()):
-				# If the filament shape is provided use it to initialize the filament
-				# print('Initializing from provided filament shape...')
-				self.initialize_filament(r0 = init_condition['filament'])
 
-			elif('shape' in init_condition.keys()):
-				self.shape = init_condition['shape']
-
-				if(self.shape=='line'):
-					if('angle' in init_condition.keys()):
-						self.init_angle = init_condition['angle']
-					else:
-						self.init_angle = 0
-				elif(self.shape == 'sinusoid'):
-					if('plane' in init_condition.keys()):
-						self.plane = init_condition['plane']
-					else:
-						self.plane = 'xy'
-					if('amplitude' in init_condition.keys()):
-						self.amplitude = init_condition['amplitude']
-					else:
-						self.amplitude = 1e-4
-
-					if('wavelength' in init_condition.keys()):
-						self.wavelength = init_condition['wavelength']
-					else:
-						self.wavelength = self.L
-				elif(self.shape == 'helix'):
-
-					if('axis' in init_condition.keys()):
-						self.axis = init_condition['axis']
-					else:
-						self.axis = 'x'
-					if('amplitude' in init_condition.keys()):
-						self.amplitude = init_condition['amplitude']
-					else:
-						self.amplitide = 1e-4
-					if('pitch' in init_condition.keys()):
-						self.pitch = init_condition['pitch']
-					else:
-						self.pitch = self.L
-				self.initialize_filament()
+		# Pass init_condition to the filament shape generator class
+		self.filamentShapeGenerator = filamentShapeGenerator(filament = self)
+		self.r0 = self.filamentShapeGenerator.generate_filament_shape(init_condition = init_condition)
+		self.initialize_filament(r0 = self.r0)
 
 		self.time_now = 0
 		self.time_prev = 0
-
-		self.set_particle_colors()
-
-		# Plot the activity profile
-		t_array = np.linspace(0, Tf, Npts)
 
 		# Set the simulation type
 		self.sim_type = sim_type
 
 		# Initialize the activity pattern generator
 		self.activity = activity
-
 		# For each simulation we initialize a new instance of activityGenerator
 		self.activityPatternGenerator = activityPatternGenerator(activity = self.activity)
-
-	
 		self.activity_type = self.activity['type']
 
 
-		# @@@ Hotfix (need to change how activity time scale is stored when there is more than one timescale)
 		if self.activity_type == 'biphasic':
 			self.activity_timescale = (self.activity['activity time scale']['slow']+ self.activity['activity time scale']['fast'])/2.0
 		else:
@@ -681,7 +626,7 @@ class activeFilament:
 
 			for ii in range(Np):
 					# F[i   ] +=  0
-					self.F_mag[ii+Np] += self.F0
+					self.F_mag[ii+Np] += self.F0 # Constant body force in the y-direction
 				# F[i+xx] +=  g
 
 			self.S_mag[:] = 0
@@ -701,10 +646,8 @@ class activeFilament:
 			self.D_mag[:] = 0
 
 		
-		# print('Running the filament simulation ....')
-
 		start_time = time.time()
-		tqdm_text = "Param: {} Progress: ".format(self.k).zfill(1)
+		tqdm_text = "Progress: ".zfill(1)
 
 		# Run the simulation
 		with tqdm(total = 100, desc = tqdm_text, position=pid+1, disable = False) as self.pbar:
