@@ -19,7 +19,7 @@ D0 = 1.5
 # Activity profile parameters
 activity_timescale = 750 # Activity time-scale (one compression and extension cycle)
 duty_cycle = 0.5	# Relative time for compression relative to total activity time-scale
-n_activity_cycles = 250 # No:of activity cycles we want to simulate
+n_activity_cycles = 10 # No:of activity cycles we want to simulate
 Tf = activity_timescale*n_activity_cycles # Total simulation time
 time_step_save = 5 # This is roughly 4X the axial stretch time-scale which is the smallest time-scale in the dynamics
 Npts = int(Tf/time_step_save) # No:of time points saved

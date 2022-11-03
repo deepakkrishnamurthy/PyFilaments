@@ -443,6 +443,8 @@ class activeFilament:
 				self.F[end + self.Np] += constraint_force[1]
 				self.F[end + self.xx] += constraint_force[2]
 
+
+
 	def set_filament_activity(self, t):
 
 		if(self.sim_type == 'point'):
@@ -512,13 +514,13 @@ class activeFilament:
 			# self.rm.stressletV(self.drdt, self.r, self.S)
 			self.rm.potDipoleV(self.drdt, self.r, self.D)
 
-	def generate_random_ic(self, N_IC = 10, angle = ANGULAR_AMP_IC):
+	# def generate_random_ic(self, N_IC = 10, angle = ANGULAR_AMP_IC):
 
-		# generate N random angles within the filament angular amplitude range
-		N_angles = 100
-		angles_array = np.linspace(-angle, angle, N_angles)
+	# 	# generate N random angles within the filament angular amplitude range
+	# 	N_angles = 100
+	# 	angles_array = np.linspace(-angle, angle, N_angles)
 
-		random_ints = random.sample(angles_array, N_IC)
+	# 	random_ints = random.sample(angles_array, N_IC)
 
 
 
@@ -577,82 +579,24 @@ class activeFilament:
 				return False
 
 
-		# Parse initial conditions and generate initial filament shape
-		# @@@ Pass init_condition to the filament shape generator class
-
+		# Pass init_condition to the filament shape generator class
 		self.filamentShapeGenerator = filamentShapeGenerator(filament = self)
-
 		self.r0 = self.filamentShapeGenerator.generate_filament_shape(init_condition = init_condition)
-
 		self.initialize_filament(r0 = self.r0)
-
-		# if(init_condition is not None):
-			
-		# 	if('filament' in init_condition.keys()):
-		# 		# If the filament shape is provided use it to initialize the filament
-		# 		# print('Initializing from provided filament shape...')
-		# 		self.initialize_filament(r0 = init_condition['filament'])
-
-		# 	elif('shape' in init_condition.keys()):
-		# 		self.shape = init_condition['shape']
-
-		# 		if(self.shape=='line'):
-		# 			if('angle' in init_condition.keys()):
-		# 				self.init_angle = init_condition['angle']
-		# 			else:
-		# 				self.init_angle = 0
-		# 		elif(self.shape == 'sinusoid'):
-		# 			if('plane' in init_condition.keys()):
-		# 				self.plane = init_condition['plane']
-		# 			else:
-		# 				self.plane = 'xy'
-		# 			if('amplitude' in init_condition.keys()):
-		# 				self.amplitude = init_condition['amplitude']
-		# 			else:
-		# 				self.amplitude = 1e-4
-
-		# 			if('wavelength' in init_condition.keys()):
-		# 				self.wavelength = init_condition['wavelength']
-		# 			else:
-		# 				self.wavelength = self.L
-		# 		elif(self.shape == 'helix'):
-
-		# 			if('axis' in init_condition.keys()):
-		# 				self.axis = init_condition['axis']
-		# 			else:
-		# 				self.axis = 'x'
-		# 			if('amplitude' in init_condition.keys()):
-		# 				self.amplitude = init_condition['amplitude']
-		# 			else:
-		# 				self.amplitide = 1e-4
-		# 			if('pitch' in init_condition.keys()):
-		# 				self.pitch = init_condition['pitch']
-		# 			else:
-		# 				self.pitch = self.L
-		# 		self.initialize_filament()
 
 		self.time_now = 0
 		self.time_prev = 0
-
-		# self.set_particle_colors()
-
-		# Plot the activity profile
-		t_array = np.linspace(0, Tf, Npts)
 
 		# Set the simulation type
 		self.sim_type = sim_type
 
 		# Initialize the activity pattern generator
 		self.activity = activity
-
 		# For each simulation we initialize a new instance of activityGenerator
 		self.activityPatternGenerator = activityPatternGenerator(activity = self.activity)
-
-	
 		self.activity_type = self.activity['type']
 
 
-		# @@@ Hotfix (need to change how activity time scale is stored when there is more than one timescale)
 		if self.activity_type == 'biphasic':
 			self.activity_timescale = (self.activity['activity time scale']['slow']+ self.activity['activity time scale']['fast'])/2.0
 		else:
@@ -703,7 +647,7 @@ class activeFilament:
 
 		
 		start_time = time.time()
-		tqdm_text = "Param: {} Progress: ".format(self.k).zfill(1)
+		tqdm_text = "Progress: ".zfill(1)
 
 		# Run the simulation
 		with tqdm(total = 100, desc = tqdm_text, position=pid+1, disable = False) as self.pbar:
