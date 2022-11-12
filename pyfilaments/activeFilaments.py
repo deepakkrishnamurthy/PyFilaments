@@ -424,9 +424,9 @@ class activeFilament:
 			'''
 		
 			if(self.filament_activity(t)==1):
-				self.D_mag[:-1] = self.D0/self.Np
+				self.D_mag[:] = self.D0
 			elif(self.filament_activity(t)==-1):
-				self.D_mag[:-1] = -self.D0/self.Np
+				self.D_mag[:] = -self.D0
 
 	
 		elif(self.sim_type == 'lacry'):
