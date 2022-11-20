@@ -8,8 +8,10 @@ The input to this pipeline is raw simulation data. Outputs are stored in-place a
 
 1. Run_Batch_Analysis.ipynb:
     
-    Run analysis on a batch of simulation data. These can include:
+    Run any analysis on a batch of simulation data. These can include:
     - Detecting periodic vs aperiodic behavior
+    - Calculating search metrics of the filament tip
+    
 
 
 2. PCAmodes_batch_analysis.ipynb : 
