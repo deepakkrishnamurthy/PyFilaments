@@ -416,7 +416,9 @@ class analysisTools(activeFilament):
 			mode_num: Gives the number of shape modes to compute. 
 		"""
 		self.modes_to_save = mode_num
-
+		self.compute_tangent_angle_matrix()
+		self.compute_shape_covariance_matrix()
+		
 		n_times, n_points = np.shape(self.tangent_angles_matrix)
 
 		assert(n_times == self.Nt) # Make sure we have the Covariance matrix for the whole simulation
