@@ -98,6 +98,25 @@ class activityPatternGenerator:
 
 				self.initialized = True
 
+			elif self.activity_type == 'lognorm':
+
+				self.activity_timescale = self.activity['activity time scale']
+
+				self.shape_factor = self.activity['shape factor']
+
+				self.n_cycles = self.activity['n_cycles']
+
+				self.curr_phase = 'comp'
+				
+				self.t_start = 0
+				self.counter = 0
+
+				# We create random times for one extra cycle so as to handle cases where Tf is higher than the mean value of n_cycles*(T_ext_mean + T_comp_mean)
+				self.T_ext = np.random.normal(loc = self.T_ext_mean, scale = self.noise_scale*self.T_ext_mean, size = self.n_cycles) 
+				self.T_comp = np.random.normal(loc = self.T_comp_mean , scale = self.noise_scale*self.T_comp_mean, size = self.n_cycles)
+				# Reset Tf based on the actual T-ext and T_comp values
+				self.Tf = np.sum(self.T_ext + self.T_comp)
+
 
 	def square_wave_activity(self, t):
 		''' Output a square-wave profile based on a cycle time-scale and duty-cycle
