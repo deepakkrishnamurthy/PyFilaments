@@ -33,3 +33,9 @@ TRANSVERSE_NOISE = 1E-6
 # Scale-factor (between strength of head cilia and neck cilia in Lacry)
 SCALE_FACTOR = 2 # Arbitrary for now
 
+
+# Scale factor between median extension durations and compression durations (from experimental measurements)
+EXT_COMP_SCALEFACTOR = 1.5
+
+SIGMA_EXT = 0.89 # From fitting of experimental data to a lognormal distribution
+SIGMA_COMP =0.86 # From fitting of experimental data to a lognormal distribution

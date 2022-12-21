@@ -356,10 +356,16 @@ class activeFilament:
 			else:
 				self.activity_timescale = self.activity['activity time scale']
 
+			''' 
+			For stochastic activity change the total sim time based on the actual random timescales generated.
+			'''	
 			if self.activity_type == 'normal':
-				''' For stochastic activity change the total sim time based on the actual random timescales generated.
-				'''
-				Tf = self.activityPatternGenerator.Tf
+				
+				self.Tf = self.activityPatternGenerator.Tf
+
+			elif self.activity_type == 'lognormal':
+
+				self.Tf = self.activityPatternGenerator.Tf
 
 			# Function encodes time dynamics of activity. For a given time returns the current activity value.
 			self.filament_activity = self.activityPatternGenerator.activity_function()
@@ -527,6 +533,8 @@ class activeFilament:
 		
 		# Set the seed for the random number generator
 		# np.random.seed(pid)
+		self.Tf = Tf
+		self.Npts = Npts
 		self.save = save
 		self.overwrite = overwrite
 		self.note = note
@@ -583,7 +591,7 @@ class activeFilament:
 			# printProgressBar(0, Tf, prefix = 'Progress:', suffix = 'Complete', length = 50)
 
 			# integrate the resulting equation using odespy
-			T, N = Tf, Npts;  time_points = np.linspace(0, T, N+1);  ## intervals at which output is returned by integrator. 
+			time_points = np.linspace(0, self.Tf, self.Npts+1);  ## intervals at which output is returned by integrator. 
 			
 			solver = odespy.Vode(rhs0, method = 'bdf', atol=1E-7, rtol=1E-6, order=5, nsteps=10**6) # initialize the odespy solver
 			solver.set_initial_condition(self.r0)  # Initial conditions

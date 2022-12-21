@@ -98,11 +98,14 @@ class activityPatternGenerator:
 
 				self.initialized = True
 
-			elif self.activity_type == 'lognorm':
+			elif self.activity_type == 'lognormal':
 
 				self.activity_timescale = self.activity['activity time scale']
 
-				self.shape_factor = self.activity['shape factor']
+				# Standard deviations of the lognormal distributions
+				self.sigma_ext = self.activity['sigma extension']
+				self.sigma_comp = self.activity['sigma compression']
+
 
 				self.n_cycles = self.activity['n_cycles']
 
@@ -111,9 +114,14 @@ class activityPatternGenerator:
 				self.t_start = 0
 				self.counter = 0
 
-				# We create random times for one extra cycle so as to handle cases where Tf is higher than the mean value of n_cycles*(T_ext_mean + T_comp_mean)
-				self.T_ext = np.random.normal(loc = self.T_ext_mean, scale = self.noise_scale*self.T_ext_mean, size = self.n_cycles) 
-				self.T_comp = np.random.normal(loc = self.T_comp_mean , scale = self.noise_scale*self.T_comp_mean, size = self.n_cycles)
+				self.T_ext_median = self.activity_timescale
+				self.T_comp_median = self.activity_timescale/EXT_COMP_SCALEFACTOR
+
+				rng = np.random.default_rng()
+
+				# Draw from the distribution to create a series of extension and compression durations
+				self.T_ext = rng.lognormal(mean = np.log(self.T_ext_median), sigma = self.sigma_ext, size = self.n_cycles) 
+				self.T_comp = rng.lognormal(mean = np.log(self.T_comp_median) , sigma = self.sigma_comp, size = self.n_cycles)
 				# Reset Tf based on the actual T-ext and T_comp values
 				self.Tf = np.sum(self.T_ext + self.T_comp)
 
@@ -145,7 +153,6 @@ class activityPatternGenerator:
 				return 1
 			else:
 				return -1
-
 			
 		elif self.extension_in_progress:
 		
@@ -180,29 +187,26 @@ class activityPatternGenerator:
 			return 1
 
 
+	def lognormal_activity(self, t):
 
-		# if self.compression_in_progress:
-		# 	t_elapsed = t - self.T_comp_start
+		t_elapsed = t - self.t_start
 
-		# 	if t_elapsed > self.T_comp[self.current_cycle]:
-		# 		self.extension_in_progress = True
-		# 		self.compression_in_progress = False
-		# 		self.T_ext_start = t
-		# 		return 1
-		# 	else:
-		# 		return -1
-			
-		# elif self.extension_in_progress:
-		# 	t_elapsed = t - self.T_ext_start
+		if self.curr_phase == 'comp':
+			if t_elapsed >=self.T_comp[self.counter]:
+				self.curr_phase = 'ext'
+				self.t_start = np.copy(t)
+		elif self.curr_phase == 'ext':
+			if t_elapsed >= self.T_ext[self.counter]:
+				self.curr_phase = 'comp'
+				self.t_start = np.copy(t)
+				self.counter+=1
 
-		# 	if t_elapsed > self.T_ext[self.current_cycle]:
-		# 		self.extension_in_progress = False
-		# 		self.compression_in_progress = True
-		# 		self.T_comp_start = t
-		# 		self.current_cycle += 1
-		# 		return -1
-		# 	else:
-		# 		return 1
+		if self.curr_phase == 'comp':
+			return -1
+		elif self.curr_phase == 'ext':
+			return 1
+
+
 	def reset_normal_activity(self):
 		# Reset state
 		self.curr_phase = 'comp'
@@ -287,6 +291,8 @@ class activityPatternGenerator:
 			return lambda t: self.poisson_activity(t)
 		elif(self.activity_type == 'normal'):
 			return lambda t: self.normal_activity(t)
+		elif (self.activity_type == 'lognormal'):
+			return lambda t: self.lognormal_activity(t)
 		elif(self.activity_type == 'biphasic'):
 			return lambda t: self.biphasic_activity(t)
 
