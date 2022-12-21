@@ -411,12 +411,10 @@ class activeFilament:
 		Set spatial activity distribution along the filament
 
 		'''
-
 		if(self.sim_type == 'point'):
 			'''Simulates active filament where only the distal particle has time-dependent activity.
 			'''
 			self.D_mag[-1] = self.D0*self.filament_activity(t)
-
 		elif self.sim_type == 'dist':
 
 			'''
@@ -428,7 +426,6 @@ class activeFilament:
 			elif(self.filament_activity(t)==-1):
 				self.D_mag[:] = -self.D0
 
-	
 		elif(self.sim_type == 'lacry'):
 			'''
 			Simulates active filament where the activity pattern models that in Lacrymaria olor.
@@ -436,17 +433,22 @@ class activeFilament:
 				1. Active during extension.
 				2. Stalled during reversal.
 			All other particles: 
-				1. Inactive during extension.
+				1. Active during extension.
 				2. Active during reversal. 
 
 			Scale factor: 
 				Quantifies the relative strengths of the Distal particle vs Other particles activity.
 			'''
 			if(self.filament_activity(t)==1):
+				# Extension phase
 				# self.D_mag[:self.Np-1] = self.D0/self.scale_factor
-				self.D_mag[-1] = self.D0
+				self.D_mag[:self.Np-1] = self.D0
+				self.D_mag[-1] = self.D0*SCALE_FACTOR
 			elif(self.filament_activity(t)==-1):
-				self.D_mag[:self.Np-1] = -self.D0/SCALE_FACTOR
+				# Compression phase
+				self.D_mag[:self.Np-1] = -self.D0
+
+				# Head is inactive during compression
 				self.D_mag[-1] = 0
 
 	# @profile(sort_by='cumulative', lines_to_print=20, strip_dirs=True)

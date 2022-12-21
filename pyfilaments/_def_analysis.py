@@ -26,3 +26,6 @@ SPATIAL_DENSITY_CMAP = cmocean.cm.deep
 ACTIVITY_STRENGTH_CMAP = cmocean.cm.matter
 
 ACTIVITY_TIME_CMAP = cmocean.cm.deep
+
+# Cycles to ignore to remove transients
+START_CYCLE = 100

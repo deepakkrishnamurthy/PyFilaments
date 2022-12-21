@@ -31,4 +31,5 @@ ANGULAR_AMP_IC = np.pi/12 # Angular amplitude for generating filament ICs
 TRANSVERSE_NOISE = 1E-6
 
 # Scale-factor (between strength of head cilia and neck cilia in Lacry)
-SCALE_FACTOR = 10 # Arbitrary for now
+SCALE_FACTOR = 2 # Arbitrary for now
+

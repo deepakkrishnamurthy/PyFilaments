@@ -568,7 +568,7 @@ class analysisTools(activeFilament):
 
 
 
-	def filament_tip_coverage(self, save = False, overwrite = False):
+	def filament_tip_coverage(self, save = False, overwrite = False, start_cycle = START_CYCLE):
 		"""	Calculates the no:of unique areas covered by the tip of the filament (head). This serves as a metric for 
 		search coverage. 
 		Pseudocode:
@@ -581,14 +581,18 @@ class analysisTools(activeFilament):
 				- Increment unique_counter by 1. 
 			- Else if the distance to all previous unique locations is < particle_diameter
 				- Increment the hit_counter for the point nearest to the current location by 1. 
+
+		- start_cycle: Allow transients to decay by only looking at unique locations sampled after these cycles
 		"""
+		start_index = self.cycle_to_index(start_cycle)
+
 		analysis_type = 'SearchCoverage'
 		self.unique_counter = 0
 		self.unique_positions = []
 		self.unique_position_times = []
 		self.hits_counter = {}
 
-		self.unique_counter_time = np.zeros(self.Nt)
+		self.unique_counter_time = np.zeros_like(np.arange(start_index, self.Nt))
 
 
 		analysis_sub_folder = os.path.join(self.analysisFolder, analysis_type)
@@ -621,17 +625,17 @@ class analysisTools(activeFilament):
 			# If the unique positions data doesnt exist, then caclulate it
 			print('Calculating unique positions and count...')
 
-			for ii in range(self.Nt):
+			for ii, index in enumerate(range(start_index, self.Nt)):
 
 				# Particle positions (head/filament-tip position) at time ii
-				self.r = [self.R[ii, self.Np-1], self.R[ii, 2*self.Np-1], self.R[ii, 3*self.Np-1] ]
+				self.r = [self.R[index, self.Np-1], self.R[index, 2*self.Np-1], self.R[index, 3*self.Np-1] ]
 
 				# print(self.r)
 				# Get the separation distance to list of previous unique locations
 				if(not self.unique_positions):
 					# If list is empty
 					self.unique_positions.append(self.r)
-					self.unique_position_times.append(self.Time[ii])
+					self.unique_position_times.append(self.Time[index])
 					self.unique_counter+=1
 					self.hits_counter[self.unique_counter-1]=1
 				else:
@@ -641,7 +645,7 @@ class analysisTools(activeFilament):
 
 					if(not np.any(distance<=2*self.radius)):
 						self.unique_positions.append(self.r)
-						self.unique_position_times.append(self.Time[ii])
+						self.unique_position_times.append(self.Time[index])
 						self.unique_counter+=1
 						self.hits_counter[self.unique_counter-1]=1
 					else:
@@ -670,7 +674,7 @@ class analysisTools(activeFilament):
 				if(not os.path.exists(analysis_sub_folder)):
 					os.makedirs(analysis_sub_folder)
 
-				df_unique_count = pd.DataFrame({'Time':self.Time, 'Unique positions count':self.unique_counter_time})
+				df_unique_count = pd.DataFrame({'Time':self.Time[start_index:], 'Unique positions count':self.unique_counter_time})
 				df_unique_positions = pd.DataFrame({'ID': hits_counter_keys, 
 					'Time': self.unique_position_times, 'Hits': hits_counter_values,
 					'Position X':self.unique_positions[:,0], 'Position Y':self.unique_positions[:,1], 

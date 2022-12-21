@@ -175,19 +175,39 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		# 	self.change_display_params = False
 
 
-	def set_colors(self):
-		self.particle_colors = []
-		self.passive_color = np.reshape(np.array(cmocean.cm.curl(0)),(4,1))
-		self.active_color =np.reshape(np.array(cmocean.cm.curl(255)), (4,1))
-		
-		print(self.filament.Np)
+	def set_colors(self, index):
 
-		for ii in range(self.filament.Np):
-			
-			if(self.filament.S_mag[ii]!=0 or self.filament.D_mag[ii]!=0):
-				self.particle_colors.append(pg.mkBrush(ACTIVE_COLLOID_COLOR))
+		current_activity = self.filament.activity_profile[index]
+
+		self.particle_colors = []
+	
+		# Set the colors based on the activity profile and activity distrbution
+		sim_type = self.filament.sim_type
+
+		if sim_type == 'point' or sim_type == 'dist':
+			for ii in range(self.filament.Np):
+				
+				if(self.filament.S_mag[ii]!=0 or self.filament.D_mag[ii]!=0):
+					self.particle_colors.append(pg.mkBrush(ACTIVE_COLLOID_COLOR))
+				else:
+					self.particle_colors.append(pg.mkBrush(PASSIVE_COLLOID_COLOR))
+
+		elif sim_type == 'lacry':
+
+			if(current_activity == 1):
+				# Extension phase
+
+				# Head is Active. Neck is also active
+				for ii in range(self.filament.Np):
+					self.particle_colors.append(pg.mkBrush(ACTIVE_COLLOID_COLOR))
+
 			else:
+				# Head is inactive, Neck is active
+				for ii in range(self.filament.Np-1):
+					self.particle_colors.append(pg.mkBrush(ACTIVE_COLLOID_COLOR))
+
 				self.particle_colors.append(pg.mkBrush(PASSIVE_COLLOID_COLOR))
+
 
 	def update_plot_tip_history_flag(self, flag):
 		self.plot_tip_history = flag
@@ -643,9 +663,9 @@ class DataInteractionWidget(QMainWindow):
 		layout_bottom.addWidget(self.checkbox_display)
 
 		layout_right = QGridLayout()
-		layout_right.addWidget(self.plot_widget,0,0,1,1) # Plot widget for displying related data
-		layout_right.addWidget(self.sim_parameters_display,1,0,1,1) # Parameter values display widget
-		layout_right.addLayout(layout_bottom,2,0,1,1) # Analysis data open button
+		# layout_right.addWidget(self.plot_widget,0,0,1,1) # Plot widget for displying related data
+		layout_right.addWidget(self.sim_parameters_display,0,0,1,1) # Parameter values display widget
+		layout_right.addLayout(layout_bottom,1,0,1,1) # Analysis data open button
 
 		# Add widgets to the central widget
 		video_player_layout = QVBoxLayout()
@@ -668,6 +688,7 @@ class DataInteractionWidget(QMainWindow):
 
 		self.video_player.current_index.connect(self.plot_widget.update_index)
 		self.video_player.current_index.connect(self.plotFilamentWidget.update_index)
+		self.video_player.current_index.connect(self.plotFilamentWidget.set_colors)
 
 		self.plotFilamentWidget.playback_speed.connect(self.video_player.update_playback_speed)
 
@@ -680,7 +701,7 @@ class DataInteractionWidget(QMainWindow):
 		if(self.filament.R is not None):
 			self.newData = True
 			self.setWindowTitle(self.filament.simFile)
-			self.plotFilamentWidget.set_colors()
+			self.plotFilamentWidget.set_colors(0)
 			self.video_player.initialize_data(self.filament.Time)
 			self.video_player.initialize_parameters()
 			self.sim_parameters_display.update_param_values()
