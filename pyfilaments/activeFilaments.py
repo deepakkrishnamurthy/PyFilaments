@@ -45,7 +45,7 @@ class activeFilament:
 		for solving hydrodynamic and steric interactions.
 	'''
 	def __init__(self, dim = 3, Np = 3, radius = 1, b0 = 1, k = 10, mu = 1.0/6, F0 = 0, S0 = 0, D0 = 0, 
-					 scale_factor = None, bending_axial_scalefactor = 0.25, bc = {0:'clamped', -1:'free'}, clamping_vector = [1,0,0]):
+					 scale_factor = None, bending_axial_scalefactor = BENDING_AXIAL_SCALEFACTOR, bc = {0:'clamped', -1:'free'}, clamping_vector = [1,0,0]):
 		
 		#-----------------------------------------------------------------------------
 		# Filament parameters
@@ -717,6 +717,8 @@ class activeFilament:
 				# @@@ HOTFIX
 				if self.activity_type == 'normal':
 					self.activityPatternGenerator.reset_normal_activity()
+				elif self.activity_type == 'lognormal':
+					self.activityPatternGenerator.reset_lognormal_activity()
 
 				if self.activity_type == 'biphasic':
 					
@@ -736,7 +738,7 @@ class activeFilament:
 				activity_metadata = os.path.join(self.saveFolder, 'activity_metadata.json')
 
 				with open(activity_metadata, 'w') as f:
-					json.dump(self.activity, f)
+					json.dump(self.activity, f, default=str)
 
 
 		# Save user readable metadata in the same folder

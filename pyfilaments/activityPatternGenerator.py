@@ -213,6 +213,12 @@ class activityPatternGenerator:
 		self.t_start = 0
 		self.counter = 0
 
+	def reset_lognormal_activity(self):
+		# Reset state
+		self.curr_phase = 'comp'
+		self.t_start = 0
+		self.counter = 0
+
 
 	def reset_biphasic_activity(self):
 		self.curr_state = self.activity['start_state'] # Can be 1: "fast" or 0:"slow"
