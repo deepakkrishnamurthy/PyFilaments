@@ -17,6 +17,10 @@ elif platform == 'darwin':
 FILE_NAME = 'sim_data' # Name for individual simulation files
 FILE_FORMAT = '.hdf5'
 
+# List of filament parameters that can be varied for parametric sweeps
+PARAMETERS = ['Np', 'radius', 'b0', 'k' , 'mu' , 'F0', 'S0', 'D0', 
+					 'scale_factor','bending_axial_scalefactor','bc']
+
 # Filament parameter constants and default values
 DIMS = 3
 RADIUS = 1
