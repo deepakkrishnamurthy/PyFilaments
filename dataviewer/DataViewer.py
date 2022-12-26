@@ -663,9 +663,9 @@ class DataInteractionWidget(QMainWindow):
 		layout_bottom.addWidget(self.checkbox_display)
 
 		layout_right = QGridLayout()
-		# layout_right.addWidget(self.plot_widget,0,0,1,1) # Plot widget for displying related data
-		layout_right.addWidget(self.sim_parameters_display,0,0,1,1) # Parameter values display widget
-		layout_right.addLayout(layout_bottom,1,0,1,1) # Analysis data open button
+		layout_right.addWidget(self.plot_widget,0,0,1,1) # Plot widget for displying related data
+		layout_right.addWidget(self.sim_parameters_display,1,0,1,1) # Parameter values display widget
+		layout_right.addLayout(layout_bottom,2,0,1,1) # Analysis data open button
 
 		# Add widgets to the central widget
 		video_player_layout = QVBoxLayout()
