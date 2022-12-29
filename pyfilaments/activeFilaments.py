@@ -599,8 +599,8 @@ class activeFilament:
 			if(self.sim_type == 'sedimentation'):
 				self.R, self.Time = solver.solve(time_points)
 			else:
-				self.R, self.Time = solver.solve(time_points, terminate)
-				# self.R, self.Time = solver.solve(time_points)
+				# self.R, self.Time = solver.solve(time_points, terminate)
+				self.R, self.Time = solver.solve(time_points)
 			
 			self.cpu_time = time.time() - start_time
 			if(self.save):

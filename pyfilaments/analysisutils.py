@@ -140,9 +140,7 @@ class analysisTools(activeFilament):
 
 		self.length_scale = self.radius
 		self.time_scale = (self.radius*self.D0)**(-1)
-
 		self.velocity_scale = self.length_scale/self.time_scale
-
 		self.force_scale = self.mu*self.D0*(self.radius**3)
 
 	def compute_dimensionless_groups(self):
@@ -150,7 +148,19 @@ class analysisTools(activeFilament):
 		"""
 
 		self.f_a = self.mu*self.D0*(self.radius**3)/self.L
-		self.activity_number = (self.mu*self.radius**3*self.L**2*self.D0/self.kappa)
+
+		# No:of active colloids
+		sim_type = self.df_metadata['simulation type'][0]
+		if  sim_type == 'dist' or sim_type == 'lacry':
+			n_active = self.Np
+		elif sim_type == 'point':
+			n_active = 1
+		else:
+			n_active = 0
+
+		print(n_active)
+
+		self.activity_number = (n_active*self.mu*self.radius**3*self.L**2*self.D0/self.kappa)
 
 		print(50*'*')
 		print('Dimensionless numbers')
