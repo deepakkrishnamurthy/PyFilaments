@@ -99,6 +99,10 @@ class analysisTools(activeFilament):
 			# Load metadata
 			self.df_metadata = pd.read_csv(os.path.join(self.rootFolder, 'metadata.csv'))
 
+			if not hasattr(self, 'activity_type'):
+				# Backwards compatbibility to get activity type of simulations
+				self.activity_type = str(np.array(self.df_metadata[' activity type'])[0])
+
 			# Activity cycles per simulation (only exact for deterministic activity profiles)
 			self.activity_cycles = int(self.Time[-1]/self.activity_timescale) # Number of activity cycles
 
@@ -532,6 +536,19 @@ class analysisTools(activeFilament):
 			# self.derived_data['Tip cosine angle'][ii] = np.dot(self.dr_hat[:,-1], [1, 0 , 0])
 
 
+	def compute_tip_radial_pos(self):
+
+		self.derived_data['tip distance'] = np.zeros(self.Nt)
+
+		for ii in range(self.Nt):
+
+			head_pos_x = self.R[ii, self.Np-1]
+			head_pos_y = self.R[ii, 2*self.Np-1]
+			head_pos_z = self.R[ii, 3*self.Np-1]
+			
+			distance = (head_pos_x**2 + head_pos_y**2 + head_pos_z**2)**(1/2)
+
+			self.derived_data['tip distance'][ii] = distance
 
 
 
