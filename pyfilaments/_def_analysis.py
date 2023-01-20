@@ -3,6 +3,7 @@
 from sys import platform
 import numpy as np
 import cmocean
+import matplotlib.pyplot as plt
 
 # Check which platform
 if platform == "linux" or platform == "linux2":
@@ -21,7 +22,7 @@ elif platform == 'darwin':
 COMP_COLOR = 'k'
 EXT_COLOR = 'r'
 
-SPATIAL_DENSITY_CMAP = cmocean.cm.deep
+SPATIAL_DENSITY_CMAP = plt.cm.inferno
 
 ACTIVITY_STRENGTH_CMAP = cmocean.cm.matter
 

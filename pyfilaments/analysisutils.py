@@ -107,6 +107,8 @@ class analysisTools(activeFilament):
 			self.activity_cycles = int(self.Time[-1]/self.activity_timescale) # Number of activity cycles
 
 			self.compute_scales()
+			self.time_scales()
+			self.compute_dimensionless_groups()
 
 	def allocate_variables(self):
 		self.tangent_angles_matrix = None
@@ -1145,63 +1147,43 @@ class analysisTools(activeFilament):
 		plt.show()
 
 	def plot_tip_scatter_density(self, save = False, save_folder = None, fig_name = None, 
-									skip_cycles = 50, plot_unique_locations = False, color_by = 'count'):
+									plot_filament = False, skip_cycles = 50, plot_unique_locations = False, color_by = 'count'):
 		# plt.style.use('dark_background')
 		# print('Tip scatter density plot')
 
-		# x = np.array(self.derived_data['head pos x'])
-		# y = np.array(self.derived_data['head pos y'])
-		# xy = np.vstack([x, y])
-		# z = gaussian_kde(xy)(xy)
-
-		# idx = z.argsort()
-		# x, y, z = x[idx], y[idx], z[idx]
-
-		# if(fig_name is None):
-		# 	fig = plt.figure(figsize = (4,4))
-		# else:
-		# 	fig = plt.figure(num = fig_name)
-
-
-		# ax1 = plt.scatter(y, x, c = z[::1], s = 20, edgecolor = None, cmap = SPATIAL_DENSITY_CMAP, rasterized = True)
-		# plt.scatter(0, 0, c = 'r', s = 40, edgecolor = None)
-		# cbar = plt.colorbar(ax1)
-		# cbar.ax.set_ylabel('Density')
-		# plt.title('Tip locations colored by local density')
-
-
-
 		plt.figure(figsize = (7,5))
-		# Overlay filament center lines
-		phase_value_array = [0, np.pi]
 		
-		for phase_value in phase_value_array:
-			# phase_value = 0
-			# Smallest phase difference = 2*pi*delta_T/T
-			delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
-			abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
-			constant_phase_mask = abs_val_array <= 1*delta_phase
-			time_points = np.array(range(0, self.Nt))
-			constant_phase_indices = time_points[constant_phase_mask]
+		if plot_filament:
+		# Overlay filament center lines
+			phase_value_array = [0, np.pi]
 
-			# Remove adjacent time points to prevent double counting of time points at constant phase
-			adjacent_mask = (constant_phase_indices[1:]-constant_phase_indices[:-1])==1
+			for phase_value in phase_value_array:
+				# phase_value = 0
+				# Smallest phase difference = 2*pi*delta_T/T
+				delta_phase = 2*np.pi*np.mean(self.Time[1:]-self.Time[:-1])/self.activity_timescale
+				abs_val_array = np.abs(self.derived_data['Phase'] - phase_value)
+				constant_phase_mask = abs_val_array <= 1*delta_phase
+				time_points = np.array(range(0, self.Nt))
+				constant_phase_indices = time_points[constant_phase_mask]
 
-			constant_phase_indices = constant_phase_indices[1:][~adjacent_mask]
-			
-			for ii in constant_phase_indices[skip_cycles:]:
+				# Remove adjacent time points to prevent double counting of time points at constant phase
+				adjacent_mask = (constant_phase_indices[1:]-constant_phase_indices[:-1])==1
+
+				constant_phase_indices = constant_phase_indices[1:][~adjacent_mask]
 				
-				self.r = self.R[ii,:]
-				x = self.r[0:self.Np]
-				y = self.r[self.Np:2*self.Np]
+				for ii in constant_phase_indices[skip_cycles:]:
+					
+					self.r = self.R[ii,:]
+					x = self.r[0:self.Np]
+					y = self.r[self.Np:2*self.Np]
 
-				# if(ii%stride==0):
-				if(phase_value==0):
-					plt.plot(y, x, color = COMP_COLOR, linewidth = 1.5, alpha = 0.5, zorder=1)
-				elif(phase_value==np.pi):
-					plt.plot(y, x, color = EXT_COLOR, linewidth = 1.5, alpha = 0.5, zorder=1)
-				else:
-					plt.plot(y, x, color = 'k', linewidth = 1.5, alpha = 0.5, zorder=1)
+					# if(ii%stride==0):
+					if(phase_value==0):
+						plt.plot(y, x, color = COMP_COLOR, linewidth = 1.5, alpha = 0.5, zorder=1)
+					elif(phase_value==np.pi):
+						plt.plot(y, x, color = EXT_COLOR, linewidth = 1.5, alpha = 0.5, zorder=1)
+					else:
+						plt.plot(y, x, color = 'k', linewidth = 1.5, alpha = 0.5, zorder=1)
 
 
 		if(plot_unique_locations):
@@ -1234,6 +1216,25 @@ class analysisTools(activeFilament):
 			plt.clim(0, 500)
 			cbar = plt.colorbar(ax1)
 			cbar.ax.set_ylabel(color_by)
+
+		else:
+			# Plot the tip density
+			start_index = self.cycle_to_index(START_CYCLE)
+
+			x = np.array(self.derived_data['head pos x'])[start_index:]
+			y = np.array(self.derived_data['head pos y'])[start_index:]
+			xy = np.vstack([x, y])
+			z = gaussian_kde(xy)(xy)
+
+			idx = z.argsort()
+			x, y, z = x[idx], y[idx], z[idx]
+
+
+			ax1 = plt.scatter(y, x, c = z[::1], s = 20, edgecolor = None, cmap = SPATIAL_DENSITY_CMAP, rasterized = True)
+			plt.scatter(0, 0, c = 'r', s = 40, edgecolor = None)
+			cbar = plt.colorbar(ax1)
+			cbar.ax.set_ylabel('Density')
+		# plt.title('Tip locations colored by local density')
 		# plt.axis('equal')
 		plt.axis('equal')
 		plt.xlim([-1.25*self.Np*self.b0, 1.25*self.Np*self.b0])
@@ -1245,13 +1246,30 @@ class analysisTools(activeFilament):
 			if(save_folder is not None):
 
 				file_path = os.path.join(save_folder, self.dataFolder)
+				# file_path = save_folder
+
 			else:
 				file_path = self.analysisFolder
 
 			if(not os.path.exists(file_path)):
 				os.makedirs(file_path)
 
-			file_name = self.dataName[:-5] +'_' + '_FilamentShapes_SearchCloud'
+			sim_params = '{}_{}'.format(str(self.activity_type), np.round(float(self.df_metadata['potDipole strength']),2))
+
+			if plot_filament and not plot_unique_locations:
+				file_name = self.dataName[:-5] +'_' + 'SearchCloud_FilamentShape_'+sim_params
+			elif plot_unique_locations:
+				file_name = self.dataName[:-5] +'_' + 'UniqueLocstionsCloud_'+sim_params
+			else:
+				file_name = self.dataName[:-5] +'_' + 'SearchCloud_'+sim_params
+
+
+			# Save the data used for making the plot
+			df = pd.DataFrame({'head pos x':x, 'head pos y':y, 'Local density':z, 'Activity number':np.repeat(self.activity_number, len(x))})
+
+			df.to_csv(os.path.join(file_path, file_name + '.csv'))
+
+
 			plt.savefig(os.path.join(file_path, file_name + '.png'), dpi = 300, bbox_inches = 'tight')
 			plt.savefig(os.path.join(file_path, file_name + '.svg'), dpi = 300, bbox_inches = 'tight')
 		
