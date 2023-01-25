@@ -43,8 +43,8 @@ class PlotWidget(pg.GraphicsLayoutWidget):
 		self.filament = filament
 		
 		# Set the data for the static activity profile that we want to plot
-		self.x_data = deque(maxlen=200)
-		self.y_data = deque(maxlen=200)
+		self.x_data = deque(maxlen=100)
+		self.y_data = deque(maxlen=100)
 
 
 		self.plot1 = self.addPlot(title=title)
@@ -116,7 +116,6 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		self.filament = filament
 		self.plot_tip_history = False
 		self.current_index = 0
-		self.cycle = 0
 		self.change_display_params = True
 
 		# Background color
@@ -145,6 +144,11 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		self.plot.addItem(self.text_cycle_count)
 		self.text.setPos(-20, 0)
 
+		# state variables
+		self.activity_curr = 0
+		self.activity_prev = -1
+		self.cycle_count = 0
+
 
 	def update_plot(self):
 
@@ -167,10 +171,10 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 			self.s2.setData(x = [], y = [], brush = pg.mkBrush(255, 255, 255, 40))
 
 		# Change the data display after some cycles
-		# if self.cycle > 10:
+		# if self.cycle_count > 10:
 		# 	self.plot_tip_history = True
 		
-		# if self.cycle > 20 and self.change_display_params:	
+		# if self.cycle_count > 20 and self.change_display_params:	
 		# 	self.playback_speed.emit(12)
 		# 	self.change_display_params = False
 
@@ -213,22 +217,37 @@ class ScatterPlotWidget(pg.GraphicsLayoutWidget):
 		self.plot_tip_history = flag
 
 	def update_text(self):
+		# Update this to work based on the actual activity profile
 
-		value = 2*np.pi*(self.filament.Time[self.current_index]%self.filament.activity_timescale)/self.filament.activity_timescale
+		self.activity_prev = self.activity_curr
+		self.activity_curr = self.filament.activity_profile[self.current_index]
 
-		self.cycle = int(self.filament.Time[self.current_index]/self.filament.activity_timescale)
+		# if self.activity_prev==-1 and self.activity_curr==1:
+		# 	self.cycle_count+=1
 
-		if value>np.pi:
+		# value = 2*np.pi*(self.filament.Time[self.current_index]%self.filament.activity_timescale)/self.filament.activity_timescale
+
+		# self.cycle = int(self.filament.Time[self.current_index]/self.filament.activity_timescale)
+
+		if self.activity_curr ==1:
 			text = 'extension'
-			self.text_color = EXTENSION_COLOR
-		else:
+			self.text_color = EXTENSION_COLOR	
+		elif self.activity_curr == -1:
 			text = 'compression'
 			self.text_color = COMPRESSION_COLOR
+
+
+		# if value>np.pi:
+		# 	text = 'extension'
+		# 	self.text_color = EXTENSION_COLOR
+		# else:
+		# 	text = 'compression'
+		# 	self.text_color = COMPRESSION_COLOR
 
 		self.text.setText(text)
 		self.text.setColor(self.text_color)
 
-		self.text_cycle_count.setText('cycle: {}'.format(self.cycle))
+		# self.text_cycle_count.setText('cycle: {}'.format(self.cycle_count))
 
 
 

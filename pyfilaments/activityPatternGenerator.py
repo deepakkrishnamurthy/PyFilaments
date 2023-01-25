@@ -121,8 +121,8 @@ class activityPatternGenerator:
 				rng = np.random.default_rng()
 
 				# Draw from the distribution to create a series of extension and compression durations
-				self.T_ext = lognorm.rvs(self.sigma_ext, 0, self.T_ext_median, size = self.n_cycles)
-				self.T_comp = lognorm.rvs(self.sigma_comp, 0, self.T_comp_median, size = self.n_cycles)
+				self.T_ext = lognorm.rvs(self.sigma_ext, 0.1*self.T_ext_median, self.T_ext_median, size = self.n_cycles)
+				self.T_comp = lognorm.rvs(self.sigma_comp, 0.1*self.T_comp_median, self.T_comp_median, size = self.n_cycles)
 
 				# self.T_ext = rng.lognormal(mean = np.log(self.T_ext_median), sigma = self.sigma_ext, size = self.n_cycles) 
 				# self.T_comp = rng.lognormal(mean = np.log(self.T_comp_median) , sigma = self.sigma_comp, size = self.n_cycles)
