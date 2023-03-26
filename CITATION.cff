@@ -1,0 +1,35 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: PyFilaments
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Deepak
+    family-names: Krishnamurthy
+    email: deepak90@berkeley.edu
+    affiliation: 'University of California, Berkeley'
+    orcid: 'https://orcid.org/0000-0002-4504-1530'
+identifiers:
+  - type: url
+    value: 'https://github.com/deepakkrishnamurthy/PyFilaments.git'
+repository-code: 'https://github.com/deepakkrishnamurthy/PyFilaments.git'
+abstract: >-
+  PyFilaments is a Python library to simulate the dynamics
+  of active filaments. The filaments are built out of
+  spherical particles with Dirichlet (velocity) or Neumann
+  (stress) boundary conditions on their surfaces. The
+  library uses the PyStokes library for calculating Rigid
+  body motions of the spheres and their flows. Connection
+  forces due to non-linear springs and bending potentials
+  are applied to simulate the elasto-hydrodynamics of active
+  filaments.
+keywords:
+  - active matter
+  - hydrodynamics
+  - nonlinear dynamics
+  - computational physics
+license: MIT
