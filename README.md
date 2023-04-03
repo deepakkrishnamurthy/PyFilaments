@@ -1,6 +1,8 @@
 # PyFilaments: Simulate Active Filament Dynamics with Many-body Hydrodynamics in Python
 
-![Image](https://github.com/deepakkrishnamurthy/PyFilaments/blob/master/examples/sample_videos/Wiggly_I_FINAL_AdobeExpress.gif)
+<p align="center">
+  <img src="https://github.com/deepakkrishnamurthy/PyFilaments/blob/master/examples/sample_videos/Wiggly_I_FINAL_AdobeExpress.gif" />
+</p>
 
 ## About 
 
@@ -9,9 +11,16 @@
 ### Rich behavioral space of active filaments under time-varying forcing
 Using the PyFilaments library we have discovered a rich space of filament behaviors under time-varying forcing, including periodic and aperiodic dynamics. We further find that aperiodic behaviors are due to a transition to chaos.
 
-![Image](https://github.com/deepakkrishnamurthy/PyFilaments/blob/master/examples/sample_videos/PeriodicDynamics.mp4)
+#### Periodic dynamics
+<p align="center">
+  <img width="50%" src="https://github.com/deepakkrishnamurthy/PyFilaments/blob/master/examples/sample_videos/PeriodicDynamics_AdobeExpress.gif" alt = "Periodic dynamics" />
+</p>
 
-![Image](https://github.com/deepakkrishnamurthy/PyFilaments/blob/master/examples/sample_videos/AperiodicDynamics.mp4)
+#### Aperiodic dynamics
+<p align="center">
+  <img width="50%" src="https://github.com/deepakkrishnamurthy/PyFilaments/blob/master/examples/sample_videos/AperiodicDynamics_AdobeExpress.gif" alt = "Aperiodic dynamics" />
+</p>
+
 
 ## Installation
 
